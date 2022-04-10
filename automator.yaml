@@ -1,6 +1,10 @@
 - name: read data from file
 
   tasks:
+  - name: set variable
+    setvar:
+      varname: zzz
+      varvalue: pluto
   - name: readfile
     readfile:
       filename: /opt/a.t
@@ -31,4 +35,98 @@
     unzip:
       zipfilename: /opt/a.zip
       pathwhereunzip: /tmp/test/
-
+  - name: scp to remote  
+    scp:
+      remoteserver: "10.70.7.7"
+      remoteuser: "root"
+      remoteport: 22
+      remotepassword: "password.123"
+      localpath: /opt/a.zip
+      remotepath: /root/pippo.zip
+      recursive: False
+      direction: localtoremote
+  - name: scp to remote folder
+    scp:
+      remoteserver: "10.70.7.7"
+      remoteuser: "root"
+      remoteport: 22
+      remotepassword: "password.123"
+      localpath: /opt/export
+      remotepath: /root/export
+      recursive: True
+      direction: localtoremote
+  - name: scp from remote  
+    scp:
+      remoteserver: "10.70.7.7"
+      remoteuser: "root"
+      remoteport: 22
+      remotepassword: "password.123"
+      localpath: /opt/aremote.zip
+      remotepath: /root/pipporemote.zip
+      recursive: False
+      direction: remotetolocal
+  - name: scp from remote folder
+    scp:
+      remoteserver: "10.70.7.7"
+      remoteuser: "root"
+      remoteport: 22
+      remotepassword: "password.123"
+      localpath: /opt/exportremote 
+      remotepath: /root/exporttemote
+      recursive: True
+      direction: remotetolocal
+  - name: copy file or directory
+    copy:
+      srcpath: /opt/exportremote
+      dstpath: /opt/export{zzz} 
+      recursive: True
+  - name: copy file or directory
+    copy:
+      srcpath: /opt/aremote.zip
+      dstpath: /opt/aremote{zzz}.zip 
+      recursive: False
+  - name: remove directory
+    remove:
+      pathtoremove: /opt/exportremote 
+      recursive: True
+  - name: remove file  
+    remove:
+      pathtoremove: /opt/aremote.zip 
+      recursive: False
+  - name: print variable
+    printtext:
+      varname: zzz
+  - name: scp to remote  
+    systemd:
+      remoteserver: "10.70.7.7"
+      remoteuser: "root"
+      remoteport: 22
+      remotepassword: "password.123"
+      servicename: ntpd
+      servicestate: stop 
+  - name: scp to remote  
+    systemd:
+      remoteserver: "10.70.7.7"
+      remoteuser: "root"
+      remoteport: 22
+      remotepassword: "password.123"
+      servicename: ntpd
+      servicestate: start
+  - name: scp to remote  
+    systemd:
+      remoteserver: "10.70.7.7"
+      remoteuser: "root"
+      remoteport: 22
+      remotepassword: "password.123"
+      servicename: ntpd
+      servicestate: status 
+  - name: replace with regex in file 
+    regexreplaceinfile:
+      filein: /opt/a.t
+      regexmatch: test2
+      regexvalue: pluto2
+      fileout: /opt/az.t
+  - name: renamefile file or directory
+    rename:
+      srcpath: /opt/az.t
+      dstpath: /opt/az.t{zzz} 
