@@ -246,10 +246,12 @@ only supports ***python 3.10.4***
     rename:
       srcpath: /opt/az.t
       dstpath: /opt/az.t{zzz} 
-      ```
+ ```
       
       
- ## Console output
+ ### Console output
+ 
+ 
  ```console
  /usr/local/bin/python3.10 /opt/open-automator/automator.py
 start process tasks form automator.yaml
