@@ -1,0 +1,11 @@
+Jinja2
+MarkupSafe
+mysql-connector-python
+protobuf
+psycopg2-binary
+PyYAML
+six
+xmltodict
+zipfile36
+paramiko
+scp

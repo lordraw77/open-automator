@@ -1,0 +1,34 @@
+- name: read data from file
+
+  tasks:
+  - name: readfile
+    readfile:
+      filename: /opt/a.t
+      varname: aaa
+  - name: print variable
+    printtext:
+      varname: aaa
+  - name: "replace test con \"test \""
+    replace:
+      varname: aaa
+      leftvalue: "test"
+      rightvalue: "test "
+  - name: print variable
+    printtext:
+      varname: aaa
+  - name: write file
+    writefile:
+      filename: /opt/a.t2
+      varname: aaa
+  - name: make zip
+    makezip:
+      zipfilename: /opt/a.zip
+      pathtozip: 
+        - /opt/export/
+        - /opt/exportv2/
+      zipfilter: "*"
+  - name: unzip
+    unzip:
+      zipfilename: /opt/a.zip
+      pathwhereunzip: /tmp/test/
+
