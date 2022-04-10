@@ -1,5 +1,4 @@
-- name: read data from file
-
+- name: 
   tasks:
   - name: set variable
     setvar:

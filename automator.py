@@ -70,7 +70,7 @@ def _zipdir(paths,zipfilter, ziph):
 
 @trace
 def rename(param):
-    """_summary_
+    """
     - name: renamefile file or directory
         rename:
             srcpath: /opt/exportremote
@@ -88,7 +88,7 @@ def rename(param):
 
 @trace
 def copy(param):
-    """_summary_
+    """
     - name: copy file or directory
         copy:
             srcpath: /opt/exportremote
@@ -111,7 +111,7 @@ def copy(param):
         
 @trace
 def remove(param):
-    """_summary_
+    """
     - name: remove file or directory
         remove:
             pathtoremove: /opt/exportremote 
@@ -134,7 +134,7 @@ def remove(param):
 
 @trace
 def readfile(param):
-    """_summary_
+    """
       - name: readfile
         readfile:
             filename: /opt/a.t
@@ -151,7 +151,7 @@ def readfile(param):
 @trace 
 def systemd(param):
     
-    """_summary_
+    """
         manage systemctl
       - name: scp to remote  
         systemd:
@@ -181,7 +181,7 @@ def systemd(param):
 @trace
 def scp(param):
 
-    """_summary_
+    """
         copy file or folder from local to remote server via scp
       - name: scp to remote  
         scp:
@@ -225,7 +225,7 @@ def scp(param):
 
 @trace
 def writefile(param):
-    """_summary_
+    """
       - name: write file
         writefile:
             filename: /opt/a.t2
@@ -242,7 +242,7 @@ def writefile(param):
         
 @trace
 def setvar(param):
-    """_summary_
+    """ 
       - name: set variable
         setvar:
             varname: zzz
@@ -258,7 +258,7 @@ def setvar(param):
      
 @trace
 def printtext(param):
-    """_summary_
+    """ 
       - name: printtext
         printtext:
             varname: aaa
@@ -271,7 +271,7 @@ def printtext(param):
      
 @trace        
 def makezip(param):
-    """_summary_
+    """
     - name: make zip
         makezip:
         zipfilename: /opt/a.zip
@@ -292,7 +292,7 @@ def makezip(param):
 
 @trace        
 def unzip(param):
-    """_summary_
+    """ 
     - name: unzip
         unzip:
         zipfilename: /opt/a.zip
@@ -309,7 +309,7 @@ def unzip(param):
 
 @trace
 def regexreplaceinfile(param):
-    """_summary_
+    """
     - name: "replace with regex in file 
       regexreplaceinfile:
         filein: /opt/a.t
@@ -334,7 +334,7 @@ def regexreplaceinfile(param):
 
 @trace
 def replace(param):
-    """_summary_
+    """
     - name: "replace test con \"test \""
         replace:
         varname: aaa
@@ -359,7 +359,7 @@ def main():
     #                     help='yaml for task description')
     # args = my_parser.parse_args()
     # tasksfile =args.tasks
-    
+ 
     tasksfile = "automator.yaml"
     aaa = "start process tasks form {tasksfile}"
     globals()['tasksfile']=tasksfile
