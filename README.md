@@ -105,11 +105,8 @@ beta version
         leftvalue: "test"
         rightvalue: "test "
 
-## Yaml conifigurazion exemple:
-
----
-
-`- name: 
+### Yaml conifigurazion exemple:
+- name: 
   tasks:
   - name: set variable
     setvar:
@@ -239,4 +236,4 @@ beta version
   - name: renamefile file or directory
     rename:
       srcpath: /opt/az.t
-      dstpath: /opt/az.t{zzz} `
+      dstpath: /opt/az.t{zzz} 
