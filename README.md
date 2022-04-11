@@ -52,6 +52,8 @@ options:
 - regexreplaceinfile
 - replace
 - remotecommand
+- loadvarfromjeson
+- template
 
 ### setvar: set variable for reuse
     - setvar:
@@ -163,6 +165,17 @@ options:
             command: ls -al /root
             saveonvar: outputvar #optional save output in var the param are variablename
 
+###  loadvarfromjeson: load variable form json
+  - name: load variable form json
+    loadvarfromjeson:
+        filename: /opt/uoc-generator/jtable
+
+### template: render j2 template  
+   - name:  render j2 template 
+     template:
+       templatefile: ./info.j2
+       dstfile: /opt/info{zzz}.txt 
+
 ### Yaml conifigurazion exemple:
 ``` yaml
 # YAML
@@ -172,6 +185,9 @@ options:
     setvar:
       varname: zzz
       varvalue: pluto
+  - name: load variable form json
+    loadvarfromjeson:
+        filename: /opt/a.json
   - name: readfile
     readfile:
       filename: /opt/a.t
@@ -304,6 +320,10 @@ options:
             remoteport: 22
             remotepassword: "PaSsWoRd"
             command: ls -al /root
+  - name:  render j2 template 
+      templete:
+          templatefile: ./info.j2
+          dstfile: /opt/info{zzz}.txt 
  ```
       
       

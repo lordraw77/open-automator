@@ -6,6 +6,7 @@ import os
 import zipfile
 import inspect
 import paramiko
+from jinja2 import Environment, BaseLoader
 from scp import SCPClient
 import re
 import pprint
@@ -95,6 +96,31 @@ def rename(param):
         exit()
         
 
+@trace
+def template(param):
+    """
+    - name:  render j2 template 
+        templete:
+            templatefile: ./info.j2
+            dstfile: /opt/info{zzz}.txt 
+            
+    """
+    print(f"{myself():.<30}.....start")
+    if checkandloadparam(myself(),('templatefile','dstfile'),param):
+        templatefile=effify(globals()['templatefile'])
+        dstfile=effify(globals()['dstfile'])
+        f = open(templatefile,'r')
+        data= f.read()
+        f.close()
+        rtemplate = Environment(loader=BaseLoader).from_string(data)
+        output = rtemplate.render(**globals())
+        f = open(dstfile,'w')
+        f.write(output)
+        f.close()
+        print(f"{myself():.<30}.....end")
+    else:
+        exit()
+        
 @trace
 def copy(param):
     """
@@ -325,7 +351,6 @@ def loadvarfromjeson(param):
     else:
         exit()
      
-       
 @trace
 def setvar(param):
     """ 

@@ -146,3 +146,7 @@
   - name: print variable
     printtext:
       varname: outputvar
+  - name:  render j2 template 
+    template:
+        templatefile: ./info.j2
+        dstfile: /opt/info{zzz}.txt 
