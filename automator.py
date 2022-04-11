@@ -135,15 +135,10 @@ def remove(param):
         pathtoremove=effify(globals()['pathtoremove'])
         recursive=globals()['recursive']
         if recursive:
-            if "*" in pathtoremove:
-                files = glob.glob(pathtoremove)
-                for f in files:
-                    os.remove(f)
-            else:    
-                try:
-                    shutil.rmtree(pathtoremove)
-                except OSError as e:
-                    print(f"Error: {pathtoremove} : {e.strerror}")
+            try:
+                shutil.rmtree(pathtoremove)
+            except OSError as e:
+                print(f"Error: {pathtoremove} : {e.strerror}")
         else:
             if "*" in pathtoremove:
                 files = glob.glob(pathtoremove)

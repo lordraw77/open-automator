@@ -1,4 +1,6 @@
 # open-automator
+***beta version***
+
 Open Automator is a python project, for the automation of development support scripts, 
 similar in concept to ansilbe, but seen from the development side.
 
@@ -17,7 +19,9 @@ python required are ***python 3.10.4+***
 - paramiko
 - scp
 
-***beta version***
+
+
+ ```console
 /usr/local/bin/python3.10 /opt/open-automator/automator.py -h
 usage: automator.py [-h] [-d] [-t] tasks
 
@@ -30,7 +34,7 @@ options:
   -h, --help  show this help message and exit
   -d          debug enable
   -t          trace enable
-
+ ```
 
 ## module available
 
@@ -52,11 +56,7 @@ options:
                 dstpath: /opt/export{zzz} 
                 recursive: True
 
-### remove: file or directory in local 
-    - name: remove file or directory
-        remove:
-            pathtoremove: /opt/exportremote 
-            recursive: True
+ 
 
 ### readfile: read file in a variable
       - name: readfile
@@ -64,8 +64,11 @@ options:
             filename: /opt/a.t
             varname: aaa
 
-### remove: delete file or directory in local
+### remove: delete file or file with wildcard or directory in local 
 **NOTE: IF PATH TERMINATE WITH WILDCARD REMOVE FILE IN PATH**
+
+**NOTE: WildCard option is enabled only with recursive false**
+
     - name: remove file or directory
         remove:
             pathtoremove: /opt/exportremote 
