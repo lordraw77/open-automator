@@ -1,4 +1,3 @@
-from xmlrpc.client import boolean
 import yaml
 import shutil
 import json
@@ -465,22 +464,25 @@ def main():
 
  
     #tasksfile = "automator.yaml"
-    aaa = "start process tasks form {tasksfile}"
-    globals()['tasksfile']=tasksfile
-    print(effify(aaa))
+    print(f"start process tasks form {tasksfile}")
     with open(tasksfile) as file:
         conf = yaml.load(file, Loader=yaml.FullLoader)
     
     #print(conf)
     pprint.pprint(conf)
     tasks = conf[0]['tasks']
+    sizetask = len(tasks)
+    currtask = 1 
     for task in tasks:
         for key in task.keys():
             if "name" != key:
+                print("\n")
+                print(f"exec task {currtask} of {sizetask}")
                 if __DEBUG__:
                     print(f"\t{key} {task.get(key)}") 
                 func = globals()[key]
                 func(task.get(key))
+                currtask = currtask +1 
             else:
                 print(f"task:..............................{task.get(key)}")
 

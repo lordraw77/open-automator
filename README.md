@@ -38,6 +38,21 @@ options:
 
 ## module available
 
+- setvar
+- rename
+- copy
+- readfile
+- remove
+- systemclt
+- scp
+- writefile
+- printtext
+- makezip
+- unzip
+- regexreplaceinfile
+- replace
+- remotecommand
+
 ### setvar: set variable for reuse
     - setvar:
         varname: zzz
