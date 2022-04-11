@@ -1,12 +1,27 @@
 # open-automator
-A python automator for developer automation
+Open Automator is a python project, for the automation of development support scripts, 
+similar in concept to ansilbe, but seen from the development side.
 
-**all yaml parameters are required**
-only supports ***python 3.10.4***
+**All YAML parameters are required.**
+
+python required are ***python 3.10.4+***
+
+#### python module:
+- Jinja2
+- MarkupSafe
+- protobuf
+- PyYAML
+- six
+- xmltodict
+- zipfile36
+- paramiko
+- scp
 
 ***beta version***
-- now support only file yaml named automator.yaml
-- TRACE and DEBUG is set in script
+
+At the moment it does not support input parameters.
+- The only yaml that currently supports you must call automator.yaml, 
+- The parameters for DEBUG and TRACE are currently managed with variables are managed by code.
 
 
 ## module available
