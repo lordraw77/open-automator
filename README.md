@@ -18,10 +18,18 @@ python required are ***python 3.10.4+***
 - scp
 
 ***beta version***
+/usr/local/bin/python3.10 /opt/open-automator/automator.py -h
+usage: automator.py [-h] [-d] [-t] tasks
 
-At the moment it does not support input parameters.
-- The only yaml that currently supports you must call automator.yaml, 
-- The parameters for DEBUG and TRACE are currently managed with variables are managed by code.
+exec open-automator tasks
+
+positional arguments:
+  tasks       yaml for task description
+
+options:
+  -h, --help  show this help message and exit
+  -d          debug enable
+  -t          trace enable
 
 
 ## module available
@@ -57,11 +65,12 @@ At the moment it does not support input parameters.
             varname: aaa
 
 ### remove: delete file or directory in local
-
+**NOTE: IF PATH TERMINATE WITH WILDCARD REMOVE FILE IN PATH**
     - name: remove file or directory
         remove:
             pathtoremove: /opt/exportremote 
             recursive: True
+
 
 
 ### systemclt: manage systemctl
@@ -126,6 +135,15 @@ At the moment it does not support input parameters.
         varname: aaa
         leftvalue: "test"
         rightvalue: "test "
+### remotecommand:  execute remote command over ssh
+  - name: execute remote command over ssh 
+        remotecommand:
+            remoteserver: "10.70.7.7"
+            remoteuser: "root"
+            remoteport: 22
+            remotepassword: "PaSsWoRd"
+            command: ls -al /root
+            saveonvar: outputvar #optional save output in var the param are variablename
 
 ### Yaml conifigurazion exemple:
 ``` yaml
@@ -261,6 +279,13 @@ At the moment it does not support input parameters.
     rename:
       srcpath: /opt/az.t
       dstpath: /opt/az.t{zzz} 
+  - name: execute remote command over ssh 
+        remotecommand:
+            remoteserver: "10.70.7.7"
+            remoteuser: "root"
+            remoteport: 22
+            remotepassword: "PaSsWoRd"
+            command: ls -al /root
  ```
       
       

@@ -1,6 +1,7 @@
-from glob import glob
+from xmlrpc.client import boolean
 import yaml
 import shutil
+import json
 import argparse
 import os
 import zipfile
@@ -8,6 +9,8 @@ import inspect
 import paramiko
 from scp import SCPClient
 import re
+import pprint
+import glob
 
 myself = lambda: inspect.stack()[1][3]
 findinlist = lambda y,_list:  [x for x in _list if y in x]
@@ -47,6 +50,9 @@ def _sshremotecommand(server, port, user, password,commandtoexecute):
 
 @trace
 def checkandloadparam(modulename,paramneed,param ):
+    if __DEBUG__:
+        print(modulename)
+        pprint.pprint(param)
     ret=True
     for par in paramneed:
         if par in param:
@@ -56,9 +62,11 @@ def checkandloadparam(modulename,paramneed,param ):
             ret=False
             break
     return ret
-    
+
+
 def _zipdir(paths,zipfilter, ziph):
     for path in paths:
+        path = effify(path)
         for root, dirs, files in os.walk(path):
             for file in files:
                 if "*" in zipfilter or zipfilter in file:
@@ -78,10 +86,12 @@ def rename(param):
         
 
     """
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('srcpath','dstpath'),param):
         srcpath=effify(globals()['srcpath'])
         dstpath=effify(globals()['dstpath'])
         os.rename(srcpath,dstpath)
+        print(f"{myself():.<30}.....end")
     else:
         exit()
         
@@ -96,16 +106,17 @@ def copy(param):
             recursive: True
 
     """
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('srcpath','dstpath','recursive'),param):
-        srcpath=globals()['srcpath']
-        dstpath=globals()['dstpath']
+        srcpath=effify(globals()['srcpath'])
+        dstpath=effify(globals()['dstpath'])
         recursive=globals()['recursive']
-        dstpath = effify(dstpath) 
-        srcpath = effify(srcpath)
         if recursive:
             shutil.copytree(srcpath,dstpath,dirs_exist_ok=True)
         else:
             shutil.copy(srcpath,dstpath)
+        
+        print(f"{myself():.<30}.....end")
     else:
         exit()
         
@@ -116,19 +127,33 @@ def remove(param):
         remove:
             pathtoremove: /opt/exportremote 
             recursive: True
+        NOTE: IF PATH TERMINATE WITH WILDCARD REMOVE FILE IN PATH
 
     """
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('pathtoremove','recursive'),param):
-        pathtoremove=globals()['pathtoremove']
+        pathtoremove=effify(globals()['pathtoremove'])
         recursive=globals()['recursive']
         if recursive:
-            try:
-                shutil.rmtree(pathtoremove)
-            except OSError as e:
-                print(f"Error: {pathtoremove} : {e.strerror}")
+            if "*" in pathtoremove:
+                files = glob.glob(pathtoremove)
+                for f in files:
+                    os.remove(f)
+            else:    
+                try:
+                    shutil.rmtree(pathtoremove)
+                except OSError as e:
+                    print(f"Error: {pathtoremove} : {e.strerror}")
         else:
-            if os.path.exists(pathtoremove):
-                os.remove(pathtoremove)
+            if "*" in pathtoremove:
+                files = glob.glob(pathtoremove)
+                for f in files:
+                    os.remove(f)
+            else:    
+                if os.path.exists(pathtoremove):
+                    os.remove(pathtoremove)
+        
+        print(f"{myself():.<30}.....end")
     else:
         exit()
 
@@ -140,12 +165,15 @@ def readfile(param):
             filename: /opt/a.t
             varname: aaa
     """
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('varname','filename'),param):
         varname=globals()['varname']
-        filename=globals()['filename']
+        filename=effify(globals()['filename'])
         f = open(filename,"r")
         globals()[varname] =f.read()
         f.close()
+        print(f"{myself():.<30}.....end")
+
     else:
         exit()
 @trace 
@@ -162,6 +190,8 @@ def systemd(param):
         servicename: ntp
         servicestate: stop 
     """
+    print(f"{myself():.<30}.....start")
+
     if checkandloadparam(myself(),('remoteserver','remoteuser','remotepassword','remoteport','servicename','servicestate'),param):
         remoteserver=globals()['remoteserver']
         remoteuser=globals()['remoteuser']
@@ -173,10 +203,43 @@ def systemd(param):
         command=f"systemctl {servicestate} {servicename}"
         output = _sshremotecommand(remoteserver,remoteport,remoteuser,remotepassword,command)
         print(output)
+        print(f"{myself():.<30}.....end")
+
     else:
         exit()
         
 
+@trace
+def remotecommand(param):
+
+    """
+        execute remote command over ssh
+      - name: execute remote command over ssh 
+        remotecommand:
+            remoteserver: "10.70.7.7"
+            remoteuser: "root"
+            remoteport: 22
+            remotepassword: "password.123"
+            command: ls -al /root
+            saveonvar: outputvar #optional save output in var
+    """
+    print(f"{myself():.<30}.....start")
+
+    if checkandloadparam(myself(),('remoteserver','remoteuser','remotepassword','remoteport','command'),param):
+        remoteserver=globals()['remoteserver']
+        remoteuser=globals()['remoteuser']
+        remotepassword=globals()['remotepassword'] 
+        remoteport=globals()['remoteport'] 
+        command=globals()['command']
+        output= _sshremotecommand(remoteserver, remoteport, remoteuser, remotepassword,command)
+        if _checkparam('saveonvar',param):
+            saveonvar=param['saveonvar']
+            globals()[saveonvar]=output
+        
+        print(output)
+        print(f"{myself():.<30}.....end")
+    else:
+        exit()
 
 @trace
 def scp(param):
@@ -194,13 +257,15 @@ def scp(param):
         recursive: False
         direction: localtoremote
     """
+    print(f"{myself():.<30}.....start")
+
     if checkandloadparam(myself(),('remoteserver','remoteuser','remotepassword','remoteport','localpath','remotepath','recursive','direction'),param):
         remoteserver=globals()['remoteserver']
         remoteuser=globals()['remoteuser']
         remotepassword=globals()['remotepassword'] 
         remoteport=globals()['remoteport'] 
-        localpath=globals()['localpath'] 
-        remotepath=globals()['remotepath'] 
+        localpath=effify(globals()['localpath'])
+        remotepath=effify(globals()['remotepath']) 
         recursive=globals()['recursive'] 
         direction=globals()['direction']
         ssh=  createSSHClient(remoteserver, remoteport, remoteuser, remotepassword)  
@@ -218,7 +283,8 @@ def scp(param):
         
         _scp.close()
         ssh.close()
-     
+        print(f"{myself():.<30}.....end")
+
     else:
         exit()
         
@@ -231,15 +297,41 @@ def writefile(param):
             filename: /opt/a.t2
             varname: aaa
     """  
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('varname','filename'),param):
         varname=globals()['varname']
-        filename=globals()['filename']
+        filename=effify(globals()['filename'])
         f = open(filename,"w")
         f.write(globals()[varname])
         f.close()
+        print(f"{myself():.<30}.....end")
+
     else:
         exit()
+@trace
+def loadvarfromjeson(param):
+    
+    """ 
+        load variable form json
+      - name: load variable form json
+        loadvarfromjeson:
+            filename: /opt/uoc-generator/jtable
+             
+    """         
+    print(f"{myself():.<30}.....start")
+    if checkandloadparam(myself(),('filename', ),param):
         
+        filename=effify(globals()['filename'])
+        with open(filename,'r') as f:
+            data = f.read()
+            jdata = json.loads(data)
+            for d in jdata.keys():
+                globals()[d]=jdata.get(d)
+        print(f"{myself():.<30}.....end")
+    else:
+        exit()
+     
+       
 @trace
 def setvar(param):
     """ 
@@ -247,11 +339,13 @@ def setvar(param):
         setvar:
             varname: zzz
             varvalue: pluto
-    """         
+    """        
+    print(f"{myself():.<30}.....start") 
     if checkandloadparam(myself(),('varname','varvalue'),param):
         varname=globals()['varname']
         varvalue=globals()['varvalue']
         globals()[varname] = varvalue
+        print(f"{myself():.<30}.....end")
     else:
         exit()
      
@@ -263,9 +357,11 @@ def printtext(param):
         printtext:
             varname: aaa
     """         
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('varname',),param):
         varname=globals()['varname']
         print (globals()[varname])
+        print(f"{myself():.<30}.....end")
     else:
         exit()
      
@@ -280,13 +376,15 @@ def makezip(param):
             - /opt/exportv2/
         zipfilter: "*"
     """    
+    print(f"{myself():.<30}.....start")
+
     if checkandloadparam(myself(),('zipfilename','pathtozip','zipfilter'),param):    
-        zipfilename=globals()['zipfilename']
+        zipfilename=effify(globals()['zipfilename'])
         pathtozip=globals()['pathtozip']
         zipfilter=globals()['zipfilter']
         with zipfile.ZipFile(zipfilename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             _zipdir(pathtozip,zipfilter, zipf)
-            makezip
+        print(f"{myself():.<30}.....end")
     else:
         exit()
 
@@ -298,11 +396,13 @@ def unzip(param):
         zipfilename: /opt/a.zip
         pathwhereunzip: /tmp/test/
     """    
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('zipfilename','pathwhereunzip'),param):    
-        zipfilename=globals()['zipfilename']
-        pathwhereunzip=globals()['pathwhereunzip']
+        zipfilename=effify(globals()['zipfilename'])
+        pathwhereunzip=effify(globals()['pathwhereunzip'])
         with zipfile.ZipFile(zipfilename, 'r', zipfile.ZIP_DEFLATED) as zipf:
             zipf.extractall(pathwhereunzip)
+        print(f"{myself():.<30}.....end")
 
     else:
         exit()
@@ -317,6 +417,8 @@ def regexreplaceinfile(param):
         regexvalue:
         fileout: /opt/az.t
     """  
+    print(f"{myself():.<30}.....start")
+
     if checkandloadparam(myself(),('filein','regexmatch','regexvalue','fileout'),param):
         filein=effify(globals()['filein'])
         regexmatch=globals()['regexmatch']
@@ -327,7 +429,7 @@ def regexreplaceinfile(param):
             content_new = re.sub(regexmatch, regexvalue, content, flags = re.M)
             with open( fileout,'w')as fo:
                 fo.write(content_new)
-         
+        print(f"{myself():.<30}.....end")
     else:
         exit()
 
@@ -341,6 +443,7 @@ def replace(param):
         leftvalue: "test"
         rightvalue: "test "
     """  
+    print(f"{myself():.<30}.....start")
     if checkandloadparam(myself(),('varname','leftvalue','rightvalue'),param):
         varname=globals()['varname']
         leftvalue=globals()['leftvalue']
@@ -348,26 +451,33 @@ def replace(param):
         temp= globals()[varname]
         temp = str(temp).replace(leftvalue,rightvalue)
         globals()[varname]= temp
+        print(f"{myself():.<30}.....end")
     else:
         exit()
 
 def main():
-    # my_parser = argparse.ArgumentParser(description='exec automator tasks',allow_abbrev=True)
-    # my_parser.add_argument('tasks',
-    #                     metavar='tasks',
-    #                     type=str,
-    #                     help='yaml for task description')
-    # args = my_parser.parse_args()
-    # tasksfile =args.tasks
+    my_parser = argparse.ArgumentParser(description='exec open-automator tasks',allow_abbrev=True)
+    my_parser.add_argument('tasks',
+                        metavar='tasks',
+                        type=str,
+                        help='yaml for task description')
+    my_parser.add_argument('-d', action='store_true',help='debug enable')
+    my_parser.add_argument('-t', action='store_true',help='trace enable')
+    args = my_parser.parse_args()
+    tasksfile =args.tasks
+    __DEBUG__=args.d
+    __TRACE__=args.t
+
  
-    tasksfile = "automator.yaml"
+    #tasksfile = "automator.yaml"
     aaa = "start process tasks form {tasksfile}"
     globals()['tasksfile']=tasksfile
     print(effify(aaa))
     with open(tasksfile) as file:
         conf = yaml.load(file, Loader=yaml.FullLoader)
     
-    print(conf)
+    #print(conf)
+    pprint.pprint(conf)
     tasks = conf[0]['tasks']
     for task in tasks:
         for key in task.keys():
@@ -377,7 +487,7 @@ def main():
                 func = globals()[key]
                 func(task.get(key))
             else:
-                print(f"task:.....{task.get(key)}")
+                print(f"task:..............................{task.get(key)}")
 
         #print(task)
 

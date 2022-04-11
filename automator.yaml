@@ -1,5 +1,11 @@
 - name: 
   tasks:
+  - name: load variable form json
+    loadvarfromjeson:
+        filename: /opt/a.json
+  - name: print variable
+    printtext:
+      varname: c
   - name: set variable
     setvar:
       varname: zzz
@@ -129,3 +135,14 @@
     rename:
       srcpath: /opt/az.t
       dstpath: /opt/az.t{zzz} 
+  - name: execute remote command over ssh 
+    remotecommand:
+        remoteserver: "10.70.7.7"
+        remoteuser: "root"
+        remoteport: 22
+        remotepassword: "password.123"
+        command: "ls -al /root/"
+        saveonvar: outputvar
+  - name: print variable
+    printtext:
+      varname: outputvar
