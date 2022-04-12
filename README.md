@@ -18,7 +18,7 @@ python required are ***python 3.10.4+***
 - zipfile36
 - paramiko
 - scp
-
+- requests
 
 
  ```console
@@ -218,11 +218,33 @@ options:
         printout: True #optional default false 
         saveonvar: "outputvar" #optional save output in var
 ```
+
+### httpsget: make an http get 
+
+``` yaml
+    - name: make https get 
+      httpsget: 
+        host: "10.70.7.7"
+        port: 443
+        get: "/"
+        printout: True
+        saveonvar: outputVarPPP 
+        verify: False
+```
+
 ### Yaml conifigurazion exemple:
 ``` yaml
 # YAML
 - name: 
   tasks:
+  - name: make https get 
+    httpsget: 
+      host: "10.70.7.7"
+      port: 443
+      get: "/"
+      printout: True
+      saveonvar: outputVarPPP 
+      verify: False
   - name: make http get 
     httpget: 
       host: "10.70.7.7"

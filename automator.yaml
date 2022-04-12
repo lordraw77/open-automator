@@ -1,5 +1,20 @@
 - name: 
   tasks:
+      - name: make https get 
+    httpsget: 
+      host: w3vcs05.emslabw3.local
+      port: 443
+      get: "/"
+      printout: True
+      saveonvar: outputVarPPP 
+      verify: False
+  - name: make http get 
+    httpget: 
+      host: "10.70.1.15" 
+      port: 9999
+      get: "/zSirtaAnagraficaList"
+      printout: True
+      saveonvar: outputVarPPP 
   - name: load variable form json
     loadvarfromjeson:
         filename: /opt/a.json

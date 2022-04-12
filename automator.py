@@ -13,6 +13,8 @@ import pprint
 import glob
 import sys
 import http.client
+import requests
+
 
 if os.path.exists("modules"):
     sys.path.append("modules")
@@ -469,6 +471,47 @@ def httpget(param):
                 globals()[saveonvar]=output
 
             connection.close()
+        except Exception as e:
+            print(e)
+        print(f"{myself():.<30}.....end")
+    else:
+        exit()
+        
+trace
+def httpsget(param):
+    """
+    - name: make http get 
+      httpsget: 
+        host: https://www.ssllabs.com/ssltest/
+        port: 443
+        get:/
+        verify: True #optional default false
+        printout: True #optional default false 
+        saveonvar: outputvar #optional save output in var
+        
+    """  
+    print(f"{myself():.<30}.....start")
+
+    if checkandloadparam(myself(),('host','port','get'),param):
+        try:
+            host = globals()['host']
+            port=  globals()['port']
+            get=  globals()['get']
+            verify=False
+            if _checkparam('verify',param):
+                verify=param['verify']
+            response = requests.get(f'https://{host}:{port}{get}', verify = verify) 
+            print(f"Status: {response.status_code} and reason: {response.reason}")
+            output= response.content
+            if _checkparam('printout',param):
+                printout=param['printout']
+                if printout:
+                    print(output)
+            if _checkparam('saveonvar',param):
+                saveonvar=param['saveonvar']
+                globals()[saveonvar]=output
+
+            
         except Exception as e:
             print(e)
         print(f"{myself():.<30}.....end")

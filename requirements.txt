@@ -7,3 +7,4 @@ xmltodict
 zipfile36
 paramiko
 scp
+requests
