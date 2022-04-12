@@ -417,7 +417,6 @@ def makezip(param):
     else:
         exit()
 
-
 @trace        
 def unzip(param):
     """ 
@@ -436,7 +435,7 @@ def unzip(param):
 
     else:
         exit()
-        
+
 @trace
 def httpget(param):
     """
@@ -475,7 +474,7 @@ def httpget(param):
         print(f"{myself():.<30}.....end")
     else:
         exit()
-  
+
 @trace
 def regexreplaceinfile(param):
     """
