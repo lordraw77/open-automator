@@ -223,6 +223,13 @@ options:
 # YAML
 - name: 
   tasks:
+  - name: make http get 
+    httpget: 
+      host: "10.70.7.7"
+      port: 9999
+      get: "/"
+      printout: True #optional default false 
+      saveonvar: "outputvar" #optional save output in var
   - name: set variable
     setvar:
       varname: zzz
