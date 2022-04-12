@@ -11,6 +11,11 @@ from scp import SCPClient
 import re
 import pprint
 import glob
+import sys
+import http.client
+
+if os.path.exists("modules"):
+    sys.path.append("modules")
 
 myself = lambda: inspect.stack()[1][3]
 findinlist = lambda y,_list:  [x for x in _list if y in x]
@@ -30,7 +35,12 @@ def trace(f):
 
 @trace
 def _checkparam(paramname, param):
-    return lambda x: True if paramname in param else False
+    ret=False
+    if paramname in param:
+        ret=True
+    return ret
+    
+    #rrturn lambda x: True if paramname in param else False
 
 @trace
 def createSSHClient(server, port, user, password):
@@ -407,6 +417,7 @@ def makezip(param):
     else:
         exit()
 
+
 @trace        
 def unzip(param):
     """ 
@@ -425,7 +436,46 @@ def unzip(param):
 
     else:
         exit()
+        
+@trace
+def httpget(param):
+    """
+    - name: make http get 
+      httpget: 
+        host: 10.70.7.7
+        port: 9999
+        get:/
+        printout: True #optional default false 
+        saveonvar: outputvar #optional save output in var
+        
+    """  
+    print(f"{myself():.<30}.....start")
 
+    if checkandloadparam(myself(),('host','port','get'),param):
+        try:
+            host = globals()['host']
+            port=  globals()['port']
+            get=  globals()['get']
+            connection = http.client.HTTPConnection(host,port)
+            connection.request("GET", get)
+            response = connection.getresponse()
+            print(f"Status: {response.status} and reason: {response.reason}")
+            output= response.read().decode()
+            if _checkparam('printout',param):
+                printout=param['printout']
+                if printout:
+                    print(output)
+            if _checkparam('saveonvar',param):
+                saveonvar=param['saveonvar']
+                globals()[saveonvar]=output
+
+            connection.close()
+        except Exception as e:
+            print(e)
+        print(f"{myself():.<30}.....end")
+    else:
+        exit()
+  
 @trace
 def regexreplaceinfile(param):
     """
@@ -476,10 +526,7 @@ def replace(param):
 
 def main():
     my_parser = argparse.ArgumentParser(description='exec open-automator tasks',allow_abbrev=True)
-    my_parser.add_argument('tasks',
-                        metavar='tasks',
-                        type=str,
-                        help='yaml for task description')
+    my_parser.add_argument('tasks',metavar='tasks',type=str,help='yaml for task description')
     my_parser.add_argument('-d', action='store_true',help='debug enable')
     my_parser.add_argument('-t', action='store_true',help='trace enable')
     args = my_parser.parse_args()
@@ -505,8 +552,13 @@ def main():
                 print(f"exec task {currtask} of {sizetask}")
                 if __DEBUG__:
                     print(f"\t{key} {task.get(key)}") 
-                func = globals()[key]
-                func(task.get(key))
+                if "." in key:
+                    module = __import__(key.split('.')[0])
+                    func = getattr(module, key.split('.')[1])
+                    func(task.get(key))
+                else:
+                    func = globals()[key]
+                    func(task.get(key))
                 currtask = currtask +1 
             else:
                 print(f"task:..............................{task.get(key)}")

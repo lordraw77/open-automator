@@ -54,6 +54,7 @@ options:
 - remotecommand
 - loadvarfromjeson
 - template
+- httpget
 
 ### setvar: set variable for reuse
 ``` yaml
@@ -205,6 +206,17 @@ options:
       template:
         templatefile: ./info.j2
         dstfile: /opt/info{zzz}.txt 
+```
+
+### httpget: make an http get 
+``` yaml
+    - name: make http get 
+      httpget: 
+        host: "10.70.7.7"
+        port: 9999
+        get: "/"
+        printout: True #optional default false 
+        saveonvar: "outputvar" #optional save output in var
 ```
 ### Yaml conifigurazion exemple:
 ``` yaml
