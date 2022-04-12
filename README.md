@@ -56,45 +56,53 @@ options:
 - template
 
 ### setvar: set variable for reuse
-    - setvar:
-        varname: zzz
-        varvalue: pluto
+``` yaml
+   - name setvar
+     setvar:
+       varname: zzz
+       varvalue: pluto
 
+``` 
 ### rename: rename file in local
+``` yaml
     - name: renamefile file or directory
-        rename:
-            srcpath: /opt/exportremote
-            dstpath: /opt/export{zzz} 
+      rename:
+          srcpath: /opt/exportremote
+          dstpath: /opt/export{zzz} 
 
+``` 
 ### copy:  file or directory in local
-    - name: copy file or directory
-            copy:
-                srcpath: /opt/exportremote
-                dstpath: /opt/export{zzz} 
-                recursive: True
+``` yaml
+   - name: copy file or directory
+     copy:
+         srcpath: /opt/exportremote
+         dstpath: /opt/export{zzz} 
+         recursive: True
 
- 
-
+``` 
 ### readfile: read file in a variable
-      - name: readfile
-        readfile:
-            filename: /opt/a.t
-            varname: aaa
+``` yaml
+   - name: readfile
+     readfile:
+         filename: /opt/a.t
+         varname: aaa
 
+``` 
 ### remove: delete file or file with wildcard or directory in local 
 **NOTE: IF PATH TERMINATE WITH WILDCARD REMOVE FILE IN PATH**
 
 **NOTE: WildCard option is enabled only with recursive false**
-
+``` yaml
     - name: remove file or directory
-        remove:
-            pathtoremove: /opt/exportremote 
-            recursive: True
+      remove:
+          pathtoremove: /opt/exportremote 
+          recursive: True
 
+``` 
 
 
 ### systemclt: manage systemctl
-        
+``` yaml        
       - name: scp to remote  
         systemd:
             remoteserver: "10.70.7.7"
@@ -104,44 +112,57 @@ options:
             servicename: ntp
             servicestate: stop 
 
+``` 
 ### scp: copy file or folder from local to remote server via scp
-      - name: scp to remote  
-        scp:
-            remoteserver: "10.70.7.7"
-            remoteuser: "root"
-            remoteport: 22
-            remotepassword: "PaSsWoRd"
-            localpath: /opt/a.zip
-            remotepath: /root/pippo.zip
-            recursive: False
-            direction: localtoremote
+``` yaml
+    - name: scp to remote  
+      scp:
+          remoteserver: "10.70.7.7"
+          remoteuser: "root"
+          remoteport: 22
+          remotepassword: "PaSsWoRd"
+          localpath: /opt/a.zip
+          remotepath: /root/pippo.zip
+          recursive: False
+          direction: localtoremote
 
+``` 
 ### writefile: write file in local
+``` yaml      
       - name: write file
         writefile:
             filename: /opt/a.t2
             varname: aaa
 
+``` 
 ### printtext: print to console a variable
-      - name: printtext
-        printtext:
-            varname: aaa
+``` yaml
+    - name: printtext
+      printtext:
+          varname: aaa
+
+``` 
 ### makezip: make zip in local
-    - name: make zip
-        makezip:
+``` yaml
+   - name: make zip
+     makezip:
         zipfilename: /opt/a.zip
         pathtozip: 
             - /opt/export/
             - /opt/exportv2/
         zipfilter: "*"
 
+``` 
 ### unzip: unzip file in local
-    - name: unzip
-        unzip:
+``` yaml
+   - name: unzip
+     unzip:
         zipfilename: /opt/a.zip
         pathwhereunzip: /tmp/test/
 
+``` 
 ### regexreplaceinfile:   
+``` yaml 
     - name: "replace with regex in file 
       regexreplaceinfile:
         filein: /opt/a.t
@@ -149,33 +170,42 @@ options:
         regexvalue:
         fileout: /opt/az.t
 
+``` 
 ### replace: replace text in variable in memory
+``` yaml
     - name: "replace test con \"test \""
-        replace:
+      replace:
         varname: aaa
         leftvalue: "test"
         rightvalue: "test "
+
+```         
+       
 ### remotecommand:  execute remote command over ssh
-  - name: execute remote command over ssh 
-        remotecommand:
-            remoteserver: "10.70.7.7"
-            remoteuser: "root"
-            remoteport: 22
-            remotepassword: "PaSsWoRd"
-            command: ls -al /root
-            saveonvar: outputvar #optional save output in var the param are variablename
+``` yaml
+    - name: execute remote command over ssh 
+      remotecommand:
+          remoteserver: "10.70.7.7"
+          remoteuser: "root"
+          remoteport: 22
+          remotepassword: "PaSsWoRd"
+          command: ls -al /root
+          saveonvar: outputvar #optional save output in var the param are variablename
 
+``` 
 ###  loadvarfromjeson: load variable form json
-  - name: load variable form json
-    loadvarfromjeson:
-        filename: /opt/uoc-generator/jtable
-
+``` yaml
+   - name: load variable form json
+     loadvarfromjeson:
+         filename: /opt/uoc-generator/jtable
+```
 ### template: render j2 template  
-   - name:  render j2 template 
-     template:
-       templatefile: ./info.j2
-       dstfile: /opt/info{zzz}.txt 
-
+``` yaml
+    - name:  render j2 template 
+      template:
+        templatefile: ./info.j2
+        dstfile: /opt/info{zzz}.txt 
+```
 ### Yaml conifigurazion exemple:
 ``` yaml
 # YAML
