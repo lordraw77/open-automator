@@ -474,6 +474,46 @@ def unzip(param):
     else:
         exit()
 
+@trace        
+def remoteunzip(param):
+    """ 
+    - name: remoteunzip
+        remoteunzip:
+        zipfilename: /opt/a.zip
+        pathwhereunzip: /tmp/test/
+        remoteserver: "10.70.7.7"
+        remoteuser: "root"
+        remoteport: 22
+        remotepassword: "password.123"
+    """    
+    print(f"{myself():.<30}.....start")
+    if checkandloadparam(myself(),('zipfilename','pathwhereunzip','remoteserver','remoteuser','remotepassword','remoteport'),param):
+        remoteserver=globals()['remoteserver']
+        remoteuser=globals()['remoteuser']
+        remotepassword=globals()['remotepassword'] 
+        remoteport=globals()['remoteport']             
+        zipfilename=effify(globals()['zipfilename'])
+        pathwhereunzip=effify(globals()['pathwhereunzip'])
+        tmpfolder = os.curdir + os.path.sep + "tmp" + os.path.sep
+        with zipfile.ZipFile(zipfilename, 'r', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.extractall(tmpfolder)
+        
+        ssh=  createSSHClient(remoteserver, remoteport, remoteuser, remotepassword)  
+        _scp= SCPClient(ssh.get_transport())  
+        _scp.put(tmpfolder, recursive=True,remote_path=pathwhereunzip)
+        _scp.close()
+        ssh.close()
+        if os.path.exists(tmpfolder):
+            try:
+                shutil.rmtree(tmpfolder)
+            except OSError as e:
+                print(f"Error: {tmpfolder} : {e.strerror}")  
+                
+        print(f"{myself():.<30}.....end")
+
+    else:
+        exit()
+
 @trace
 def httpget(param):
     """

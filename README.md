@@ -488,6 +488,35 @@ Config exemple:
             seconds: 6
 ```
 
+# remoteunzip:
+
+### This module is unzip and trasfer on remote server 
+
+#### In path variable can use F-string syntax for replace with variable loadded in running 
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| remoteserver |  ip or host name for remote server  |
+| remoteuser |     user with greant for manage service | 
+| remoteport |  ssh port number  |
+| remotepassword |     user password | 
+| zipfilename |   full file name of zip on local folder | 
+| pathwhereunzip |     full file path remote for unzip file | 
+
+
+Config exemple:
+
+``` yaml
+    - name: remoteunzip
+      remoteunzip:
+        zipfilename: /opt/a.zip
+        pathwhereunzip: /tmp/test/
+        remoteserver: "10.70.7.7"
+        remoteuser: "root"
+        remoteport: 22
+        remotepassword: "PaSsWoRd"
+```
 
 ### Yaml conifigurazion exemple:
 ``` yaml
