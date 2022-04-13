@@ -14,6 +14,7 @@ import glob
 import sys
 import http.client
 import requests
+import time
 
 
 if os.path.exists("modules"):
@@ -595,6 +596,22 @@ def replace(param):
         temp= globals()[varname]
         temp = str(temp).replace(leftvalue,rightvalue)
         globals()[varname]= temp
+        print(f"{myself():.<30}.....end")
+    else:
+        exit()
+        
+@trace
+def setsleep(param):
+    """
+    - name: "sleep"
+        setsleep:
+            seconds: 6
+         
+    """  
+    print(f"{myself():.<30}.....start")
+    if checkandloadparam(myself(),('seconds',),param):
+        seconds=globals()['seconds']
+        time.sleep(seconds)
         print(f"{myself():.<30}.....end")
     else:
         exit()

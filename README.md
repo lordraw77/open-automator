@@ -56,6 +56,7 @@ options:
 - template
 - httpget
 - httpsget
+- setsleep
 
 # setvar:  
 
@@ -471,6 +472,23 @@ Config exemple:
         verify: False
 ```
 
+# setsleep:
+
+### This module is for sleep
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| seconds | sleep in second  |
+  
+Config exemple:
+
+``` yaml
+    - name: "sleep"
+        setsleep:
+            seconds: 6
+```
+
+
 ### Yaml conifigurazion exemple:
 ``` yaml
 # YAML
@@ -481,159 +499,12 @@ Config exemple:
       host: "10.70.7.7"
       port: 443
       get: "/"
-      printout: True
+      printout: False
       saveonvar: outputVarPPP 
       verify: False
-  - name: make http get 
-    httpget: 
-      host: "10.70.7.7"
-      port: 9999
-      get: "/"
-      printout: True #optional default false 
-      saveonvar: "outputvar" #optional save output in var
-  - name: set variable
-    setvar:
-      varname: zzz
-      varvalue: pluto
-  - name: load variable form json
-    loadvarfromjeson:
-        filename: /opt/a.json
-  - name: readfile
-    readfile:
-      filename: /opt/a.t
-      varname: aaa
   - name: print variable
     printtext:
-      varname: aaa
-  - name: "replace test con \"test \""
-    replace:
-      varname: aaa
-      leftvalue: "test"
-      rightvalue: "test "
-  - name: print variable
-    printtext:
-      varname: aaa
-  - name: write file
-    writefile:
-      filename: /opt/a.t2
-      varname: aaa
-  - name: make zip
-    makezip:
-      zipfilename: /opt/a.zip
-      pathtozip: 
-        - /opt/export/
-        - /opt/exportv2/
-      zipfilter: "*"
-  - name: unzip
-    unzip:
-      zipfilename: /opt/a.zip
-      pathwhereunzip: /tmp/test/
-  - name: scp to remote  
-    scp:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "PaSsWoRd"
-      localpath: /opt/a.zip
-      remotepath: /root/pippo.zip
-      recursive: False
-      direction: localtoremote
-  - name: scp to remote folder
-    scp:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "PaSsWoRd"
-      localpath: /opt/export
-      remotepath: /root/export
-      recursive: True
-      direction: localtoremote
-  - name: scp from remote  
-    scp:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "PaSsWoRd"
-      localpath: /opt/aremote.zip
-      remotepath: /root/pipporemote.zip
-      recursive: False
-      direction: remotetolocal
-  - name: scp from remote folder
-    scp:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "PaSsWoRd"
-      localpath: /opt/exportremote 
-      remotepath: /root/exporttemote
-      recursive: True
-      direction: remotetolocal
-  - name: copy file or directory
-    copy:
-      srcpath: /opt/exportremote
-      dstpath: /opt/export{zzz} 
-      recursive: True
-  - name: copy file or directory
-    copy:
-      srcpath: /opt/aremote.zip
-      dstpath: /opt/aremote{zzz}.zip 
-      recursive: False
-  - name: remove directory
-    remove:
-      pathtoremove: /opt/exportremote 
-      recursive: True
-  - name: remove file  
-    remove:
-      pathtoremove: /opt/aremote.zip 
-      recursive: False
-  - name: print variable
-    printtext:
-      varname: zzz
-  - name: scp to remote  
-    systemd:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "PaSsWoRd"
-      servicename: ntpd
-      servicestate: stop 
-  - name: scp to remote  
-    systemd:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "PaSsWoRd"
-      servicename: ntpd
-      servicestate: start
-  - name: scp to remote  
-    systemd:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "PaSsWoRd"
-      servicename: ntpd
-      servicestate: status 
-  - name: replace with regex in file 
-    regexreplaceinfile:
-      filein: /opt/a.t
-      regexmatch: test2
-      regexvalue: pluto2
-      fileout: /opt/az.t
-  - name: renamefile file or directory
-    rename:
-      srcpath: /opt/az.t
-      dstpath: /opt/az.t{zzz} 
-  - name: execute remote command over ssh 
-        remotecommand:
-            remoteserver: "10.70.7.7"
-            remoteuser: "root"
-            remoteport: 22
-            remotepassword: "PaSsWoRd"
-            command: ls -al /root
-  - name:  render j2 template 
-      templete:
-          templatefile: ./info.j2
-          dstfile: /opt/info{zzz}.txt 
+      varname: outputVarPPP
  ```
       
       
