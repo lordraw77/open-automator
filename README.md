@@ -57,15 +57,34 @@ options:
 - httpget
 - httpsget
 
-### setvar: set variable for reuse
+# setvar:  
+
+### This module is for set a varible during execution of automator 
+
+| Parameter Name   |  Parameter Description      |      
+|-------------|:----------: 
+| varname |  variable name  |
+| varvalue |  value to set in variable | 
+ 
+Config exemple:
 ``` yaml
-   - name setvar
+   - name setvar #set pluto in zzz var 
      setvar:
        varname: zzz
        varvalue: pluto
 
 ``` 
-### rename: rename file in local
+# rename: 
+
+### This module is for rename one file or one directory in local in local
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| srcpath |  file or directory source  |
+| dstpath |  file or directory destination | 
+
+Config exemple:
 ``` yaml
     - name: renamefile file or directory
       rename:
@@ -73,7 +92,18 @@ options:
           dstpath: /opt/export{zzz} 
 
 ``` 
-### copy:  file or directory in local
+# copy:  
+
+### This moduleis for copy file or directory in local
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| srcpath |  file or directory source  |
+| dstpath |  file or directory destination | 
+| recursive |  True if is directory | 
+
+Config exemple:
 ``` yaml
    - name: copy file or directory
      copy:
@@ -82,7 +112,17 @@ options:
          recursive: True
 
 ``` 
-### readfile: read file in a variable
+# readfile: 
+
+### This module is for read file in a variable
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| filename |  file name and path for file to load|
+| varname |   var where store the file context | 
+ 
+Config exemple:
 ``` yaml
    - name: readfile
      readfile:
@@ -90,10 +130,20 @@ options:
          varname: aaa
 
 ``` 
-### remove: delete file or file with wildcard or directory in local 
+# remove: 
+
+### This module is for delete file or file with wildcard or directory in local 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| pathtoremove |  file name or path to remove  |
+| recursive |     True if is directory | 
+
 **NOTE: IF PATH TERMINATE WITH WILDCARD REMOVE FILE IN PATH**
 
 **NOTE: WildCard option is enabled only with recursive false**
+
+Config exemple:
 ``` yaml
     - name: remove file or directory
       remove:
@@ -101,9 +151,20 @@ options:
           recursive: True
 
 ``` 
+# systemclt
 
+### This module is for manage systemctl on remote server
 
-### systemclt: manage systemctl
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| remoteserver |  ip or host name for remote server  |
+| remoteuser |     user with greant for manage service | 
+| remoteport |  ssh port number  |
+| remotepassword |     user password | 
+| servicename |  name of service to mange  |
+| servicestate | the systemctl state | 
+
+Config exemple:
 ``` yaml        
       - name: systemd  
         systemd:
