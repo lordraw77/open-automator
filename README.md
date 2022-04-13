@@ -176,9 +176,39 @@ Config exemple:
             servicestate: stop 
 
 ``` 
-### scp: copy file or folder from local to remote server via scp
 
-## Note: if use multiple file config, the number of elements must be the same on local and remote path. 
+# scp:
+
+### This moodule is for manage copy file or folder from local to remote or remote to local via scp 
+
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| remoteserver |  ip or host name for remote server  |
+| remoteuser |     user with greant for manage service | 
+| remoteport |  ssh port number  |
+| remotepassword |     user password | 
+| localpath |  local path for get or put file see note for multifile config |
+| remotepath | remote path for get or put file see note for multifile config | 
+| recursive | True is directory | 
+| direction | localtoremote (for put ) or remotetolocal ( for get )   | 
+
+
+#### Note: if use multiple file config, the number of elements must be the same on local and remote path. 
+####    For single file: 
+``` yaml
+   {local|remote}path: /opt/a.zip
+```
+####    For multipe file:
+``` yaml
+    {local|remote}path:
+                    - /opt/a.zip
+                    - /opt/b.zip
+```
+
+Config exemple:
 ``` yaml
     - name: scp to remote  
       scp:
@@ -198,7 +228,19 @@ Config exemple:
           direction: localtoremote
 
 ``` 
-### writefile: write file in local
+
+# writefile:
+
+### This module is for dump variable in local file
+
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| filename | full file path  |
+| varname |  variable to dump | 
+
+Config exemple:
 ``` yaml      
       - name: write file
         writefile:
@@ -206,14 +248,37 @@ Config exemple:
             varname: aaa
 
 ``` 
-### printtext: print to console a variable
+
+# printtext: 
+
+### This module is for print to console a variable
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| varname |  variable to print to console | 
+
+Config exemple:
 ``` yaml
     - name: printtext
       printtext:
           varname: aaa
-
 ``` 
-### makezip: make zip in local
+
+# makezip:
+
+### This module is for make zip in local
+
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| zipfilename | full file path  |
+| pathtozip |  only array, at min 1 element | 
+| zipfilter | file name filter use * for all element  |
+
+
+Config exemple:
+
 ``` yaml
    - name: make zip
      makezip:
@@ -223,16 +288,43 @@ Config exemple:
             - /opt/exportv2/
         zipfilter: "*"
 
-``` 
-### unzip: unzip file in local
-``` yaml
+```
+# unzip:
+
+### This module is for unzip in local
+
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| zipfilename | full file path  |
+| pathwhereunzip | path to unzip file | 
+ 
+Config exemple:
+
+ ``` yaml
    - name: unzip
      unzip:
         zipfilename: /opt/a.zip
         pathwhereunzip: /tmp/test/
 
 ``` 
-### regexreplaceinfile:   
+
+# regexreplaceinfile:
+
+### This module is for exec regexreplace in a file 
+
+#### In path variable can use F-string sintax for replace with variable loadded in running 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| filein | full file path  |
+| regexmatch | regex for match | 
+| fileout | full file path  |
+| regexvalue | path to unzip file | 
+ 
+Config exemple:
+
 ``` yaml 
     - name: "replace with regex in file 
       regexreplaceinfile:
@@ -242,7 +334,21 @@ Config exemple:
         fileout: /opt/az.t
 
 ``` 
-### replace: replace text in variable in memory
+
+# replace:
+
+### This module is for exec replace in memory  
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| varname | variable name  |
+| leftvalue | value to match | 
+| rightvalue | value to replace  |
+
+ 
+Config exemple:
+
 ``` yaml
     - name: "replace test con \"test \""
       replace:
@@ -251,8 +357,23 @@ Config exemple:
         rightvalue: "test "
 
 ```         
-       
-### remotecommand:  execute remote command over ssh
+# remotecommand:
+
+### This module is for execute remote command over ssh  
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| remoteserver |  ip or host name for remote server  |
+| remoteuser |     user with greant for manage service | 
+| remoteport |  ssh port number  |
+| remotepassword |     user password | 
+| command |  command to execute |
+| saveonvar | optional, save output on variable | 
+ 
+Config exemple:
+
+
 ``` yaml
     - name: execute remote command over ssh 
       remotecommand:
@@ -264,13 +385,33 @@ Config exemple:
           saveonvar: outputvar #optional save output in var the param are variablename
 
 ``` 
-###  loadvarfromjeson: load variable form json
+
+# loadvarfromjeson:
+
+### This module is for load variable form json
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| filename | full file name with json format  |
+  
+Config exemple:
+
 ``` yaml
    - name: load variable form json
      loadvarfromjeson:
          filename: /opt/uoc-generator/jtable
 ```
-### template: render j2 template  
+
+# template: 
+
+### This module is for render j2 template
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| filename | full file name with json format  |
+  
+Config exemple:
+
 ``` yaml
     - name:  render j2 template 
       template:
@@ -278,7 +419,20 @@ Config exemple:
         dstfile: /opt/info{zzz}.txt 
 ```
 
-### httpget: make an http get 
+# httpget: 
+
+### This module is for make an http get 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| host | ip o fqdn host to call  |
+| port | port number for host to call  |
+| get | get url  |
+| printout | optional, if True print content to console    |
+| saveonvar | optional, if set create a variable with content  |
+  
+Config exemple:
+ 
 ``` yaml
     - name: make http get 
       httpget: 
@@ -289,7 +443,22 @@ Config exemple:
         saveonvar: "outputvar" #optional save output in var
 ```
 
-### httpsget: make an http get 
+# httpsget: 
+
+### This module is for make an https get 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| host | ip o fqdn host to call  |
+| port | port number for host to call  |
+| get | get url  |
+| printout | optional, if True print content to console    |
+| saveonvar | optional, if set create a variable with content  |
+| verify | True for ssl verify  |
+  
+Config exemple:
+ 
+
 
 ``` yaml
     - name: make https get 
