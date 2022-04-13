@@ -213,7 +213,7 @@ def systemd(param):
     
     """
         manage systemctl
-      - name: scp to remote  
+      - name: systemd
         systemd:
         remoteserver: "10.70.7.7"
         remoteuser: "root"
@@ -285,7 +285,11 @@ def scp(param):
         remoteport: 22
         remotepassword: "password.123"
         localpath: /opt/a.zip
+        localpath: 
+            - /opt/a.zip
         remotepath: /root/pippo.zip
+        remotepath:
+            - /root/pippo.zip
         recursive: False
         direction: localtoremote
     """
@@ -296,22 +300,51 @@ def scp(param):
         remoteuser=globals()['remoteuser']
         remotepassword=globals()['remotepassword'] 
         remoteport=globals()['remoteport'] 
-        localpath=effify(globals()['localpath'])
-        remotepath=effify(globals()['remotepath']) 
+        if isinstance(globals()['localpath'],list):
+            localpath=list(globals()['localpath'])
+        else:
+            localpath=effify(globals()['localpath'])
+        if isinstance(globals()['remotepath'],list):
+            remotepath=list(globals()['remotepath'])
+        else:
+            remotepath=effify(globals()['remotepath'])
         recursive=globals()['recursive'] 
         direction=globals()['direction']
+        ismultipath=False
+        lres =""
+        if isinstance(localpath,list) and isinstance(remotepath,list):
+            if len(localpath) == len(remotepath):
+                res = ','.join('%s=%s' % i for i in zip(localpath, remotepath))
+                lres = list(res.split(','))
+                print("is multipath")
+                print(lres)
+                ismultipath=True
+            else:
+                print("ERROR: if using multiple path, set seme size for {local|remote}path bye.")
+                exit()
+        else:
+            print("ERROR: if set local or remote path as multiple, set all path are multiple bye.")
+            exit()
+
+         
         ssh=  createSSHClient(remoteserver, remoteport, remoteuser, remotepassword)  
         _scp= SCPClient(ssh.get_transport())  
         if "localtoremote" in direction:
-            if recursive:
-                _scp.put(localpath, recursive=True, remote_path=remotepath)
+            if ismultipath:
+                for res in lres:
+                    localpath = effify(res.split('=')[0])
+                    remotepath = effify(res.split('=')[1])
+                    _scp.put(localpath, recursive=recursive, remote_path=remotepath)
             else:
-                _scp.put(localpath,remotepath)
+                _scp.put(localpath, recursive=recursive,remote_path=remotepath)
         elif "remotetolocal":
-            if recursive:
-                _scp.get(remote_path=remotepath, local_path=localpath, recursive=True)
+            if ismultipath:
+                 for res in lres:
+                    localpath = effify(res.split('=')[0])
+                    remotepath = effify(res.split('=')[1])
+                    _scp.get(remote_path=remotepath, local_path=localpath, recursive=recursive)
             else:
-                _scp.get(remote_path=remotepath,local_path=localpath)
+                _scp.get(remote_path=remotepath,local_path=localpath, recursive=recursive)
         
         _scp.close()
         ssh.close()
@@ -500,7 +533,7 @@ def httpsget(param):
             verify=False
             if _checkparam('verify',param):
                 verify=param['verify']
-            response = requests.get(f'https://{host}:{port}{get}', verify = verify) 
+            response = requests.get(f'https://{host}:{port}{get}', verify = verify)
             print(f"Status: {response.status_code} and reason: {response.reason}")
             output= response.content
             if _checkparam('printout',param):

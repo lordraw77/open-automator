@@ -55,6 +55,7 @@ options:
 - loadvarfromjeson
 - template
 - httpget
+- httpsget
 
 ### setvar: set variable for reuse
 ``` yaml
@@ -104,7 +105,7 @@ options:
 
 ### systemclt: manage systemctl
 ``` yaml        
-      - name: scp to remote  
+      - name: systemd  
         systemd:
             remoteserver: "10.70.7.7"
             remoteuser: "root"
@@ -115,6 +116,8 @@ options:
 
 ``` 
 ### scp: copy file or folder from local to remote server via scp
+
+## Note: if use multiple file config, the number of elements must be the same on local and remote path. 
 ``` yaml
     - name: scp to remote  
       scp:
@@ -122,8 +125,14 @@ options:
           remoteuser: "root"
           remoteport: 22
           remotepassword: "PaSsWoRd"
-          localpath: /opt/a.zip
-          remotepath: /root/pippo.zip
+          localpath: /opt/a.zip #for single file
+          localpath: #for multipe file
+             - /opt/a.zip
+             - /opt/b.zip
+          remotepath: /root/pippo.zip #for single file
+          remotepath:  #for multipe file
+             - /root/pippo.zip
+             - /root/pluto.zip
           recursive: False
           direction: localtoremote
 
