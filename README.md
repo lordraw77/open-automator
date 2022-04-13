@@ -77,7 +77,7 @@ Config exemple:
 # rename: 
 
 ### This module is for rename one file or one directory in local in local
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
@@ -95,7 +95,7 @@ Config exemple:
 # copy:  
 
 ### This moduleis for copy file or directory in local
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
@@ -115,7 +115,7 @@ Config exemple:
 # readfile: 
 
 ### This module is for read file in a variable
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
@@ -181,7 +181,7 @@ Config exemple:
 
 ### This moodule is for manage copy file or folder from local to remote or remote to local via scp 
 
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 
 | Parameter Name   | Parameter Description       |      
@@ -233,7 +233,7 @@ Config exemple:
 
 ### This module is for dump variable in local file
 
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
@@ -268,7 +268,7 @@ Config exemple:
 
 ### This module is for make zip in local
 
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
@@ -293,7 +293,7 @@ Config exemple:
 
 ### This module is for unzip in local
 
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
@@ -314,7 +314,7 @@ Config exemple:
 
 ### This module is for exec regexreplace in a file 
 
-#### In path variable can use F-string sintax for replace with variable loadded in running 
+#### In path variable can use F-string syntax for replace with variable loadded in running 
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
