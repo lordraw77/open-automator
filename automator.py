@@ -323,11 +323,13 @@ def scp(param):
             else:
                 print("ERROR: if using multiple path, set seme size for {local|remote}path bye.")
                 exit()
-        else:
+        elif  isinstance(localpath,list) or isinstance(remotepath,list):
             print("ERROR: if set local or remote path as multiple, set all path are multiple bye.")
             exit()
-
-         
+        else:
+            ismultipath=False
+            
+        
         ssh=  createSSHClient(remoteserver, remoteport, remoteuser, remotepassword)  
         _scp= SCPClient(ssh.get_transport())  
         if "localtoremote" in direction:
