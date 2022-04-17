@@ -31,9 +31,9 @@ def sendtelegramnotify(self,param):
     
     - name: send telegram message
       oa-notify.sendtelegramnotify:
-        tokenid: "5119550574:AAHoM8C8LDkD71XAJfuKswW-DQvlegEMkEc"
+        tokenid: "XXX:YYYY"
         chatid: 
-           - "18278029"
+           - "zzzzzzzzzz"
         message: "prova {zzz} test"
         printresponse: True #optional
 
@@ -64,9 +64,9 @@ def sendmailbygmail(self,param):
     
     - name: send mail by gmail
       oa-notify.sendmailbygmail:
-        senderemail: "meraviglioso.2013@gmail.com"
-        receiveremail: "alessandro.pioli@gmail.com,meraviglioso.2013@gmail.com"
-        senderpassword: "password.123"
+        senderemail: "mail.2013@gmail.com"
+        receiveremail: "mail1@gmail.com,mailà@2gmail.com"
+        senderpassword: "PaSsWoRd"
         subject: "nofify"
         messagetext: >
             prova {zzz} test

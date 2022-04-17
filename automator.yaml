@@ -2,7 +2,7 @@
   tasks:
   - name: make https get 
     oa-network.httpsget: 
-      host: w3vcs05.emslabw3.local
+      host: "127.0.0.1"
       port: 443
       get: "/"
       printout: True
@@ -10,7 +10,7 @@
       verify: False
   - name: make http get 
     oa-network.httpget: 
-      host: "10.70.1.15" 
+      host: "127.0.0.1" 
       port: 9999
       get: "/zSirtaAnagraficaList"
       printout: True
@@ -57,10 +57,10 @@
       pathwhereunzip: /tmp/test/
   - name: scp to remote  
     oa-system.scp:
-      remoteserver: "10.70.7.7"
+      remoteserver: "127.0.0.1"
       remoteuser: "root"
       remoteport: 22
-      remotepassword: "password.123"
+      remotepassword: "PaSsW0rD"
       localpath: /opt/a.zip
       remotepath: /root/pippo.zip
       recursive: False
@@ -82,10 +82,10 @@
       dstpath: /opt/az.t{zzz} 
   - name: execute remote command over ssh 
     oa-system.remotecommand:
-        remoteserver: "10.70.7.7"
+        remoteserver: "127.0.0.1"
         remoteuser: "root"
         remoteport: 22
-        remotepassword: "password.123"
+        remotepassword: "PaSsW0rD"
         command: "ls -al /root/"
         saveonvar: outputvar
   - name: print variable
