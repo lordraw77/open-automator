@@ -1,7 +1,7 @@
 - name: 
   tasks:
-      - name: make https get 
-    httpsget: 
+  - name: make https get 
+    oa-network.httpsget: 
       host: w3vcs05.emslabw3.local
       port: 443
       get: "/"
@@ -9,54 +9,54 @@
       saveonvar: outputVarPPP 
       verify: False
   - name: make http get 
-    httpget: 
+    oa-network.httpget: 
       host: "10.70.1.15" 
       port: 9999
       get: "/zSirtaAnagraficaList"
       printout: True
       saveonvar: outputVarPPP 
   - name: load variable form json
-    loadvarfromjeson:
+    oa-io.loadvarfromjeson:
         filename: /opt/a.json
   - name: print variable
-    printtext:
+    oa-utility.printvar:
       varname: c
   - name: set variable
-    setvar:
+    oa-utility.setvar:
       varname: zzz
       varvalue: pluto
   - name: readfile
-    readfile:
+    oa-io.readfile:
       filename: /opt/a.t
       varname: aaa
   - name: print variable
-    printtext:
+    oa-utility.printvar:
       varname: aaa
   - name: "replace test con \"test \""
-    replace:
+    oa-io.replace:
       varname: aaa
       leftvalue: "test"
       rightvalue: "test "
   - name: print variable
-    printtext:
+    oa-utility.printvar:
       varname: aaa
   - name: write file
-    writefile:
+    oa-io.writefile:
       filename: /opt/a.t2
       varname: aaa
   - name: make zip
-    makezip:
+    oa-io.zip:
       zipfilename: /opt/a.zip
       pathtozip: 
         - /opt/export/
         - /opt/exportv2/
       zipfilter: "*"
   - name: unzip
-    unzip:
+    oa-io.unzip:
       zipfilename: /opt/a.zip
       pathwhereunzip: /tmp/test/
   - name: scp to remote  
-    scp:
+    oa-system.scp:
       remoteserver: "10.70.7.7"
       remoteuser: "root"
       remoteport: 22
@@ -65,93 +65,23 @@
       remotepath: /root/pippo.zip
       recursive: False
       direction: localtoremote
-  - name: scp to remote folder
-    scp:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "password.123"
-      localpath: /opt/export
-      remotepath: /root/export
-      recursive: True
-      direction: localtoremote
-  - name: scp from remote  
-    scp:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "password.123"
-      localpath: /opt/aremote.zip
-      remotepath: /root/pipporemote.zip
-      recursive: False
-      direction: remotetolocal
-  - name: scp from remote folder
-    scp:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "password.123"
-      localpath: /opt/exportremote 
-      remotepath: /root/exporttemote
-      recursive: True
-      direction: remotetolocal
   - name: copy file or directory
-    copy:
-      srcpath: /opt/exportremote
+    oa-io.copy:
+      srcpath: /opt/export
       dstpath: /opt/export{zzz} 
       recursive: True
-  - name: copy file or directory
-    copy:
-      srcpath: /opt/aremote.zip
-      dstpath: /opt/aremote{zzz}.zip 
-      recursive: False
-  - name: remove directory
-    remove:
-      pathtoremove: /opt/exportremote 
-      recursive: True
-  - name: remove file  
-    remove:
-      pathtoremove: /opt/aremote.zip 
-      recursive: False
-  - name: print variable
-    printtext:
-      varname: zzz
-  - name: scp to remote  
-    systemd:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "password.123"
-      servicename: ntpd
-      servicestate: stop 
-  - name: scp to remote  
-    systemd:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "password.123"
-      servicename: ntpd
-      servicestate: start
-  - name: scp to remote  
-    systemd:
-      remoteserver: "10.70.7.7"
-      remoteuser: "root"
-      remoteport: 22
-      remotepassword: "password.123"
-      servicename: ntpd
-      servicestate: status 
   - name: replace with regex in file 
-    regexreplaceinfile:
+    oa-io.regexreplaceinfile:
       filein: /opt/a.t
       regexmatch: test2
       regexvalue: pluto2
       fileout: /opt/az.t
   - name: renamefile file or directory
-    rename:
+    oa-io.rename:
       srcpath: /opt/az.t
       dstpath: /opt/az.t{zzz} 
   - name: execute remote command over ssh 
-    remotecommand:
+    oa-system.remotecommand:
         remoteserver: "10.70.7.7"
         remoteuser: "root"
         remoteport: 22
@@ -159,9 +89,5 @@
         command: "ls -al /root/"
         saveonvar: outputvar
   - name: print variable
-    printtext:
+    oa-utility.printvar:
       varname: outputvar
-  - name:  render j2 template 
-    template:
-        templatefile: ./info.j2
-        dstfile: /opt/info{zzz}.txt 

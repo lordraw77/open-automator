@@ -1,10 +1,8 @@
 # open-automator
 ***beta version***
 
-Open Automator is a python project, for the automation of development support scripts, 
-similar in concept to ansilbe, but seen from the development side.
+Open Automator is a python project, for the automation of development support scripts and common task.
 
-**All YAML parameters are required.**
 
 python required are ***python 3.10.4+***
 
@@ -20,6 +18,8 @@ python required are ***python 3.10.4+***
 - scp
 - requests
 
+#### before exec:
+pip3.10 install -r requirements.txt
 
  ```console
 /usr/local/bin/python3.10 /opt/open-automator/automator.py -h
@@ -38,27 +38,30 @@ options:
 
 ## module available
 
-- setvar
-- rename
-- copy
-- readfile
-- remove
-- systemclt
-- scp
-- writefile
-- printtext
-- makezip
-- unzip
-- regexreplaceinfile
-- replace
-- remotecommand
-- loadvarfromjeson
-- template
-- httpget
-- httpsget
-- setsleep
-
-# setvar:  
+- [oa-utility.setvar](#oa-utilitysetvar)
+- [oa-utility.printvar](#oa-utilityprintvar)
+- [oa-utility.setsleep](#oa-utilitysetsleep)
+- [oa-io.rename](#oa-iorename)
+- [oa-io.copy](#oa-iocopy)
+- [oa-io.readfile](#oa-ioreadfile)
+- [oa-io.remove](#oa-ioremove)
+- [oa-io.writefile](#oa-iowritefile)
+- [oa-io.makezip](#oa-iomakezip)
+- [oa-io.unzip](#oa-iounzip)
+- [oa-io.regexreplaceinfile](#oa-ioregexreplaceinfile)
+- [oa-io.replace](#oa-ioreplace)
+- [oa-io.loadvarfromjeson](#oa-ioloadvarfromjeson)
+- [oa-io.template](#oa-iotemplate)
+- [os-network.httpget](#os-networkhttpget)
+- [os-network.httpsget](#os-networkhttpsget)
+- [oa-system.remotecommand](#oa-systemremotecommand)
+- [oa-system.scp](#oa-systemscp)
+- [oa-system.systemd](#oa-systemsystemd)
+- [oa-system.remoteunzip](#oa-systemremoteunzip)
+- [oa-notify.sendtelegramnotify](#oa-notifysendtelegramnotify)
+- [oa-notify.sendmailbygmail](#oa-notifysendmailbygmail)
+  
+# oa-utility.setvar:  
 
 ### This module is for set a varible during execution of automator 
 
@@ -70,12 +73,12 @@ options:
 Config exemple:
 ``` yaml
    - name setvar #set pluto in zzz var 
-     setvar:
+     oa-utility.setvar:
        varname: zzz
        varvalue: pluto
 
 ``` 
-# rename: 
+# oa-io.rename: 
 
 ### This module is for rename one file or one directory in local in local
 #### In path variable can use F-string syntax for replace with variable loadded in running 
@@ -88,12 +91,12 @@ Config exemple:
 Config exemple:
 ``` yaml
     - name: renamefile file or directory
-      rename:
+      oa-io.rename:
           srcpath: /opt/exportremote
           dstpath: /opt/export{zzz} 
 
 ``` 
-# copy:  
+# oa-io.copy:  
 
 ### This moduleis for copy file or directory in local
 #### In path variable can use F-string syntax for replace with variable loadded in running 
@@ -107,13 +110,13 @@ Config exemple:
 Config exemple:
 ``` yaml
    - name: copy file or directory
-     copy:
+     oa-io.copy:
          srcpath: /opt/exportremote
          dstpath: /opt/export{zzz} 
          recursive: True
 
 ``` 
-# readfile: 
+# oa-io.readfile: 
 
 ### This module is for read file in a variable
 #### In path variable can use F-string syntax for replace with variable loadded in running 
@@ -126,12 +129,12 @@ Config exemple:
 Config exemple:
 ``` yaml
    - name: readfile
-     readfile:
+     oa-io.readfile:
          filename: /opt/a.t
          varname: aaa
 
 ``` 
-# remove: 
+# oa-io.remove: 
 
 ### This module is for delete file or file with wildcard or directory in local 
 
@@ -147,12 +150,12 @@ Config exemple:
 Config exemple:
 ``` yaml
     - name: remove file or directory
-      remove:
+      oa-io.remove:
           pathtoremove: /opt/exportremote 
           recursive: True
 
 ``` 
-# systemclt
+# oa-system.systemd
 
 ### This module is for manage systemctl on remote server
 
@@ -168,7 +171,7 @@ Config exemple:
 Config exemple:
 ``` yaml        
       - name: systemd  
-        systemd:
+        oa-system.systemd:
             remoteserver: "10.70.7.7"
             remoteuser: "root"
             remoteport: 22
@@ -178,7 +181,7 @@ Config exemple:
 
 ``` 
 
-# scp:
+# oa-system.scp:
 
 ### This moodule is for manage copy file or folder from local to remote or remote to local via scp 
 
@@ -212,7 +215,7 @@ Config exemple:
 Config exemple:
 ``` yaml
     - name: scp to remote  
-      scp:
+      oa-system.scp:
           remoteserver: "10.70.7.7"
           remoteuser: "root"
           remoteport: 22
@@ -230,7 +233,7 @@ Config exemple:
 
 ``` 
 
-# writefile:
+# oa-io.writefile:
 
 ### This module is for dump variable in local file
 
@@ -244,13 +247,13 @@ Config exemple:
 Config exemple:
 ``` yaml      
       - name: write file
-        writefile:
+        oa-io.writefile:
             filename: /opt/a.t2
             varname: aaa
 
 ``` 
 
-# printtext: 
+# oa-utility.printvar: 
 
 ### This module is for print to console a variable
 
@@ -260,12 +263,12 @@ Config exemple:
 
 Config exemple:
 ``` yaml
-    - name: printtext
-      printtext:
+    - name: printvar
+      oa-utility.printvar:
           varname: aaa
 ``` 
 
-# makezip:
+# oa-io.makezip:
 
 ### This module is for make zip in local
 
@@ -282,7 +285,7 @@ Config exemple:
 
 ``` yaml
    - name: make zip
-     makezip:
+     oa-io.makezip:
         zipfilename: /opt/a.zip
         pathtozip: 
             - /opt/export/
@@ -290,7 +293,7 @@ Config exemple:
         zipfilter: "*"
 
 ```
-# unzip:
+# oa-io.unzip:
 
 ### This module is for unzip in local
 
@@ -305,13 +308,13 @@ Config exemple:
 
  ``` yaml
    - name: unzip
-     unzip:
+     oa-io.unzip:
         zipfilename: /opt/a.zip
         pathwhereunzip: /tmp/test/
 
 ``` 
 
-# regexreplaceinfile:
+# oa-io.regexreplaceinfile:
 
 ### This module is for exec regexreplace in a file 
 
@@ -328,7 +331,7 @@ Config exemple:
 
 ``` yaml 
     - name: "replace with regex in file 
-      regexreplaceinfile:
+      oa-io.regexreplaceinfile:
         filein: /opt/a.t
         regexmatch:
         regexvalue:
@@ -336,7 +339,7 @@ Config exemple:
 
 ``` 
 
-# replace:
+# oa-io.replace:
 
 ### This module is for exec replace in memory  
 
@@ -352,13 +355,13 @@ Config exemple:
 
 ``` yaml
     - name: "replace test con \"test \""
-      replace:
+      oa-io.replace:
         varname: aaa
         leftvalue: "test"
         rightvalue: "test "
 
 ```         
-# remotecommand:
+# oa-system.remotecommand:
 
 ### This module is for execute remote command over ssh  
 
@@ -377,7 +380,7 @@ Config exemple:
 
 ``` yaml
     - name: execute remote command over ssh 
-      remotecommand:
+      oa-system.remotecommand:
           remoteserver: "10.70.7.7"
           remoteuser: "root"
           remoteport: 22
@@ -387,7 +390,7 @@ Config exemple:
 
 ``` 
 
-# loadvarfromjeson:
+# oa-io.loadvarfromjeson:
 
 ### This module is for load variable form json
 
@@ -399,11 +402,11 @@ Config exemple:
 
 ``` yaml
    - name: load variable form json
-     loadvarfromjeson:
+     oa-io.loadvarfromjeson:
          filename: /opt/uoc-generator/jtable
 ```
 
-# template: 
+# oa-io.template: 
 
 ### This module is for render j2 template
 
@@ -415,12 +418,12 @@ Config exemple:
 
 ``` yaml
     - name:  render j2 template 
-      template:
+      oa-io.template:
         templatefile: ./info.j2
         dstfile: /opt/info{zzz}.txt 
 ```
 
-# httpget: 
+# os-network.httpget: 
 
 ### This module is for make an http get 
 
@@ -436,7 +439,7 @@ Config exemple:
  
 ``` yaml
     - name: make http get 
-      httpget: 
+      os-network.httpget: 
         host: "10.70.7.7"
         port: 9999
         get: "/"
@@ -444,7 +447,7 @@ Config exemple:
         saveonvar: "outputvar" #optional save output in var
 ```
 
-# httpsget: 
+# os-network.httpsget: 
 
 ### This module is for make an https get 
 
@@ -463,7 +466,7 @@ Config exemple:
 
 ``` yaml
     - name: make https get 
-      httpsget: 
+      os-network.httpsget: 
         host: "10.70.7.7"
         port: 443
         get: "/"
@@ -472,7 +475,7 @@ Config exemple:
         verify: False
 ```
 
-# setsleep:
+# oa-utility.setsleep:
 
 ### This module is for sleep
 
@@ -484,11 +487,11 @@ Config exemple:
 
 ``` yaml
     - name: "sleep"
-        setsleep:
+      oa-utility.setsleep:
             seconds: 6
 ```
 
-# remoteunzip:
+# oa-system.remoteunzip:
 
 ### This module is unzip and trasfer on remote server 
 
@@ -509,7 +512,7 @@ Config exemple:
 
 ``` yaml
     - name: remoteunzip
-      remoteunzip:
+      oa-system.remoteunzip:
         zipfilename: /opt/a.zip
         pathwhereunzip: /tmp/test/
         remoteserver: "10.70.7.7"
@@ -518,13 +521,93 @@ Config exemple:
         remotepassword: "PaSsWoRd"
 ```
 
-### Yaml conifigurazion exemple:
+
+# oa-notify.sendtelegramnotify:
+
+### This module send notification over telegram in a bot
+
+#### In message  variable can use F-string syntax for replace with variable loadded in running 
+
+#### Important for corret working 
+
+    Assume the bot name is my_bot. for make a bot use: [botfather](https://t.me/botfather)
+    1 Make /start on your bot
+    2 Send a dummy message to the bot.
+      You can use this example: /my_id @my_bot
+    3 Go to following url: https://api.telegram.org/botXXX:YYYY/getUpdates
+      replace XXX:YYYY with your bot token
+      Or 
+      join [RawDataBot](https://t.me/RawDataBot) /start 
+    4 Look for "chat":{"id":zzzzzzzzzz, zzzzzzzzzz is your chat id 
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| tokenid |  mail address of sender  |
+| chatid |     mail address of reciver, separed by comma | 
+| message |  password of mail address account sender |
+| printresponse | Optional defalult false, if true print the output of telegram call NOT any response from telegram | 
+ 
+
+Config exemple:
+
+``` yaml
+    
+    - name: send telegram message
+      oa-notify.sendtelegramnotify:
+        tokenid: "XXXX:YYYY"
+        chatid: 
+           - "zzzzzzzz"
+        message: "prova {zzz} test"
+        printresponse: True #optional
+
+```
+
+# oa-notify.sendmailbygmail:
+
+### This module send mail using gmail
+
+#### In message  variable can use F-string syntax for replace with variable loadded in running 
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| senderemail |  mail address of sender  |
+| receiveremail |     mail address of reciver, separed by comma | 
+| senderpassword |  password of mail address account sender |
+| subject |     mail subject | 
+| messagetext |  body message in format textplain | 
+| messagehtml |  body message in format html | 
+
+#### Important specify or messagetext or messagehtml or both
+
+Config exemple:
+
+``` yaml
+    
+    - name: send mail by gmail
+      oa-notify.sendmailbygmail:
+        senderemail: "xxxx.yyyy@gmail.com"
+        receiveremail: "xxxx2.yyyy2@gmail.com,xxxx.yyyy@gmail.com"
+        senderpassword: "password"
+        subject: "nofify"
+        messagetext: >
+            prova {zzz} test
+        messagehtml: >
+            <html>
+            <body>
+                <b>prova</b> {zzz} test
+            </body>
+            </html>
+```
+
+
+# Yaml conifigurazion exemple:
 ``` yaml
 # YAML
 - name: 
   tasks:
   - name: make https get 
-    httpsget: 
+    os-network.httpsget: 
       host: "10.70.7.7"
       port: 443
       get: "/"
@@ -532,18 +615,18 @@ Config exemple:
       saveonvar: outputVarPPP 
       verify: False
   - name: print variable
-    printtext:
+    oa-utility.printvar:
       varname: outputVarPPP
  ```
       
       
- ### Console output
+ # Console output
  
  
  ```console
  /usr/local/bin/python3.10 /opt/open-automator/automator.py
 start process tasks form automator.yaml
-[{'name': None, 'tasks': [{'name': 'set variable', 'setvar': {'varname': 'zzz', 'varvalue': 'pluto'}}, {'name': 'readfile', 'readfile': {'filename': '/opt/a.t', 'varname': 'aaa'}}, {'name': 'print variable', 'printtext': {'varname': 'aaa'}}, {'name': 'replace test con "test "', 'replace': {'varname': 'aaa', 'leftvalue': 'test', 'rightvalue': 'test '}}, {'name': 'print variable', 'printtext': {'varname': 'aaa'}}, {'name': 'write file', 'writefile': {'filename': '/opt/a.t2', 'varname': 'aaa'}}, {'name': 'make zip', 'makezip': {'zipfilename': '/opt/a.zip', 'pathtozip': ['/opt/export/', '/opt/exportv2/'], 'zipfilter': '*'}}, {'name': 'unzip', 'unzip': {'zipfilename': '/opt/a.zip', 'pathwhereunzip': '/tmp/test/'}}, {'name': 'scp to remote', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/a.zip', 'remotepath': '/root/pippo.zip', 'recursive': False, 'direction': 'localtoremote'}}, {'name': 'scp to remote folder', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/export', 'remotepath': '/root/export', 'recursive': True, 'direction': 'localtoremote'}}, {'name': 'scp from remote', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/aremote.zip', 'remotepath': '/root/pipporemote.zip', 'recursive': False, 'direction': 'remotetolocal'}}, {'name': 'scp from remote folder', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/exportremote', 'remotepath': '/root/exporttemote', 'recursive': True, 'direction': 'remotetolocal'}}, {'name': 'copy file or directory', 'copy': {'srcpath': '/opt/exportremote', 'dstpath': '/opt/export{zzz}', 'recursive': True}}, {'name': 'copy file or directory', 'copy': {'srcpath': '/opt/aremote.zip', 'dstpath': '/opt/aremote{zzz}.zip', 'recursive': False}}, {'name': 'remove directory', 'remove': {'pathtoremove': '/opt/exportremote', 'recursive': True}}, {'name': 'remove file', 'remove': {'pathtoremove': '/opt/aremote.zip', 'recursive': False}}, {'name': 'print variable', 'printtext': {'varname': 'zzz'}}, {'name': 'scp to remote', 'systemd': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'servicename': 'ntpd', 'servicestate': 'stop'}}, {'name': 'scp to remote', 'systemd': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'servicename': 'ntpd', 'servicestate': 'start'}}, {'name': 'scp to remote', 'systemd': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'servicename': 'ntpd', 'servicestate': 'status'}}, {'name': 'replace with regex in file', 'regexreplaceinfile': {'filein': '/opt/a.t', 'regexmatch': 'test2', 'regexvalue': 'pluto2', 'fileout': '/opt/az.t'}}, {'name': 'renamefile file or directory', 'rename': {'srcpath': '/opt/az.t', 'dstpath': '/opt/az.t{zzz}'}}]}]
+[{'name': None, 'tasks': [{'name': 'set variable', 'setvar': {'varname': 'zzz', 'varvalue': 'pluto'}}, {'name': 'readfile', 'readfile': {'filename': '/opt/a.t', 'varname': 'aaa'}}, {'name': 'print variable', 'printvar': {'varname': 'aaa'}}, {'name': 'replace test con "test "', 'replace': {'varname': 'aaa', 'leftvalue': 'test', 'rightvalue': 'test '}}, {'name': 'print variable', 'printvar': {'varname': 'aaa'}}, {'name': 'write file', 'writefile': {'filename': '/opt/a.t2', 'varname': 'aaa'}}, {'name': 'make zip', 'makezip': {'zipfilename': '/opt/a.zip', 'pathtozip': ['/opt/export/', '/opt/exportv2/'], 'zipfilter': '*'}}, {'name': 'unzip', 'unzip': {'zipfilename': '/opt/a.zip', 'pathwhereunzip': '/tmp/test/'}}, {'name': 'scp to remote', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/a.zip', 'remotepath': '/root/pippo.zip', 'recursive': False, 'direction': 'localtoremote'}}, {'name': 'scp to remote folder', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/export', 'remotepath': '/root/export', 'recursive': True, 'direction': 'localtoremote'}}, {'name': 'scp from remote', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/aremote.zip', 'remotepath': '/root/pipporemote.zip', 'recursive': False, 'direction': 'remotetolocal'}}, {'name': 'scp from remote folder', 'scp': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'localpath': '/opt/exportremote', 'remotepath': '/root/exporttemote', 'recursive': True, 'direction': 'remotetolocal'}}, {'name': 'copy file or directory', 'copy': {'srcpath': '/opt/exportremote', 'dstpath': '/opt/export{zzz}', 'recursive': True}}, {'name': 'copy file or directory', 'copy': {'srcpath': '/opt/aremote.zip', 'dstpath': '/opt/aremote{zzz}.zip', 'recursive': False}}, {'name': 'remove directory', 'remove': {'pathtoremove': '/opt/exportremote', 'recursive': True}}, {'name': 'remove file', 'remove': {'pathtoremove': '/opt/aremote.zip', 'recursive': False}}, {'name': 'print variable', 'printvar': {'varname': 'zzz'}}, {'name': 'scp to remote', 'systemd': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'servicename': 'ntpd', 'servicestate': 'stop'}}, {'name': 'scp to remote', 'systemd': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'servicename': 'ntpd', 'servicestate': 'start'}}, {'name': 'scp to remote', 'systemd': {'remoteserver': '10.70.7.7', 'remoteuser': 'root', 'remoteport': 22, 'remotepassword': 'password.123', 'servicename': 'ntpd', 'servicestate': 'status'}}, {'name': 'replace with regex in file', 'regexreplaceinfile': {'filein': '/opt/a.t', 'regexmatch': 'test2', 'regexvalue': 'pluto2', 'fileout': '/opt/az.t'}}, {'name': 'renamefile file or directory', 'rename': {'srcpath': '/opt/az.t', 'dstpath': '/opt/az.t{zzz}'}}]}]
 task:.....set variable
 task:.....readfile
 task:.....print variable

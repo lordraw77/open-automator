@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["automator.yaml"]
+            "args": ["/opt/open-automator/automator.yaml"]
         }
     ]
 }
