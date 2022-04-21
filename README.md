@@ -58,6 +58,7 @@ options:
 - [oa-system.scp](#oa-systemscp)
 - [oa-system.systemd](#oa-systemsystemd)
 - [oa-system.remoteunzip](#oa-systemremoteunzip)
+- [oa-system.runcmd](#oa-systemruncmd)
 - [oa-notify.sendtelegramnotify](#oa-notifysendtelegramnotify)
 - [oa-notify.sendmailbygmail](#oa-notifysendmailbygmail)
   
@@ -490,6 +491,30 @@ Config exemple:
       oa-utility.setsleep:
             seconds: 6
 ```
+# oa-system.runcmd:
+
+### This module is for exec command in local shell ( bash cmd )  
+
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| command |  command to execute  |
+| printout |   print the output value of command | 
+| saveonvar   | Optional the name of var to set with the output command | 
+
+
+
+Config exemple:
+
+``` yaml
+    - name: runcmd
+      oa-system.runcmd:
+          command: echo hello
+          printout: True
+          saveonvar: xxx
+```
+
 
 # oa-system.remoteunzip:
 

@@ -4,6 +4,7 @@ from scp import SCPClient
 import os
 import zipfile
 import shutil
+import subprocess
 gdict={}
 
 myself = lambda: inspect.stack()[1][3]
@@ -12,8 +13,34 @@ myself = lambda: inspect.stack()[1][3]
 def setgdict(self,gdict):
      self.gdict=gdict
      
+@oacommon.trace
+def runcmd(self,param):
+    """
+        manage runcmd execute a command from shell in local
+      - name: runcmd
+        oa-system.runcmd:
+            command: echo hallo
+            printout: True
+            saveonvar: xxx
+            
+    """
+    oacommon.logstart(myself())
+    if oacommon.checkandloadparam(self,myself(),('command','printout'),param):
+        command=gdict['command']
+        printout=gdict['printout']
+       
+        output = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.read()
+        if printout: 
+            print(output.decode('UTF-8'))
+        if oacommon._checkparam('saveonvar',param):
+            saveonvar= param['saveonvar']
+            gdict[saveonvar]=output.decode('UTF-8')
+        oacommon.logend(myself())
 
+    else:
+        exit()
 
+     
 
 @oacommon.trace
 def systemd(self,param):
