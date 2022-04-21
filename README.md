@@ -33,6 +33,7 @@ positional arguments:
 options:
   -h, --help  show this help message and exit
   -d          debug enable
+  -d2         debug2 enable
   -t          trace enable
  ```
 
