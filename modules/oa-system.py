@@ -63,7 +63,7 @@ def systemd(self,param):
         remoteuser=gdict['remoteuser']
         remotepassword=gdict['remotepassword'] 
         remoteport=gdict['remoteport'] 
-        servicename=gdict['servicename'] 
+        servicename=oacommon.effify(gdict['servicename'])
         servicestate=gdict['servicestate'] 
         command=f"systemctl daemon-reload"
         if "daemon-reload" in servicestate:
