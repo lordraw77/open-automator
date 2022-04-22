@@ -50,7 +50,7 @@ def main():
         for key in task.keys():
             if "name" != key:
                 print("\n")
-                print(f"exec task {currtask} of {sizetask}")
+                print(f"exec task \"{name}\"  task {currtask} of {sizetask}")
                 if __DEBUG__:
                     print(f"\t{key} {task.get(key)}") 
                 if "." in key:
@@ -67,7 +67,8 @@ def main():
                     func(task.get(key))
                 currtask = currtask +1 
             else:
-                print(f"task:..............................{task.get(key)}")
+                name = task.get(key)
+                #print(f"task:..............................{task.get(key)}")
 
         #print(task)
     print(f"end process tasks form {tasksfile}")
@@ -75,7 +76,7 @@ def main():
     delta = (nowend - nowstart).total_seconds()
     print()
     print("*************************************************************")
-    print(f"""Open-Automator performed {sizetask} task
+    print(f"""Open-Automator performed {sizetask} tasks
 Start at {nowstart} 
 End at {nowend} 
 Running Time {delta}s """)
