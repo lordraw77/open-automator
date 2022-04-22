@@ -26,7 +26,7 @@ def runcmd(self,param):
     """
     oacommon.logstart(myself())
     if oacommon.checkandloadparam(self,myself(),('command','printout'),param):
-        command=gdict['command']
+        command=oacommon.effify(gdict['command'])
         printout=gdict['printout']
        
         output = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout.read()
