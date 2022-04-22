@@ -65,8 +65,11 @@ def systemd(self,param):
         remoteport=gdict['remoteport'] 
         servicename=gdict['servicename'] 
         servicestate=gdict['servicestate'] 
-        
-        command=f"systemctl {servicestate} {servicename}"
+        command=f"systemctl daemon-reload"
+        if "daemon-reload" in servicestate:
+            command=f"systemctl daemon-reload"
+        else:    
+            command=f"systemctl {servicestate} {servicename}"
         output = oacommon._sshremotecommand(remoteserver,remoteport,remoteuser,remotepassword,command)
         print(output)
         oacommon.logend(myself())
