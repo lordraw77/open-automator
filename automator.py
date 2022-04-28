@@ -67,7 +67,7 @@ def main():
                     func(task.get(key))
                 currtask = currtask +1 
             else:
-                name = task.get(key)
+                name = oacommon.effify(task.get(key))
                 #print(f"task:..............................{task.get(key)}")
 
         #print(task)
