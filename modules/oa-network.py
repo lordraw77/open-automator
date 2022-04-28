@@ -27,8 +27,8 @@ def httpget(self,param):
 
     if oacommon.checkandloadparam(self,myself(),('host','port','get'),param):
         try:
-            host = gdict['host']
-            port=  gdict['port']
+            host = oacommon.effify(gdict['host'])
+            port=  int(oacommon.effify(gdict['port']))
             get=  gdict['get']
             connection = http.client.HTTPConnection(host,port)
             connection.request("GET", get)
@@ -67,8 +67,8 @@ def httpsget(self,param):
 
     if oacommon.checkandloadparam(self,myself(),('host','port','get'),param):
         try:
-            host = gdict['host']
-            port=  gdict['port']
+            host = oacommon.effify(gdict['host'])
+            port=  int(oacommon.effify(gdict['port']))
             get=  gdict['get']
             verify=False
             if oacommon._checkparam('verify',param):
