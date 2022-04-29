@@ -37,6 +37,9 @@ options:
   -t          trace enable
  ```
 
+#### In task name can use F-string syntax for replace with variable loadded in running 
+
+
 ## module available
 
 - [oa-utility.setvar](#oa-utilitysetvar)
@@ -429,6 +432,8 @@ Config exemple:
 
 ### This module is for make an http get 
 
+#### In host e port variable can use F-string syntax for replace with variable loadded in running 
+
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
 | host | ip o fqdn host to call  |
@@ -452,6 +457,9 @@ Config exemple:
 # os-network.httpsget: 
 
 ### This module is for make an https get 
+
+#### In host e port variable can use F-string syntax for replace with variable loadded in running 
+
 
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 

@@ -59,10 +59,10 @@ def systemd(self,param):
     oacommon.logstart(myself())
 
     if oacommon.checkandloadparam(self,myself(),('remoteserver','remoteuser','remotepassword','remoteport','servicename','servicestate'),param):
-        remoteserver=gdict['remoteserver']
-        remoteuser=gdict['remoteuser']
-        remotepassword=gdict['remotepassword'] 
-        remoteport=gdict['remoteport'] 
+        remoteserver=oacommon.effify(gdict['remoteserver'])
+        remoteuser=oacommon.effify(gdict['remoteuser'])
+        remotepassword=oacommon.effify(gdict['remotepassword'])
+        remoteport=oacommon.effify(gdict['remoteport'])
         servicename=oacommon.effify(gdict['servicename'])
         servicestate=gdict['servicestate'] 
         command=f"systemctl daemon-reload"
@@ -94,11 +94,11 @@ def remotecommand(self,param):
     """
     oacommon.logstart(myself())
     if oacommon.checkandloadparam(self,myself(),('remoteserver','remoteuser','remotepassword','remoteport','command'),param):
-        remoteserver=gdict['remoteserver']
-        remoteuser=gdict['remoteuser']
-        remotepassword=gdict['remotepassword'] 
-        remoteport=gdict['remoteport'] 
-        command=gdict['command']
+        remoteserver=oacommon.effify(gdict['remoteserver'])
+        remoteuser=oacommon.effify(gdict['remoteuser'])
+        remotepassword=oacommon.effify(gdict['remotepassword'])
+        remoteport=oacommon.effify(gdict['remoteport'])
+        command=oacommon.effify(gdict['command'])
         output= oacommon._sshremotecommand(remoteserver, remoteport, remoteuser, remotepassword,command)
         if oacommon._checkparam('saveonvar',param):
             saveonvar=param['saveonvar']
@@ -134,10 +134,10 @@ def scp(self,param):
     oacommon.logstart(myself())
 
     if oacommon.checkandloadparam(self,myself(),('remoteserver','remoteuser','remotepassword','remoteport','localpath','remotepath','recursive','direction'),param):
-        remoteserver=gdict['remoteserver']
-        remoteuser=gdict['remoteuser']
-        remotepassword=gdict['remotepassword'] 
-        remoteport=gdict['remoteport'] 
+        remoteserver=oacommon.effify(gdict['remoteserver'])
+        remoteuser=oacommon.effify(gdict['remoteuser'])
+        remotepassword=oacommon.effify(gdict['remotepassword'])
+        remoteport=oacommon.effify(gdict['remoteport'])
         if isinstance(gdict['localpath'],list):
             localpath=list(gdict['localpath'])
         else:
@@ -207,10 +207,10 @@ def remoteunzip(self,param):
     """    
     oacommon.logstart(myself())
     if oacommon.checkandloadparam(self,myself(),('zipfilename','pathwhereunzip','remoteserver','remoteuser','remotepassword','remoteport'),param):
-        remoteserver=gdict['remoteserver']
-        remoteuser=gdict['remoteuser']
-        remotepassword=gdict['remotepassword'] 
-        remoteport=gdict['remoteport']             
+        remoteserver=oacommon.effify(gdict['remoteserver'])
+        remoteuser=oacommon.effify(gdict['remoteuser'])
+        remotepassword=oacommon.effify(gdict['remotepassword'])
+        remoteport=oacommon.effify(gdict['remoteport'])
         zipfilename=oacommon.effify(gdict['zipfilename'])
         pathwhereunzip=oacommon.effify(gdict['pathwhereunzip'])
         tmpfolder = os.curdir + os.path.sep + "tmp" + os.path.sep
