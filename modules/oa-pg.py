@@ -85,10 +85,10 @@ def select(self,param):
         
 
 @oacommon.trace
-def exexute(self,param):
+def execute(self,param):
     """
     - name: name and description
-      oa-pg.exexute:
+      oa-pg.execute:
         pgdatabase: "ouid"
         pgdbhost: "10.70.7.1" 
         pgdbusername: "postgres"

@@ -17,6 +17,8 @@ python required are ***python 3.10.4+***
 - paramiko
 - scp
 - requests
+- psycopg2-binary
+- tabulate
 
 #### before exec:
 pip3.10 install -r requirements.txt
@@ -67,7 +69,7 @@ options:
 - [oa-notify.sendmailbygmail](#oa-notifysendmailbygmail)
 - [oa-pg.execute](#oa-pgexecute)
 - [oa-pg.select](#oa-pgselect)
-    
+
 # oa-utility.setvar:  
 
 ### This module is for set a varible during execution of automator 
@@ -671,7 +673,7 @@ Config exemple:
 
 
 
-# oa-pg.exexute:
+# oa-pg.execute:
 
 ### This module is unzip and trasfer on remote server 
 
@@ -693,7 +695,7 @@ Config exemple:
 
 ``` yaml
   - name: name and description
-      oa-pg.exexute:
+      oa-pg.execute:
         pgdatabase: "ouid"
         pgdbhost: "10.70.7.1" 
         pgdbusername: "postgres"
