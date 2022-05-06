@@ -65,7 +65,9 @@ options:
 - [oa-system.runcmd](#oa-systemruncmd)
 - [oa-notify.sendtelegramnotify](#oa-notifysendtelegramnotify)
 - [oa-notify.sendmailbygmail](#oa-notifysendmailbygmail)
-  
+- [oa-pg.execute](#oa-pgexecute)
+- [oa-pg.select](#oa-pgselect)
+    
 # oa-utility.setvar:  
 
 ### This module is for set a varible during execution of automator 
@@ -460,7 +462,6 @@ Config exemple:
 
 #### In host e port variable can use F-string syntax for replace with variable loadded in running 
 
-
 | Parameter Name   | Parameter Description       |      
 |-------------|:----------: 
 | host | ip o fqdn host to call  |
@@ -632,6 +633,76 @@ Config exemple:
                 <b>prova</b> {zzz} test
             </body>
             </html>
+```
+
+
+# oa-pg.select:
+
+### This module is unzip and trasfer on remote server 
+
+#### In variable can use F-string syntax for replace with variable loadded in running 
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| pgdatabase |  databasename  |
+| pgdbhost |    ip or hostname | 
+| pgdbpassword |   password  |
+| pgdbusername |     user name | 
+| pgdbport |   portnameber | 
+| statement | the select to execute|
+| printout | Optional,default value is true | 
+| tojsonfile| Optional if you need save on file set full path |
+
+Config exemple:
+
+``` yaml
+  - name: name and description
+      oa-pg.select:
+        pgdatabase: "ouid"
+        pgdbhost: "10.70.7.1" 
+        pgdbusername: "postgres"
+        pgdbpassword: "password.123"
+        pgdbport: 5432
+        statement: 'select * from accounts'
+        printout: True #optional default value True 
+        tojsonfile: ./a.json #optional if you need save on file set full path 
+```
+
+
+
+# oa-pg.exexute:
+
+### This module is unzip and trasfer on remote server 
+
+#### In variable can use F-string syntax for replace with variable loadded in running 
+
+
+| Parameter Name   | Parameter Description       |      
+|-------------|:----------: 
+| pgdatabase |  databasename  |
+| pgdbhost |    ip or hostname | 
+| pgdbpassword |   password  |
+| pgdbusername |     user name | 
+| pgdbport |   portnameber | 
+| statement | the insert update or delete to execute|
+| printout | Optional,default value is true | 
+| tojsonfile| Optional if you need save on file set full path |
+
+Config exemple:
+
+``` yaml
+  - name: name and description
+      oa-pg.exexute:
+        pgdatabase: "ouid"
+        pgdbhost: "10.70.7.1" 
+        pgdbusername: "postgres"
+        pgdbpassword: "password.123"
+        pgdbport: 5432
+        statement: "INSERT INTO public.accounts (id, username, firstname, lastname, email, \"password\", shortlink, isactive) VALUES(uuid_generate_v4(), '{username}', '{firstname}', '{lastname}', '{email}', '{passwrod}', upper(substr(md5(random()::text), 0, 7)), true);"
+        printout: True #optional default value True 
+        tojsonfile: ./a.json #optional if you need save on file set full path 
+    """
 ```
 
 
