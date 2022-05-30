@@ -166,12 +166,12 @@ def readfile(self,param):
         exit()
     
 @oacommon.trace
-def loadvarfromjeson(self,param):
+def loadvarfromjson(self,param):
     
     """ 
         load variable form json
       - name: load variable form json
-        oa-io.loadvarfromjeson:
+        oa-io.loadvarfromjson:
             filename: /opt/uoc-generator/jtable
              
     """         

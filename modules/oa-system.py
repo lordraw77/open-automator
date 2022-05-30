@@ -175,6 +175,7 @@ def scp(self,param):
                     localpath = oacommon.effify(res.split('=')[0])
                     remotepath = oacommon.effify(res.split('=')[1])
                     _scp.put(localpath, recursive=recursive, remote_path=remotepath)
+                     
             else:
                 _scp.put(localpath, recursive=recursive,remote_path=remotepath)
         elif "remotetolocal":

@@ -16,7 +16,7 @@
       printout: True
       saveonvar: outputVarPPP 
   - name: load variable form json
-    oa-io.loadvarfromjeson:
+    oa-io.loadvarfromjson:
         filename: /opt/a.json
   - name: print variable
     oa-utility.printvar:

@@ -56,7 +56,7 @@ options:
 - [oa-io.unzip](#oa-iounzip)
 - [oa-io.regexreplaceinfile](#oa-ioregexreplaceinfile)
 - [oa-io.replace](#oa-ioreplace)
-- [oa-io.loadvarfromjeson](#oa-ioloadvarfromjeson)
+- [oa-io.loadvarfromjson](#oa-ioloadvarfromjson)
 - [oa-io.template](#oa-iotemplate)
 - [os-network.httpget](#os-networkhttpget)
 - [os-network.httpsget](#os-networkhttpsget)
@@ -399,7 +399,7 @@ Config exemple:
 
 ``` 
 
-# oa-io.loadvarfromjeson:
+# oa-io.loadvarfromjson:
 
 ### This module is for load variable form json
 
@@ -411,7 +411,7 @@ Config exemple:
 
 ``` yaml
    - name: load variable form json
-     oa-io.loadvarfromjeson:
+     oa-io.loadvarfromjson:
          filename: /opt/uoc-generator/jtable
 ```
 
