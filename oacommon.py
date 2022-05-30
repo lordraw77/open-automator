@@ -60,3 +60,24 @@ def _sshremotecommand(server, port, user, password,commandtoexecute):
     ssh_stdin.flush()
     output = ssh_stdout.read()
     return output
+
+
+@trace
+def writefile(filename,data):
+    f = open(filename,"w")
+    f.write(data)
+    f.close()
+    
+@trace
+def readfile(filename):
+    f = open(filename,"r")
+    data = f.read()
+    f.close()
+    return data
+
+@trace
+def appendfile(filename,data):
+    f = open(filename,"a")
+    f.write(data)
+    f.close()
+    

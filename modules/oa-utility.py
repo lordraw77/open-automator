@@ -60,5 +60,17 @@ def setvar(self,param):
         oacommon.logend(myself())
     else:
         exit()
+@oacommon.trace
+def dumpvar(self,param):
+    """ 
+      - name: dump  variable
+        oa-utility.dumpvar:
+            savetofile: ./onlinevar.json #optional
+    """    
+    if oacommon._checkparam('savetofile',param):
+        savetofile=param['savetofile']
+        oacommon.writefile(savetofile,json.dumps(self.gdict, indent=4, sort_keys=True))
+    print(json.dumps(self.gdict, indent=4, sort_keys=True))
+    
      
      
