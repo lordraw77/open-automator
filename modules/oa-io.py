@@ -203,7 +203,7 @@ def regexreplaceinfile(self,param):
     if oacommon.checkandloadparam(self,myself(),('filein','regexmatch','regexvalue','fileout'),param):
         filein=oacommon.effify(gdict['filein'])
         regexmatch=gdict['regexmatch']
-        regexvalue=gdict['regexvalue']
+        regexvalue=oacommon.effify(gdict['regexvalue'])
         fileout=oacommon.effify(gdict['fileout'])
         with open (filein, 'r' ) as f:
             content = f.read()
