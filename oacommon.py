@@ -1,5 +1,6 @@
 import pprint
 import inspect
+import chardet    
 
 import paramiko
 
@@ -61,6 +62,10 @@ def _sshremotecommand(server, port, user, password,commandtoexecute):
     output = ssh_stdout.read()
     return output
 
+def _findenc(filename):
+    rawdata = open(filename,'rb').read()
+    result = chardet.detect(rawdata)
+    return result['encoding']
 
 @trace
 def writefile(filename,data):
@@ -70,7 +75,7 @@ def writefile(filename,data):
     
 @trace
 def readfile(filename):
-    f = open(filename,"r")
+    f = open(filename,mode="r",encoding=_findenc(filename=filename))
     data = f.read()
     f.close()
     return data
