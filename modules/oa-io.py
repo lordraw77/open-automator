@@ -1,3 +1,4 @@
+from fileinput import filename
 import oacommon
 import os
 import shutil
@@ -157,9 +158,7 @@ def readfile(self,param):
     if oacommon.checkandloadparam(self,myself(),('varname','filename'),param):
         varname=gdict['varname']
         filename=oacommon.effify(gdict['filename'])
-        f = open(filename,"r")
-        gdict[varname] =f.read()
-        f.close()
+        gdict[varname] = oacommon.readfile(filename=filename)
         oacommon.logend(myself())
 
     else:
@@ -227,14 +226,10 @@ def template(self,param):
     if oacommon.checkandloadparam(self,myself(),('templatefile','dstfile'),param):
         templatefile=oacommon.effify(gdict['templatefile'])
         dstfile=oacommon.effify(gdict['dstfile'])
-        f = open(templatefile,'r')
-        data= f.read()
-        f.close()
+        data= oacommon.readfile(filename=templatefile)
         rtemplate = Environment(loader=BaseLoader).from_string(data)
         output = rtemplate.render(**gdict)
-        f = open(dstfile,'w')
-        f.write(output)
-        f.close()
+        oacommon.writefile(filename=dstfile,data=output)
         oacommon.logend(myself())
     else:
         exit()
@@ -273,9 +268,7 @@ def writefile(self,param):
     if oacommon.checkandloadparam(self,myself(),('varname','filename'),param):
         varname=gdict['varname']
         filename=oacommon.effify(gdict['filename'])
-        f = open(filename,"w")
-        f.write(str(gdict[varname]))
-        f.close()
+        oacommon.writefile(filename=filename,data=str(gdict[varname]))
         oacommon.logend(myself())
 
     else:

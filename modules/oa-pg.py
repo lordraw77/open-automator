@@ -1,4 +1,5 @@
  
+from fileinput import filename
 import psycopg2
 import inspect
 import oacommon
@@ -75,9 +76,7 @@ def select(self,param):
         if oacommon._checkparam('tojsonfile',param):
             tojsonfile=param['tojsonfile']
         if tojsonfile:
-            f = open(tojsonfile,"w")
-            f.write(json.dumps(resultset))
-            f.close()    
+            oacommon.writefile(filename=filename,data=json.dumps(resultset)) 
 
         oacommon.logend(myself())
     else:
@@ -116,9 +115,8 @@ def execute(self,param):
         if oacommon._checkparam('tojsonfile',param):
             tojsonfile=param['tojsonfile']
         if tojsonfile:
-            f = open(tojsonfile,"w")
-            f.write(json.dumps(resultset))
-            f.close()    
+            oacommon.writefile(filename=filename,data=json.dumps(resultset))
+ 
 
         oacommon.logend(myself())
     else:
