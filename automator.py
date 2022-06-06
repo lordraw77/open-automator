@@ -8,10 +8,11 @@ import oacommon
 from datetime import datetime
 
 gdict={}
+cwd = os.getcwd()
 oacommon.setgdict(oacommon,gdict)
-
-if os.path.exists("modules"):
-    sys.path.append("modules")
+modulepath = os.path.join(cwd,"modules")
+if os.path.exists(modulepath):
+    sys.path.append(modulepath)
 
 myself = lambda: inspect.stack()[1][3]
 findinlist = lambda y,_list:  [x for x in _list if y in x]

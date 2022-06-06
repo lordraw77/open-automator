@@ -144,6 +144,30 @@ def remove(self,param):
         oacommon.logend(myself())
     else:
         exit()
+        
+@oacommon.trace
+def findfile(self,param):
+
+    """
+      - name: findfile
+        oa-io.findfile:
+            filename:  *.py
+            path: /opt
+            findfirst: True
+            varname: aaa
+    """
+    oacommon.logstart(myself())
+    if oacommon.checkandloadparam(self,myself(),('filename','path','findfirst','varname'),param):
+        path=gdict['path']
+        _filename=gdict['filename']
+        for file in glob.glob(f"{path}{_filename}"):
+            gdict[gdict['varname']]=file
+
+         
+        oacommon.logend(myself())
+
+    else:
+        exit()
 
 @oacommon.trace
 def readfile(self,param):
