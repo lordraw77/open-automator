@@ -111,7 +111,7 @@ class AutomatorLogger:
 
 
 class TaskLogger:
-    """Context manager per logging di singoli task"""
+    """Context manager per logging di singoli task con indicazione finale esito"""
 
     def __init__(self, logger: logging.Logger, task_name: str, task_num: int, total_tasks: int):
         self.logger = logger
@@ -122,22 +122,40 @@ class TaskLogger:
 
     def __enter__(self):
         self.start_time = datetime.now()
-        self.logger.info(f"[{self.task_num}/{self.total_tasks}] Starting task: '{self.task_name}'")
+        separator = "-" * 70
+        self.logger.info(separator)
+        self.logger.info(f"▶ [{self.task_num}/{self.total_tasks}] STARTING: '{self.task_name}'")
+        self.logger.info(separator)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration = (datetime.now() - self.start_time).total_seconds()
+        separator = "=" * 70
 
         if exc_type is not None:
+            # Task FALLITO
+            self.logger.error(separator)
             self.logger.error(
-                f"[{self.task_num}/{self.total_tasks}] Task '{self.task_name}' FAILED "
-                f"after {duration:.2f}s: {exc_type.__name__}: {exc_val}",
-                exc_info=True
+                f"✗ [{self.task_num}/{self.total_tasks}] FAILED: '{self.task_name}' "
+                f"(duration: {duration:.2f}s)"
             )
+            self.logger.error(f"Error: {exc_type.__name__}: {exc_val}")
+            self.logger.error(separator)
+            self.logger.error("")  # Riga vuota per separazione
+
+            # Log stack trace completo solo in DEBUG
+            if self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.debug("Full stack trace:", exc_info=True)
+
             return False  # Propaga l'eccezione
         else:
+            # Task COMPLETATO CON SUCCESSO
+            self.logger.info(separator)
             self.logger.info(
-                f"[{self.task_num}/{self.total_tasks}] Task '{self.task_name}' completed "
-                f"successfully in {duration:.2f}s"
+                f"✓ [{self.task_num}/{self.total_tasks}] SUCCESS: '{self.task_name}' "
+                f"(duration: {duration:.2f}s)"
             )
+            self.logger.info(separator)
+            self.logger.info("")  # Riga vuota per separazione
+
         return True
