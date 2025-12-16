@@ -127,3 +127,78 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# ===================================
+# Open-Automator Specific
+# ===================================
+
+# Log directories
+logs/
+logs_test/
+*.log
+
+# Backup files
+*.backup
+*.bak
+backup_*/
+
+# Core dumps (per il segfault)
+core
+core.*
+*.core
+
+# Test artifacts
+test_output.log
+.pytest_cache/
+.coverage*
+
+# Generated files durante sviluppo
+*_refactored.py.backup
+test_oacommon_fixed.py
+*_fixed.py
+
+# ZIP packages generati
+*.zip
+open-automator-package_*.zip
+open-automator-complete-package_*.zip
+
+# Temporary YAML files
+*.yaml.tmp
+*.yml.tmp
+
+# SSH known_hosts temporanei
+test_known_hosts
+
+# Coverage HTML reports
+htmlcov/
+
+# Makefile backup
+Makefile.backup
+
+# Editor files
+*~
+.*.swp
+.*.swo
+*.orig
+
+# Cache pytest
+.pytest_cache/
+
+# Bytecode Python
+__pycache__/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# Log di test
+logs_test/
+logs/
+*.log
+
+# Core dump (se mai creati)
+core
+core.*
+*.core

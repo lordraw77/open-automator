@@ -1,0 +1,27 @@
+# Requirements per testing Open-Automator
+
+# Testing framework
+unittest2>=1.1.0
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+
+# Mocking
+mock>=5.1.0
+
+# Coverage
+coverage>=7.3.0
+
+# Dipendenze originali del progetto
+pyyaml>=6.0
+paramiko>=3.3.0
+scp>=0.14.5
+chardet>=5.2.0
+requests>=2.31.0
+jinja2>=3.1.2
+psycopg2-binary>=2.9.7
+tabulate>=0.9.0
+
+# Utilities per testing
+freezegun>=1.2.2  # Per mock di datetime
+responses>=0.23.3  # Per mock di richieste HTTP
