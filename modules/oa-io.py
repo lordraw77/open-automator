@@ -31,25 +31,32 @@ def copy(self, param):
 
     Args:
         param: dict con:
-            - srcpath: percorso sorgente
-            - dstpath: percorso destinazione
-            - recursive: True per directory ricorsive
+            - srcpath
+            - dstpath
+            - recursive
+            - task_id (opzionale)
+            - task_store (opzionale)
     """
     func_name = myself()
     logger.info("Copying file/directory")
 
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
     required_params = ['srcpath', 'dstpath', 'recursive']
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    srcpath = oacommon.effify(gdict['srcpath'])
-    dstpath = oacommon.effify(gdict['dstpath'])
-    recursive = gdict['recursive']
-
-    logger.info(f"Copy: {srcpath} -> {dstpath} (recursive: {recursive})")
-
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        srcpath = oacommon.effify(gdict['srcpath'])
+        dstpath = oacommon.effify(gdict['dstpath'])
+        recursive = gdict['recursive']
+
+        logger.info(f"Copy: {srcpath} -> {dstpath} (recursive: {recursive})")
+
         if not os.path.exists(srcpath):
             raise FileNotFoundError(f"Source path not found: {srcpath}")
 
@@ -60,15 +67,25 @@ def copy(self, param):
             logger.debug("Single file copy")
             shutil.copy(srcpath, dstpath)
 
-        logger.info(f"Copy completed successfully")
+        logger.info("Copy completed successfully")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Copy operation failed: {e}", exc_info=True)
-        raise
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
 
+    return task_success
 
 def zipdir(paths, zipfilter, ziph):
-    """Helper function per comprimere directory"""
+    """
+    Helper function per comprimere directory.
+
+    Nota: funzione di supporto interna, non è un task
+    e non gestisce task_id / task_store.
+    """
     for path in paths:
         path = oacommon.effify(path)
         logger.debug(f"Processing path for ZIP: {path}")
@@ -81,7 +98,6 @@ def zipdir(paths, zipfilter, ziph):
                     ziph.write(filepath, arcname)
                     logger.debug(f"Added to ZIP: {arcname}")
 
-
 @oacommon.trace
 def zip(self, param):
     """
@@ -89,27 +105,34 @@ def zip(self, param):
 
     Args:
         param: dict con:
-            - zipfilename: nome file ZIP da creare
-            - pathtozip: lista di percorsi da comprimere
-            - zipfilter: filtro file (es. "*.txt" o "*")
+            - zipfilename
+            - pathtozip
+            - zipfilter
+            - task_id (opzionale)
+            - task_store (opzionale)
     """
     func_name = myself()
     logger.info("Creating ZIP archive")
 
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
     required_params = ['zipfilename', 'pathtozip', 'zipfilter']
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    zipfilename = oacommon.effify(gdict['zipfilename'])
-    pathtozip = gdict['pathtozip']
-    zipfilter = gdict['zipfilter']
-
-    logger.info(f"ZIP file: {zipfilename}")
-    logger.debug(f"Paths to compress: {pathtozip}")
-    logger.debug(f"Filter: {zipfilter}")
-
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        zipfilename = oacommon.effify(gdict['zipfilename'])
+        pathtozip = gdict['pathtozip']
+        zipfilter = gdict['zipfilter']
+
+        logger.info(f"ZIP file: {zipfilename}")
+        logger.debug(f"Paths to compress: {pathtozip}")
+        logger.debug(f"Filter: {zipfilter}")
+
         with zipfile.ZipFile(zipfilename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipdir(pathtozip, zipfilter, zipf)
 
@@ -117,9 +140,14 @@ def zip(self, param):
         logger.info(f"ZIP archive created successfully: {zipfilename} ({zip_size} bytes)")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"ZIP creation failed: {e}", exc_info=True)
-        raise
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
 
+    return task_success
 
 @oacommon.trace
 def unzip(self, param):
@@ -128,23 +156,30 @@ def unzip(self, param):
 
     Args:
         param: dict con:
-            - zipfilename: file ZIP da estrarre
-            - pathwhereunzip: directory di destinazione
+            - zipfilename
+            - pathwhereunzip
+            - task_id (opzionale)
+            - task_store (opzionale)
     """
     func_name = myself()
     logger.info("Extracting ZIP archive")
 
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
     required_params = ['zipfilename', 'pathwhereunzip']
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    zipfilename = oacommon.effify(gdict['zipfilename'])
-    pathwhereunzip = oacommon.effify(gdict['pathwhereunzip'])
-
-    logger.info(f"Extracting: {zipfilename} -> {pathwhereunzip}")
-
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        zipfilename = oacommon.effify(gdict['zipfilename'])
+        pathwhereunzip = oacommon.effify(gdict['pathwhereunzip'])
+
+        logger.info(f"Extracting: {zipfilename} -> {pathwhereunzip}")
+
         if not os.path.exists(zipfilename):
             raise FileNotFoundError(f"ZIP file not found: {zipfilename}")
 
@@ -158,9 +193,14 @@ def unzip(self, param):
         logger.info(f"ZIP extraction completed: {file_count} files extracted")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"ZIP extraction failed: {e}", exc_info=True)
-        raise
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
 
+    return task_success
 
 @oacommon.trace
 def readfile(self, param):
@@ -169,23 +209,30 @@ def readfile(self, param):
 
     Args:
         param: dict con:
-            - filename: path del file
-            - varname: nome variabile dove salvare il contenuto
+            - filename
+            - varname
+            - task_id (opzionale)
+            - task_store (opzionale)
     """
     func_name = myself()
     logger.info("Reading file")
 
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
     required_params = ['filename', 'varname']
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    filename = oacommon.effify(gdict['filename'])
-    varname = gdict['varname']
-
-    logger.info(f"Reading file: {filename}")
-
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        filename = oacommon.effify(gdict['filename'])
+        varname = gdict['varname']
+
+        logger.info(f"Reading file: {filename}")
+
         content = oacommon.readfile(filename)
         gdict[varname] = content
 
@@ -193,9 +240,14 @@ def readfile(self, param):
         logger.debug(f"Content saved to variable: {varname}")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Failed to read file {filename}: {e}", exc_info=True)
-        raise
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
 
+    return task_success
 
 @oacommon.trace
 def writefile(self, param):
@@ -204,23 +256,30 @@ def writefile(self, param):
 
     Args:
         param: dict con:
-            - filename: path del file
-            - varname: nome variabile con il contenuto da scrivere
+            - filename
+            - varname
+            - task_id (opzionale)
+            - task_store (opzionale)
     """
     func_name = myself()
     logger.info("Writing file")
 
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
     required_params = ['filename', 'varname']
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    filename = oacommon.effify(gdict['filename'])
-    varname = gdict['varname']
-
-    logger.info(f"Writing to file: {filename}")
-
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        filename = oacommon.effify(gdict['filename'])
+        varname = gdict['varname']
+
+        logger.info(f"Writing to file: {filename}")
+
         if varname not in gdict:
             raise ValueError(f"Variable '{varname}' not found in gdict")
 
@@ -230,9 +289,14 @@ def writefile(self, param):
         logger.info(f"File written successfully: {len(content)} characters")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Failed to write file {filename}: {e}", exc_info=True)
-        raise
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
 
+    return task_success
 
 @oacommon.trace
 def replace(self, param):
@@ -241,25 +305,32 @@ def replace(self, param):
 
     Args:
         param: dict con:
-            - varname: nome variabile da modificare
-            - leftvalue: testo da cercare
-            - rightvalue: testo sostitutivo
+            - varname
+            - leftvalue
+            - rightvalue
+            - task_id (opzionale)
+            - task_store (opzionale)
     """
     func_name = myself()
     logger.info("Replacing text in variable")
 
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
     required_params = ['varname', 'leftvalue', 'rightvalue']
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    varname = gdict['varname']
-    leftvalue = gdict['leftvalue']
-    rightvalue = gdict['rightvalue']
-
-    logger.debug(f"Variable: {varname}, Replace: '{leftvalue}' -> '{rightvalue}'")
-
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        varname = gdict['varname']
+        leftvalue = gdict['leftvalue']
+        rightvalue = gdict['rightvalue']
+
+        logger.debug(f"Variable: {varname}, Replace: '{leftvalue}' -> '{rightvalue}'")
+
         if varname not in gdict:
             raise ValueError(f"Variable '{varname}' not found")
 
@@ -271,8 +342,14 @@ def replace(self, param):
         logger.info(f"Replaced {occurrences} occurrence(s) in variable '{varname}'")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Text replacement failed: {e}", exc_info=True)
-        raise
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
+
+    return task_success
 
 
 @oacommon.trace
@@ -282,19 +359,26 @@ def loadvarfromjson(self, param):
 
     Args:
         param: dict con:
-            - filename: path del file JSON
+            - filename
+            - task_id (opzionale)
+            - task_store (opzionale)
     """
     func_name = myself()
     logger.info("Loading variables from JSON file")
 
-    if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    filename = oacommon.effify(gdict['filename'])
-
-    logger.info(f"Loading JSON: {filename}")
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
 
     try:
+        if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        filename = oacommon.effify(gdict['filename'])
+
+        logger.info(f"Loading JSON: {filename}")
+
         if not os.path.exists(filename):
             raise FileNotFoundError(f"JSON file not found: {filename}")
 
@@ -303,7 +387,6 @@ def loadvarfromjson(self, param):
 
         jdata = json.loads(data)
 
-        # Carica nel gdict
         var_count = 0
         for key in jdata.keys():
             gdict[key] = jdata.get(key)
@@ -313,8 +396,15 @@ def loadvarfromjson(self, param):
         logger.info(f"Loaded {var_count} variables from JSON")
 
     except json.JSONDecodeError as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Invalid JSON in file {filename}: {e}")
-        raise
     except Exception as e:
-        logger.error(f"Failed to load JSON file: {e}", exc_info=True)
-        raise
+        task_success = False
+        error_msg = str(e)
+        logger.error(f"Failed to load JSON file: {e}", excinfo=True)
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
+
+    return task_success

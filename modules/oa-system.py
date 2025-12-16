@@ -24,56 +24,48 @@ def setgdict(self, gdict_param):
     gdict = gdict_param
     self.gdict = gdict_param
 
-
 @oacommon.trace
 def runcmd(self, param):
-    """
-    Esegue un comando shell locale
-
-    Args:
-        param: dict con:
-            - command: comando da eseguire
-            - printout: (opzionale) stampa output
-            - saveonvar: (opzionale) salva output in variabile
-    """
-    func_name = myself()
+    funcname = myself
     logger.info("Executing local shell command")
 
-    if not oacommon.checkandloadparam(self, myself, 'command', 'printout', param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    command = oacommon.effify(gdict['command'])
-    printout = gdict['printout']
-
-    logger.info(f"Command: {command}")
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
 
     try:
+        if not oacommon.checkandloadparam(self, myself, "command", "printout", param):
+            raise ValueError(f"Missing required parameters for {funcname}")
+
+        command = oacommon.effify(gdict["command"])
+        printout = gdict["printout"]
+        logger.info(f"Command {command}")
+
         output = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE
+            command, shell=True, stdout=subprocess.PIPE
         ).stdout.read()
+        decodedoutput = output.decode("UTF-8")
 
-        decoded_output = output.decode('UTF-8')
-        logger.info(f"Command executed successfully, output size: {len(decoded_output)} chars")
+        logger.info(f"Command executed successfully, output size {len(decodedoutput)} chars")
+        # ... log/preview come esistente ...
 
-        if printout:
-            logger.info(f"Command output:\n{decoded_output}")
-        else:
-            # Preview in debug
-            preview = decoded_output[:200] + '...' if len(decoded_output) > 200 else decoded_output
-            logger.debug(f"Output preview: {preview}")
-
-        if oacommon.checkparam('saveonvar', param):
-            saveonvar = param['saveonvar']
-            gdict[saveonvar] = decoded_output
-            logger.debug(f"Output saved to variable: {saveonvar}")
-
-        return decoded_output
-
+        if oacommon.checkparam("saveonvar", param):
+            saveonvar = param["saveonvar"]
+            gdict[saveonvar] = decodedoutput
+            logger.debug(f"Output saved to variable {saveonvar}")
+        
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Command execution failed: {e}", exc_info=True)
-        raise
+        # opzionale: puoi decidere se rilanciare o no
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
+
+    return task_success
+
 
 
 @oacommon.trace
@@ -84,26 +76,35 @@ def systemd(self, param):
     Args:
         param: dict con remoteserver, remoteuser, remotepassword, remoteport,
                servicename, servicestate
+               + opzionali: task_id, task_store
     """
     func_name = myself()
     logger.info("Managing systemd service")
 
-    required_params = ['remoteserver', 'remoteuser', 'remotepassword', 
-                      'remoteport', 'servicename', 'servicestate']
+    # gestione esito comune
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    remoteserver = oacommon.effify(gdict['remoteserver'])
-    remoteuser = oacommon.effify(gdict['remoteuser'])
-    remotepassword = oacommon.effify(gdict['remotepassword'])
-    remoteport = oacommon.effify(gdict['remoteport'])
-    servicename = oacommon.effify(gdict['servicename'])
-    servicestate = gdict['servicestate']
-
-    logger.info(f"Service: {servicename}, State: {servicestate} on {remoteserver}")
+    required_params = [
+        'remoteserver', 'remoteuser', 'remotepassword',
+        'remoteport', 'servicename', 'servicestate'
+    ]
 
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        remoteserver = oacommon.effify(gdict['remoteserver'])
+        remoteuser = oacommon.effify(gdict['remoteuser'])
+        remotepassword = oacommon.effify(gdict['remotepassword'])
+        remoteport = oacommon.effify(gdict['remoteport'])
+        servicename = oacommon.effify(gdict['servicename'])
+        servicestate = gdict['servicestate']
+
+        logger.info(f"Service: {servicename}, State: {servicestate} on {remoteserver}")
+
         if 'daemon-reload' in servicestate:
             command = 'systemctl daemon-reload'
         else:
@@ -115,15 +116,25 @@ def systemd(self, param):
             remoteserver, remoteport, remoteuser, remotepassword, command
         )
 
-        logger.info(f"Systemd operation completed successfully")
+        logger.info("Systemd operation completed successfully")
         logger.debug(f"Output: {output.decode('utf-8', errors='ignore')}")
 
-        return output
+        # se vuoi riusare l'output, puoi salvarlo su gdict
+        if oacommon.checkparam('saveonvar', param):
+            saveonvar = param['saveonvar']
+            gdict[saveonvar] = output.decode('utf-8', errors='ignore')
+            logger.debug(f"Systemd output saved to variable: {saveonvar}")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Systemd operation failed: {e}", exc_info=True)
-        raise
+        # opzionale: puoi NON rilanciare se vuoi che il flusso continui
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
 
+    return task_success
 
 @oacommon.trace
 def remotecommand(self, param):
@@ -133,25 +144,31 @@ def remotecommand(self, param):
     Args:
         param: dict con remoteserver, remoteuser, remotepassword, remoteport,
                command, saveonvar (opzionale)
+               + opzionali: task_id, task_store
     """
     func_name = myself()
     logger.info("Executing remote SSH command")
 
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
     required_params = ['remoteserver', 'remoteuser', 'remotepassword', 'remoteport', 'command']
 
-    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
-
-    remoteserver = oacommon.effify(gdict['remoteserver'])
-    remoteuser = oacommon.effify(gdict['remoteuser'])
-    remotepassword = oacommon.effify(gdict['remotepassword'])
-    remoteport = oacommon.effify(gdict['remoteport'])
-    command = oacommon.effify(gdict['command'])
-
-    logger.info(f"Target: {remoteuser}@{remoteserver}:{remoteport}")
-    logger.debug(f"Command: {command}")
-
     try:
+        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+            raise ValueError(f"Missing required parameters for {func_name}")
+
+        remoteserver = oacommon.effify(gdict['remoteserver'])
+        remoteuser = oacommon.effify(gdict['remoteuser'])
+        remotepassword = oacommon.effify(gdict['remotepassword'])
+        remoteport = oacommon.effify(gdict['remoteport'])
+        command = oacommon.effify(gdict['command'])
+
+        logger.info(f"Target: {remoteuser}@{remoteserver}:{remoteport}")
+        logger.debug(f"Command: {command}")
+
         output = oacommon.sshremotecommand(
             remoteserver, remoteport, remoteuser, remotepassword, command
         )
@@ -169,11 +186,15 @@ def remotecommand(self, param):
         else:
             logger.info(f"Command output: {decoded_output}")
 
-        return decoded_output
-
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"Remote command failed on {remoteserver}: {e}", exc_info=True)
-        raise
+    finally:
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
+
+    return task_success
 
 
 @oacommon.trace
@@ -184,15 +205,28 @@ def scp(self, param):
     Args:
         param: dict con remoteserver, remoteuser, remotepassword, remoteport,
                localpath, remotepath, recursive, direction
+               + opzionali: task_id, task_store
     """
     func_name = myself()
     logger.info("Starting SCP transfer")
 
-    required_params = ['remoteserver', 'remoteuser', 'remotepassword', 'remoteport',
-                      'localpath', 'remotepath', 'recursive', 'direction']
+    task_id = param.get("task_id")
+    task_store = param.get("task_store")
+    task_success = True
+    error_msg = ""
+
+    required_params = [
+        'remoteserver', 'remoteuser', 'remotepassword', 'remoteport',
+        'localpath', 'remotepath', 'recursive', 'direction'
+    ]
 
     if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-        raise ValueError(f"Missing required parameters for {func_name}")
+        error_msg = f"Missing required parameters for {func_name}"
+        logger.error(error_msg)
+        task_success = False
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
+        return task_success
 
     remoteserver = oacommon.effify(gdict['remoteserver'])
     remoteuser = oacommon.effify(gdict['remoteuser'])
@@ -268,8 +302,9 @@ def scp(self, param):
         logger.info("SCP transfer completed successfully")
 
     except Exception as e:
+        task_success = False
+        error_msg = str(e)
         logger.error(f"SCP transfer failed: {e}", exc_info=True)
-        raise
 
     finally:
         # Cleanup
@@ -281,3 +316,8 @@ def scp(self, param):
             logger.debug("SCP connections closed")
         except Exception as cleanup_error:
             logger.warning(f"Error during connection cleanup: {cleanup_error}")
+
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
+
+    return task_success

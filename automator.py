@@ -1,8 +1,3 @@
-"""
-Open-Automator - Task automation framework
-Main entry point with logging support
-"""
-
 import yaml
 import argparse
 import os
@@ -12,7 +7,11 @@ from datetime import datetime
 from logger_config import AutomatorLogger, TaskLogger
 import oacommon
 
-# Inizializza logger per questo modulo
+# importa lo store (nuovo modulo che hai creato)
+# from oa_taskstore import TaskResultStore  # nome modulo a tua scelta
+#import taskResultstore
+from taskstore import TaskResultStore    
+
 logger = AutomatorLogger.get_logger('automator')
 
 gdict = {}
@@ -34,22 +33,22 @@ def main():
         description='exec open-automator tasks',
         allow_abbrev=False
     )
-    myparser.add_argument('tasks', metavar='tasks', type=str, 
-                         help='yaml for task description')
-    myparser.add_argument('-d', action='store_true', 
-                         help='debug enable')
-    myparser.add_argument('-d2', action='store_true', 
-                         help='debug2 enable')
-    myparser.add_argument('-t', action='store_true', 
-                         help='trace enable')
-    myparser.add_argument('--log-dir', type=str, default='./logs', 
-                         help='log directory path (default: ./logs)')
-    myparser.add_argument('--console-level', type=str, default='INFO', 
-                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                         help='console log level (default: INFO)')
+    myparser.add_argument('tasks', metavar='tasks', type=str,
+                          help='yaml for task description')
+    myparser.add_argument('-d', action='store_true',
+                          help='debug enable')
+    myparser.add_argument('-d2', action='store_true',
+                          help='debug2 enable')
+    myparser.add_argument('-t', action='store_true',
+                          help='trace enable')
+    myparser.add_argument('--log-dir', type=str, default='./logs',
+                          help='log directory path (default: ./logs)')
+    myparser.add_argument('--console-level', type=str, default='INFO',
+                          choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                          help='console log level (default: INFO)')
     myparser.add_argument('--file-level', type=str, default='DEBUG',
-                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                         help='file log level (default: DEBUG)')
+                          choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                          help='file log level (default: DEBUG)')
 
     args = myparser.parse_args()
 
@@ -90,6 +89,9 @@ def main():
 
     nowstart = datetime.now()
 
+    # istanza unica per tutti i task
+    task_store = TaskResultStore()
+
     try:
         # Carica configurazione YAML
         logger.debug(f"Loading YAML configuration from: {tasksfile}")
@@ -117,18 +119,27 @@ def main():
             for key in task.keys():
                 if 'name' != key:
                     task_name = task.get('name', f'Unnamed task {currtask}')
+                    # genera un id univoco per il task
+                    task_id = f"task_{currtask}"
 
-                    # Usa context manager per task logging
+                    # param originali dal yaml
+                    task_param = task.get(key) or {}
+                    if not isinstance(task_param, dict):
+                        # nel caso fosse None o altro tipo
+                        task_param = {}
+
+                    # inietta task_id e task_store
+                    task_param['task_id'] = task_id
+                    task_param['task_store'] = task_store
+
                     try:
                         with TaskLogger(logger, task_name, currtask, sizetask):
                             if DEBUG:
                                 logger.debug(f"Task module.function: {key}")
-                                logger.debug(f"Task parameters: {task.get(key)}")
+                                logger.debug(f"Task parameters: {task_param}")
 
                             if '.' in key:
-                                # Importa modulo dinamicamente
-                                module_name = key.split('.')[0]
-                                func_name = key.split('.')[1]
+                                module_name, func_name = key.split('.', 1)
 
                                 logger.debug(f"Loading module: {module_name}, function: {func_name}")
 
@@ -143,12 +154,19 @@ def main():
 
                                 # Esegui funzione
                                 func = getattr(m, func_name)
-                                func(m, task.get(key))
+                                success = func(m, task_param)
                             else:
                                 # Funzione globale
                                 logger.debug(f"Executing global function: {key}")
                                 func = globals()[key]
-                                func(task.get(key))
+                                success = func(task_param)
+
+                            # se il task ha fallito a livello logico
+                            if not success:
+                                # recupera info dal task_store (se presenti)
+                                result = task_store.get_result(task_id)
+                                err_msg = result.get('error') if result else 'Unknown error'
+                                raise RuntimeError(f"Task returned failure status: {err_msg}")
 
                     except Exception as e:
                         logger.error(f"Task execution failed: {e}", exc_info=DEBUG2)
@@ -157,8 +175,7 @@ def main():
                             'task_name': task_name,
                             'error': str(e)
                         })
-                        # Opzionale: continua con altri task invece di interrompere
-                        # Se vuoi interrompere all'errore, decommentare: raise
+                        # se vuoi interrompere al primo errore, usa: raise
 
                     currtask += 1
 
@@ -173,8 +190,14 @@ def main():
         else:
             logger.info("Open-Automator completed SUCCESSFULLY")
 
-        logger.info(f"Total tasks: {sizetask} | Failed: {len(failed_tasks)} | Succeeded: {sizetask - len(failed_tasks)}")
-        logger.info(f"Start: {nowstart.strftime('%Y-%m-%d %H:%M:%S')} | End: {nowend.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info(
+            f"Total tasks: {sizetask} | Failed: {len(failed_tasks)} | "
+            f"Succeeded: {sizetask - len(failed_tasks)}"
+        )
+        logger.info(
+            f"Start: {nowstart.strftime('%Y-%m-%d %H:%M:%S')} | "
+            f"End: {nowend.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
         logger.info(f"Total execution time: {delta:.2f} seconds")
         logger.info("=" * 70)
 

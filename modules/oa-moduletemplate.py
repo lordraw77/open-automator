@@ -1,3 +1,4 @@
+from responses import logger
 import oacommon
 import inspect
 ### TEMPLATE FOR MAKE CUSTOM MODULES
@@ -32,6 +33,9 @@ def templatefunction(self,param):
     ### log start task don't change 
     oacommon.logstart(myself())
     ### check and load needded parameter 
+    task_id = param.get("task_id")  # obbligatorio se usi multi-thread
+    task_store = param.get("task_store")  # istanza di TaskResultStore
+
     if oacommon.checkandloadparam(self,myself(),('param1','param1'),param):
         param1=gdict['param1']
         param2=oacommon.effify(gdict['param2'])
@@ -39,11 +43,24 @@ def templatefunction(self,param):
         #optional parameter check is present
         if oacommon._checkparam('param3',param):
             param3=gdict['param3']
-       
         #place your code for make do 
         
         #log end task execution    
         oacommon.logend(myself())
+        try:
+        # codice del task...
+            pass
+        except Exception as e:
+            task_success = False
+            error_msg = str(e)
+            logger.error(f"Task {myself} failed: {e}", exc_info=True)
+
+        if task_store and task_id:
+            task_store.set_result(task_id, task_success, error_msg)
+
+        oacommon.logend(myself)
+        return task_success
+        
     else:
         exit()
         
