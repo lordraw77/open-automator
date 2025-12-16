@@ -7,6 +7,7 @@ from datetime import datetime
 from logger_config import AutomatorLogger, TaskLogger
 import oacommon
 from taskstore import TaskResultStore
+from wallet import Wallet, PlainWallet, resolve_dict_placeholders
 
 logger = AutomatorLogger.get_logger('automator')
 
@@ -498,3 +499,7 @@ def main():
 if __name__ == '__main__':
     exit_code = main()
     sys.exit(exit_code)
+
+
+#export OA_WALLET_PASSWORD="your_master_password"
+#python3.12 ./automator.py ./mywf.yaml
