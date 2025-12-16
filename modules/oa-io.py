@@ -1,4 +1,3 @@
-from fileinput import filename
 import oacommon
 import os
 import shutil
@@ -8,292 +7,314 @@ import json
 import re
 from jinja2 import Environment, BaseLoader
 import inspect
+import logging
+from logger_config import AutomatorLogger
 
-gdict={}
+# Logger per questo modulo
+logger = AutomatorLogger.get_logger('oa-io')
 
-def setgdict(self,gdict):
-     self.gdict=gdict
-
+gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
 
-@oacommon.trace
-def copy(self,param):
-    """
-    - name: copy file or directory
-      oa-io.copy:
-        srcpath: /opt/exportremote
-        dstpath: /opt/export{zzz} 
-        recursive: True
+def setgdict(self, gdict_param):
+    """Imposta il dizionario globale"""
+    global gdict
+    gdict = gdict_param
+    self.gdict = gdict_param
 
+
+@oacommon.trace
+def copy(self, param):
     """
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('srcpath','dstpath','recursive'),param):
-        srcpath=oacommon.effify(gdict['srcpath'])
-        dstpath=oacommon.effify(gdict['dstpath'])
-        print(dstpath)
-        print(srcpath)
-        recursive=gdict['recursive']
+    Copia file o directory
+
+    Args:
+        param: dict con:
+            - srcpath: percorso sorgente
+            - dstpath: percorso destinazione
+            - recursive: True per directory ricorsive
+    """
+    func_name = myself()
+    logger.info("Copying file/directory")
+
+    required_params = ['srcpath', 'dstpath', 'recursive']
+
+    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    srcpath = oacommon.effify(gdict['srcpath'])
+    dstpath = oacommon.effify(gdict['dstpath'])
+    recursive = gdict['recursive']
+
+    logger.info(f"Copy: {srcpath} -> {dstpath} (recursive: {recursive})")
+
+    try:
+        if not os.path.exists(srcpath):
+            raise FileNotFoundError(f"Source path not found: {srcpath}")
+
         if recursive:
-            shutil.copytree(srcpath,dstpath,dirs_exist_ok=True)
+            logger.debug("Recursive directory copy")
+            shutil.copytree(srcpath, dstpath, dirs_exist_ok=True)
         else:
-            shutil.copy(srcpath,dstpath)
-        
-        oacommon.logend(myself())
-    else:
-        exit()
-        
-def _zipdir(paths,zipfilter, ziph):
+            logger.debug("Single file copy")
+            shutil.copy(srcpath, dstpath)
+
+        logger.info(f"Copy completed successfully")
+
+    except Exception as e:
+        logger.error(f"Copy operation failed: {e}", exc_info=True)
+        raise
+
+
+def zipdir(paths, zipfilter, ziph):
+    """Helper function per comprimere directory"""
     for path in paths:
         path = oacommon.effify(path)
+        logger.debug(f"Processing path for ZIP: {path}")
+
         for root, dirs, files in os.walk(path):
             for file in files:
-                if "*" in zipfilter or zipfilter in file:
-                    ziph.write(os.path.join(root, file), 
-                            os.path.relpath(os.path.join(root, file), 
-                                            os.path.join(path, '..')))
-    ziph.close()
-    
-@oacommon.trace        
-def zip(self,param):
-    """
-    - name: make zip
-        oa-io.zip:
-        zipfilename: /opt/a.zip
-        pathtozip: 
-            - /opt/export/
-            - /opt/exportv2/
-        zipfilter: "*"
-    """    
-    oacommon.logstart(myself())
+                if '*' in zipfilter or zipfilter in file:
+                    filepath = os.path.join(root, file)
+                    arcname = os.path.relpath(filepath, os.path.join(path, '..'))
+                    ziph.write(filepath, arcname)
+                    logger.debug(f"Added to ZIP: {arcname}")
 
-    if oacommon.checkandloadparam(self,myself(),('zipfilename','pathtozip','zipfilter'),param):    
-        zipfilename=oacommon.effify(gdict['zipfilename'])
-        pathtozip=gdict['pathtozip']
-        zipfilter=gdict['zipfilter']
+
+@oacommon.trace
+def zip(self, param):
+    """
+    Crea un archivio ZIP
+
+    Args:
+        param: dict con:
+            - zipfilename: nome file ZIP da creare
+            - pathtozip: lista di percorsi da comprimere
+            - zipfilter: filtro file (es. "*.txt" o "*")
+    """
+    func_name = myself()
+    logger.info("Creating ZIP archive")
+
+    required_params = ['zipfilename', 'pathtozip', 'zipfilter']
+
+    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    zipfilename = oacommon.effify(gdict['zipfilename'])
+    pathtozip = gdict['pathtozip']
+    zipfilter = gdict['zipfilter']
+
+    logger.info(f"ZIP file: {zipfilename}")
+    logger.debug(f"Paths to compress: {pathtozip}")
+    logger.debug(f"Filter: {zipfilter}")
+
+    try:
         with zipfile.ZipFile(zipfilename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            _zipdir(pathtozip,zipfilter, zipf)
-        oacommon.logend(myself())
-    else:
-        exit()
+            zipdir(pathtozip, zipfilter, zipf)
 
-@oacommon.trace        
-def unzip(self,param):
-    """ 
-    - name: unzip
-        oa-io.unzip:
-        zipfilename: /opt/a.zip
-        pathwhereunzip: /tmp/test/
-    """    
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('zipfilename','pathwhereunzip'),param):    
-        zipfilename=oacommon.effify(gdict['zipfilename'])
-        pathwhereunzip=oacommon.effify(gdict['pathwhereunzip'])
+        zip_size = os.path.getsize(zipfilename)
+        logger.info(f"ZIP archive created successfully: {zipfilename} ({zip_size} bytes)")
+
+    except Exception as e:
+        logger.error(f"ZIP creation failed: {e}", exc_info=True)
+        raise
+
+
+@oacommon.trace
+def unzip(self, param):
+    """
+    Estrae un archivio ZIP
+
+    Args:
+        param: dict con:
+            - zipfilename: file ZIP da estrarre
+            - pathwhereunzip: directory di destinazione
+    """
+    func_name = myself()
+    logger.info("Extracting ZIP archive")
+
+    required_params = ['zipfilename', 'pathwhereunzip']
+
+    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    zipfilename = oacommon.effify(gdict['zipfilename'])
+    pathwhereunzip = oacommon.effify(gdict['pathwhereunzip'])
+
+    logger.info(f"Extracting: {zipfilename} -> {pathwhereunzip}")
+
+    try:
+        if not os.path.exists(zipfilename):
+            raise FileNotFoundError(f"ZIP file not found: {zipfilename}")
+
+        os.makedirs(pathwhereunzip, exist_ok=True)
+
         with zipfile.ZipFile(zipfilename, 'r', zipfile.ZIP_DEFLATED) as zipf:
+            file_count = len(zipf.namelist())
+            logger.debug(f"Extracting {file_count} files")
             zipf.extractall(pathwhereunzip)
-        oacommon.logend(myself())
 
-    else:
-        exit()
+        logger.info(f"ZIP extraction completed: {file_count} files extracted")
 
-@oacommon.trace
-def rename(self,param):
-    """
-    - name: renamefile file or directory
-      oa-io.rename:
-        srcpath: /opt/exportremote
-        dstpath: /opt/export{zzz} 
-    """
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('srcpath','dstpath'),param):
-        srcpath=oacommon.effify(gdict['srcpath'])
-        dstpath=oacommon.effify(gdict['dstpath'])
-        os.rename(srcpath,dstpath)
-        oacommon.logend(myself())
-    else:
-        exit()
-        
-@oacommon.trace
-def remove(self,param):
-    """
-    - name: remove file or directory
-      oa-io.remove:
-        pathtoremove: /opt/exportremote 
-        recursive: True
-        NOTE: IF PATH TERMINATE WITH WILDCARD REMOVE FILE IN PATH
+    except Exception as e:
+        logger.error(f"ZIP extraction failed: {e}", exc_info=True)
+        raise
 
-    """
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('pathtoremove','recursive'),param):
-        pathtoremove=oacommon.effify(gdict['pathtoremove'])
-        recursive=gdict['recursive']
-        if recursive:
-            try:
-                shutil.rmtree(pathtoremove)
-            except OSError as e:
-                print(f"Error: {pathtoremove} : {e.strerror}")
-        else:
-            if "*" in pathtoremove:
-                files = glob.glob(pathtoremove)
-                for f in files:
-                    os.remove(f)
-            else:    
-                if os.path.exists(pathtoremove):
-                    os.remove(pathtoremove)
-        
-        oacommon.logend(myself())
-    else:
-        exit()
-        
-@oacommon.trace
-def findfile(self,param):
-
-    """
-      - name: findfile
-        oa-io.findfile:
-            filename:  *.py
-            path: /opt
-            findfirst: True
-            varname: aaa
-    """
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('filename','path','findfirst','varname'),param):
-        path=gdict['path']
-        _filename=gdict['filename']
-        for file in glob.glob(f"{path}{_filename}"):
-            gdict[gdict['varname']]=file
-
-         
-        oacommon.logend(myself())
-
-    else:
-        exit()
 
 @oacommon.trace
-def readfile(self,param):
-
+def readfile(self, param):
     """
-      - name: readfile
-        oa-io.readfile:
-            filename: /opt/a.t
-            varname: aaa
-    """
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('varname','filename'),param):
-        varname=gdict['varname']
-        filename=oacommon.effify(gdict['filename'])
-        gdict[varname] = oacommon.readfile(filename=filename)
-        oacommon.logend(myself())
+    Legge il contenuto di un file
 
-    else:
-        exit()
-    
+    Args:
+        param: dict con:
+            - filename: path del file
+            - varname: nome variabile dove salvare il contenuto
+    """
+    func_name = myself()
+    logger.info("Reading file")
+
+    required_params = ['filename', 'varname']
+
+    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    filename = oacommon.effify(gdict['filename'])
+    varname = gdict['varname']
+
+    logger.info(f"Reading file: {filename}")
+
+    try:
+        content = oacommon.readfile(filename)
+        gdict[varname] = content
+
+        logger.info(f"File read successfully: {len(content)} characters")
+        logger.debug(f"Content saved to variable: {varname}")
+
+    except Exception as e:
+        logger.error(f"Failed to read file {filename}: {e}", exc_info=True)
+        raise
+
+
 @oacommon.trace
-def loadvarfromjson(self,param):
-    
-    """ 
-        load variable form json
-      - name: load variable form json
-        oa-io.loadvarfromjson:
-            filename: /opt/uoc-generator/jtable
-             
-    """         
-    #print(f"{myself(): <30}.....start")
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('filename', ),param):
-        
-        filename=oacommon.effify(gdict['filename'])
-        with open(filename,'r') as f:
+def writefile(self, param):
+    """
+    Scrive contenuto in un file
+
+    Args:
+        param: dict con:
+            - filename: path del file
+            - varname: nome variabile con il contenuto da scrivere
+    """
+    func_name = myself()
+    logger.info("Writing file")
+
+    required_params = ['filename', 'varname']
+
+    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    filename = oacommon.effify(gdict['filename'])
+    varname = gdict['varname']
+
+    logger.info(f"Writing to file: {filename}")
+
+    try:
+        if varname not in gdict:
+            raise ValueError(f"Variable '{varname}' not found in gdict")
+
+        content = str(gdict[varname])
+        oacommon.writefile(filename, content)
+
+        logger.info(f"File written successfully: {len(content)} characters")
+
+    except Exception as e:
+        logger.error(f"Failed to write file {filename}: {e}", exc_info=True)
+        raise
+
+
+@oacommon.trace
+def replace(self, param):
+    """
+    Sostituisce testo in una variabile
+
+    Args:
+        param: dict con:
+            - varname: nome variabile da modificare
+            - leftvalue: testo da cercare
+            - rightvalue: testo sostitutivo
+    """
+    func_name = myself()
+    logger.info("Replacing text in variable")
+
+    required_params = ['varname', 'leftvalue', 'rightvalue']
+
+    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    varname = gdict['varname']
+    leftvalue = gdict['leftvalue']
+    rightvalue = gdict['rightvalue']
+
+    logger.debug(f"Variable: {varname}, Replace: '{leftvalue}' -> '{rightvalue}'")
+
+    try:
+        if varname not in gdict:
+            raise ValueError(f"Variable '{varname}' not found")
+
+        original = gdict[varname]
+        modified = str(original).replace(leftvalue, rightvalue)
+        gdict[varname] = modified
+
+        occurrences = original.count(leftvalue)
+        logger.info(f"Replaced {occurrences} occurrence(s) in variable '{varname}'")
+
+    except Exception as e:
+        logger.error(f"Text replacement failed: {e}", exc_info=True)
+        raise
+
+
+@oacommon.trace
+def loadvarfromjson(self, param):
+    """
+    Carica variabili da un file JSON nel gdict
+
+    Args:
+        param: dict con:
+            - filename: path del file JSON
+    """
+    func_name = myself()
+    logger.info("Loading variables from JSON file")
+
+    if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    filename = oacommon.effify(gdict['filename'])
+
+    logger.info(f"Loading JSON: {filename}")
+
+    try:
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"JSON file not found: {filename}")
+
+        with open(filename, 'r', encoding='utf-8') as f:
             data = f.read()
-            jdata = json.loads(data)
-            for d in jdata.keys():
-                gdict[d]=jdata.get(d)
-        oacommon.logend(myself())
-    else:
-        exit()
-        
-@oacommon.trace
-def regexreplaceinfile(self,param):
-    """
-    - name: "replace with regex in file 
-      oa-io.regexreplaceinfile:
-        filein: /opt/a.t
-        regexmatch:
-        regexvalue:
-        fileout: /opt/az.t
-    """  
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('filein','regexmatch','regexvalue','fileout'),param):
-        filein=oacommon.effify(gdict['filein'])
-        regexmatch=gdict['regexmatch']
-        regexvalue=oacommon.effify(gdict['regexvalue'])
-        fileout=oacommon.effify(gdict['fileout'])
-        with open (filein, 'r' ) as f:
-            content = f.read()
-            content_new = re.sub(regexmatch, regexvalue, content, flags = re.M)
-            with open( fileout,'w')as fo:
-                fo.write(content_new)
-        oacommon.logend(myself())
-    else:
-        exit()
 
-@oacommon.trace
-def template(self,param):
-    """
-    - name:  render j2 template 
-      oa-io.template:
-        templatefile: ./info.j2
-        dstfile: /opt/info{zzz}.txt 
-            
-    """
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('templatefile','dstfile'),param):
-        templatefile=oacommon.effify(gdict['templatefile'])
-        dstfile=oacommon.effify(gdict['dstfile'])
-        data= oacommon.readfile(filename=templatefile)
-        rtemplate = Environment(loader=BaseLoader).from_string(data)
-        output = rtemplate.render(**gdict)
-        oacommon.writefile(filename=dstfile,data=output)
-        oacommon.logend(myself())
-    else:
-        exit()
-        
-@oacommon.trace
-def replace(self,param):
-    """
-    - name: "replace test con \"test \""
-      oa-io.replace:
-        varname: aaa
-        leftvalue: "test"
-        rightvalue: "test "
-    """  
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('varname','leftvalue','rightvalue'),param):
-        varname=gdict['varname']
-        leftvalue=gdict['leftvalue']
-        rightvalue=gdict['rightvalue']
-        temp= gdict[varname]
-        gdict[varname]= temp
-        temp = str(temp).replace(leftvalue,rightvalue)
-        oacommon.logend(myself())
-    else:
-        exit()
-        
-@oacommon.trace
-def writefile(self,param):
-    
-    """
-      - name: write file
-        oa-io.writefile:
-            filename: /opt/a.t2
-            varname: aaa
-    """  
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('varname','filename'),param):
-        varname=gdict['varname']
-        filename=oacommon.effify(gdict['filename'])
-        oacommon.writefile(filename=filename,data=str(gdict[varname]))
-        oacommon.logend(myself())
+        jdata = json.loads(data)
 
-    else:
-        exit()
+        # Carica nel gdict
+        var_count = 0
+        for key in jdata.keys():
+            gdict[key] = jdata.get(key)
+            var_count += 1
+            logger.debug(f"Loaded variable: {key}")
+
+        logger.info(f"Loaded {var_count} variables from JSON")
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in file {filename}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to load JSON file: {e}", exc_info=True)
+        raise

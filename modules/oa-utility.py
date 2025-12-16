@@ -1,76 +1,160 @@
+"""
+Open-Automator Utility Module
+Funzioni di utilità (variabili, sleep, dump)
+"""
+
 import oacommon
 import time
 import inspect
 import json
-gdict={}
+import logging
+from logger_config import AutomatorLogger
 
+# Logger per questo modulo
+logger = AutomatorLogger.get_logger('oa-utility')
+
+gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
-def setgdict(self,gdict):
-     self.gdict=gdict
-     
-@oacommon.trace    
-def setsleep(self,param):
+
+def setgdict(self, gdict_param):
+    """Imposta il dizionario globale"""
+    global gdict
+    gdict = gdict_param
+    self.gdict = gdict_param
+
+
+@oacommon.trace
+def setsleep(self, param):
     """
-    - name: "sleep"
-      oa-utility.setsleep:
-            seconds: 6
-         
-    """  
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('seconds',),param):
-        seconds=gdict['seconds']
+    Pausa l'esecuzione per un numero di secondi
+
+    Args:
+        param: dict con:
+            - seconds: numero di secondi da attendere
+    """
+    func_name = myself()
+    logger.info("Sleep/pause execution")
+
+    if not oacommon.checkandloadparam(self, myself, 'seconds', param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    seconds = gdict['seconds']
+
+    logger.info(f"Sleeping for {seconds} seconds...")
+
+    try:
         time.sleep(seconds)
-        oacommon.logend(myself())
-    else:
-        exit()
+        logger.info(f"Sleep completed")
+
+    except Exception as e:
+        logger.error(f"Sleep operation failed: {e}", exc_info=True)
+        raise
 
 
 @oacommon.trace
-def printvar(self,param):
-    """ 
-      - name: printvar
-        oa-utility.printvar:
-            varname: aaa
-    """         
-    oacommon.logstart(myself())
-    if oacommon.checkandloadparam(self,myself(),('varname',),param):
-        varname=gdict['varname']
-        print (gdict[varname])
-        oacommon.logend(myself())
-    else:
-        exit()
-        
+def printvar(self, param):
+    """
+    Stampa il valore di una variabile
 
+    Args:
+        param: dict con:
+            - varname: nome della variabile da stampare
+    """
+    func_name = myself()
+    logger.info("Printing variable")
+
+    if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    varname = gdict['varname']
+
+    try:
+        if varname not in gdict:
+            logger.warning(f"Variable '{varname}' not found in gdict")
+            logger.info(f"Variable '{varname}' = <NOT FOUND>")
+            return
+
+        value = gdict[varname]
+
+        # Log appropriato in base al tipo e dimensione
+        if isinstance(value, (dict, list)):
+            logger.info(f"Variable '{varname}' (type: {type(value).__name__}):")
+            logger.info(json.dumps(value, indent=2, default=str))
+        elif isinstance(value, str) and len(value) > 500:
+            logger.info(f"Variable '{varname}' = {value[:500]}... (truncated, total: {len(value)} chars)")
+        else:
+            logger.info(f"Variable '{varname}' = {value}")
+
+    except Exception as e:
+        logger.error(f"Failed to print variable '{varname}': {e}", exc_info=True)
+        raise
 
 
 @oacommon.trace
-def setvar(self,param):
-    """ 
-      - name: set variable
-        oa-utility.setvar:
-            varname: zzz
-            varvalue: pluto
-    """        
-    oacommon.logstart(myself()) 
-    if oacommon.checkandloadparam(self,myself(),('varname','varvalue'),param):
-        varname=gdict['varname']
-        varvalue=gdict['varvalue']
+def setvar(self, param):
+    """
+    Imposta il valore di una variabile
+
+    Args:
+        param: dict con:
+            - varname: nome della variabile
+            - varvalue: valore da assegnare
+    """
+    func_name = myself()
+    logger.info("Setting variable")
+
+    required_params = ['varname', 'varvalue']
+
+    if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        raise ValueError(f"Missing required parameters for {func_name}")
+
+    varname = gdict['varname']
+    varvalue = gdict['varvalue']
+
+    logger.info(f"Setting: {varname} = {varvalue}")
+
+    try:
         gdict[varname] = varvalue
-        oacommon.logend(myself())
-    else:
-        exit()
+        logger.debug(f"Variable '{varname}' set successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to set variable '{varname}': {e}", exc_info=True)
+        raise
+
+
 @oacommon.trace
-def dumpvar(self,param):
-    """ 
-      - name: dump  variable
-        oa-utility.dumpvar:
-            savetofile: ./onlinevar.json #optional
-    """    
-    if oacommon._checkparam('savetofile',param):
-        savetofile=param['savetofile']
-        oacommon.writefile(savetofile,json.dumps(self.gdict, indent=4, sort_keys=True))
-    print(json.dumps(self.gdict, indent=4, sort_keys=True))
-    
-     
-     
+def dumpvar(self, param):
+    """
+    Esporta tutte le variabili del gdict in un file JSON
+
+    Args:
+        param: dict con:
+            - savetofile: (opzionale) path del file JSON di output
+    """
+    func_name = myself()
+    logger.info("Dumping all variables")
+
+    savetofile = None
+    if oacommon.checkparam('savetofile', param):
+        savetofile = param['savetofile']
+        logger.debug(f"Output file: {savetofile}")
+
+    try:
+        # Filtra variabili di sistema
+        filtered_gdict = {k: v for k, v in self.gdict.items() 
+                         if not k.startswith('_') and k not in ['DEBUG', 'DEBUG2', 'TRACE']}
+
+        json_output = json.dumps(filtered_gdict, indent=4, sort_keys=True, default=str)
+
+        logger.info(f"Variables dump ({len(filtered_gdict)} variables):")
+        logger.info(json_output)
+
+        if savetofile:
+            with open(savetofile, 'w', encoding='utf-8') as f:
+                f.write(json_output)
+            logger.info(f"Variables saved to: {savetofile}")
+
+    except Exception as e:
+        logger.error(f"Failed to dump variables: {e}", exc_info=True)
+        raise

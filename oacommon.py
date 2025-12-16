@@ -1,88 +1,260 @@
+"""
+Open-Automator Common Utilities
+Funzioni condivise tra tutti i moduli con supporto logging
+"""
+
 import pprint
 import inspect
-import chardet    
-
+import chardet
 import paramiko
+import logging
+from logger_config import AutomatorLogger
 
-gdict={}
+# Logger per questo modulo
+logger = AutomatorLogger.get_logger('oacommon')
+
+gdict = {}
+
 
 def trace(f):
+    """Decorator per tracciare l'esecuzione delle funzioni"""
     def wrap(*args, **kwargs):
-        if gdict['__TRACE__']:
-            print(f"[TRACE] func: {f.__name__}, args: {args}, kwargs: {kwargs}")
+        if gdict.get('TRACE', False):
+            logger.debug(f"TRACE: func={f.__name__}, args={args}, kwargs={kwargs}")
         return f(*args, **kwargs)
     return wrap
 
+
 myself = lambda: inspect.stack()[1][3]
 
-def effify(non_f_str: str):
-    globals().update(gdict)
-    return eval(f'f"""{non_f_str}"""')
 
-def setgdict(self,gdict :dict):
-    self.gdict = gdict
-    
-def checkandloadparam(self,modulename,paramneed,param ):
-    if self.gdict['__DEBUG__']:
-        print(modulename)
-        pprint.pprint(param)
-    ret=True
+def effify(nonfstr):
+    """
+    Evalua f-string con interpolazione variabili da gdict
+    ATTENZIONE: Questa funzione usa eval() ed è potenzialmente pericolosa
+    """
+    try:
+        globals().update(gdict)
+        result = eval(f'f"{nonfstr}"')
+        logger.debug(f"Variable interpolation: '{nonfstr}' -> '{result}'")
+        return result
+    except Exception as e:
+        logger.error(f"Failed to interpolate variable: '{nonfstr}' - {e}")
+        return nonfstr
+
+
+def setgdict(self, gdict_param):
+    """Imposta il dizionario globale"""
+    global gdict
+    gdict = gdict_param
+    self.gdict = gdict_param
+
+
+def checkandloadparam(self, modulename, *paramneed, param):
+    """
+    Verifica e carica parametri obbligatori nel gdict
+
+    Args:
+        self: istanza modulo
+        modulename: nome modulo chiamante
+        *paramneed: parametri obbligatori
+        param: dizionario parametri attuali
+
+    Returns:
+        True se tutti i parametri sono presenti, False altrimenti
+    """
+    if self.gdict.get('DEBUG', False):
+        logger.debug(f"Checking parameters for {modulename.__name__ if callable(modulename) else modulename}")
+        logger.debug(f"Required: {paramneed}")
+        logger.debug(f"Received: {list(param.keys())}")
+
+    ret = True
+    missing_params = []
+
     for par in paramneed:
         if par in param:
-            self.gdict[par]= param.get(par)
+            self.gdict[par] = param.get(par)
         else:
-            print(f'the param {par} need for {modulename}, nedded parameter are {paramneed}')
-            ret=False
-            break
+            missing_params.append(par)
+            ret = False
+
+    if not ret:
+        module_name = modulename.__name__ if callable(modulename) else modulename
+        logger.error(f"Missing required parameters for {module_name}: {missing_params}")
+        logger.error(f"Required parameters: {paramneed}")
+
     return ret
 
 
-logstart= lambda x: print(f"{x:.<30}.....start")
-logend  = lambda x: print(f"{x:.<30}.....end") 
+logstart = lambda x: logger.info(f"{x[:30]:.<30} start")
+logend = lambda x: logger.info(f"{x[:30]:.<30} end")
+
 
 @trace
-def _checkparam(paramname, param):
-    ret=False
-    if paramname in param:
-        ret=True
+def checkparam(paramname, param):
+    """Verifica se un parametro opzionale è presente"""
+    ret = paramname in param
+    if ret:
+        logger.debug(f"Optional parameter '{paramname}' found")
     return ret
+
 
 @trace
 def createSSHClient(server, port, user, password):
-    client = paramiko.SSHClient()
-    client.load_system_host_keys()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(server, int(port), user, password)
-    return client
+    """
+    Crea e restituisce un client SSH connesso
 
-def _sshremotecommand(server, port, user, password,commandtoexecute):
-    ssh =  createSSHClient(server, port, user, password)
-    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(commandtoexecute)
-    ssh_stdin.flush()
-    output = ssh_stdout.read()
-    return output
+    Args:
+        server: hostname o IP del server
+        port: porta SSH
+        user: username
+        password: password
 
-def _findenc(filename):
-    rawdata = open(filename,'rb').read()
-    result = chardet.detect(rawdata)
-    return result['encoding']
+    Returns:
+        paramiko.SSHClient connesso
+    """
+    logger.info(f"Creating SSH connection to {user}@{server}:{port}")
+
+    try:
+        client = paramiko.SSHClient()
+        client.load_system_host_keys()
+
+        # ATTENZIONE: AutoAddPolicy è insicuro, considera di usare RejectPolicy in produzione
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        logger.warning("Using AutoAddPolicy for SSH - consider using known_hosts in production")
+
+        client.connect(server, int(port), user, password, timeout=30)
+        logger.info(f"SSH connection established to {server}")
+
+        return client
+    except paramiko.AuthenticationException:
+        logger.error(f"SSH authentication failed for {user}@{server}")
+        raise
+    except paramiko.SSHException as e:
+        logger.error(f"SSH connection error to {server}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create SSH client: {e}")
+        raise
+
+
+def sshremotecommand(server, port, user, password, commandtoexecute):
+    """
+    Esegue un comando su un server remoto via SSH
+
+    Args:
+        server: hostname o IP
+        port: porta SSH
+        user: username
+        password: password
+        commandtoexecute: comando da eseguire
+
+    Returns:
+        Output del comando come bytes
+    """
+    logger.info(f"Executing remote command on {server}")
+    logger.debug(f"Command: {commandtoexecute}")
+
+    ssh = None
+    try:
+        ssh = createSSHClient(server, port, user, password)
+
+        ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(commandtoexecute)
+        ssh_stdin.flush()
+
+        output = ssh_stdout.read()
+        error = ssh_stderr.read()
+
+        if error:
+            logger.warning(f"Command stderr output: {error.decode('utf-8', errors='ignore')}")
+
+        logger.info(f"Remote command executed successfully, output size: {len(output)} bytes")
+
+        return output
+
+    except Exception as e:
+        logger.error(f"Failed to execute remote command: {e}")
+        raise
+    finally:
+        if ssh:
+            ssh.close()
+            logger.debug("SSH connection closed")
+
 
 @trace
-def writefile(filename,data):
-    f = open(filename,"w")
-    f.write(data)
-    f.close()
-    
+def findenc(filename):
+    """Rileva l'encoding di un file"""
+    logger.debug(f"Detecting encoding for: {filename}")
+    rawdata = open(filename, 'rb').read()
+    result = chardet.detect(rawdata)
+    encoding = result['encoding']
+    logger.debug(f"Detected encoding: {encoding} (confidence: {result['confidence']})")
+    return encoding
+
+
+@trace
+def writefile(filename, data):
+    """
+    Scrive dati in un file
+
+    Args:
+        filename: path del file
+        data: contenuto da scrivere
+    """
+    logger.info(f"Writing to file: {filename}")
+    logger.debug(f"Data size: {len(str(data))} characters")
+
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(data)
+        logger.info(f"File written successfully: {filename}")
+    except Exception as e:
+        logger.error(f"Failed to write file {filename}: {e}")
+        raise
+
+
 @trace
 def readfile(filename):
-    f = open(filename,mode="r",encoding=_findenc(filename=filename))
-    data = f.read()
-    f.close()
-    return data
+    """
+    Legge il contenuto di un file con rilevamento automatico encoding
+
+    Args:
+        filename: path del file
+
+    Returns:
+        Contenuto del file come stringa
+    """
+    logger.info(f"Reading file: {filename}")
+
+    try:
+        encoding = findenc(filename)
+        with open(filename, mode='r', encoding=encoding) as f:
+            data = f.read()
+
+        logger.info(f"File read successfully: {filename} ({len(data)} characters)")
+        return data
+
+    except Exception as e:
+        logger.error(f"Failed to read file {filename}: {e}")
+        raise
+
 
 @trace
-def appendfile(filename,data):
-    f = open(filename,"a")
-    f.write(data)
-    f.close()
-    
+def appendfile(filename, data):
+    """
+    Appende dati a un file esistente
+
+    Args:
+        filename: path del file
+        data: contenuto da appendere
+    """
+    logger.info(f"Appending to file: {filename}")
+    logger.debug(f"Data size: {len(str(data))} characters")
+
+    try:
+        with open(filename, 'a', encoding='utf-8') as f:
+            f.write(data)
+        logger.info(f"Data appended successfully to: {filename}")
+    except Exception as e:
+        logger.error(f"Failed to append to file {filename}: {e}")
+        raise
