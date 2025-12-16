@@ -1,0 +1,44 @@
+- name: 
+  tasks:
+
+  - name: check_http
+    module: oa-network
+    function: httpget
+    host: 192.168.0.220
+    port: 8123
+    get: /
+    printout: true
+    on_success: db_check
+    on_failure: notify_ko
+
+  - name: db_check
+    module: oa-pg
+    function: select
+    pgdatabase: postgres
+    pgdbhost: 192.168.0.175
+    pgdbusername: postgres
+    pgdbpassword: password.123
+    pgdbport: 5432
+    statement: "select 1"
+    printout: true
+    on_success: notify_ok
+    on_failure: notify_ko
+
+  - name: notify_ko
+    module: oa-notify
+    function: sendtelegramnotify
+    tokenid: "7943971548:AAF4WG6g8K2N3hC2l9xZJmkG--5xcCeGdZg"
+    chatid: ["18278029"]
+    message: "Workflow KO"
+    printresponse: true
+    on_success: end
+
+  - name: notify_ok
+    module: oa-notify
+    function: sendtelegramnotify
+    tokenid: "7943971548:AAF4WG6g8K2N3hC2l9xZJmkG--5xcCeGdZg"
+    chatid: ["18278029"]
+    message: "Workflow OK"
+    printresponse: true
+    on_success: end
+    # se non metti niente continua lineare oppure puoi mettere on_success: end
