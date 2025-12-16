@@ -5,6 +5,14 @@ import inspect
 import oacommon
 import tabulate
 import json
+
+import logging
+from logger_config import AutomatorLogger
+
+logger = AutomatorLogger.get_logger('oa-pg')
+
+
+
 gdict={}
 def setgdict(self,gdict):
      self.gdict=gdict

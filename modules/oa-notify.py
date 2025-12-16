@@ -1,10 +1,13 @@
-from responses import logger
 import oacommon 
 import inspect
 import requests
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import logging
+from logger_config import AutomatorLogger
+
+logger = AutomatorLogger.get_logger('oa-notify')
 
 gdict={}
 
