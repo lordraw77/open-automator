@@ -16,26 +16,29 @@ logger = AutomatorLogger.get_logger('oa-io')
 gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
-
 def setgdict(self, gdict_param):
     """Imposta il dizionario globale"""
     global gdict
     gdict = gdict_param
     self.gdict = gdict_param
 
-
 @oacommon.trace
 def copy(self, param):
     """
-    Copia file o directory
+    Copia file o directory con data propagation
 
     Args:
         param: dict con:
             - srcpath
             - dstpath
             - recursive
+            - input (opzionale, da task precedente)
+            - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
+    
+    Returns:
+        tuple: (success, output_dict) con informazioni sulla copia
     """
     func_name = myself()
     logger.info("Copying file/directory")
@@ -44,6 +47,7 @@ def copy(self, param):
     task_store = param.get("task_store")
     task_success = True
     error_msg = ""
+    output_data = None
 
     required_params = ['srcpath', 'dstpath', 'recursive']
 
@@ -63,11 +67,22 @@ def copy(self, param):
         if recursive:
             logger.debug("Recursive directory copy")
             shutil.copytree(srcpath, dstpath, dirs_exist_ok=True)
+            # Conta file copiati
+            file_count = sum(len(files) for _, _, files in os.walk(dstpath))
         else:
             logger.debug("Single file copy")
             shutil.copy(srcpath, dstpath)
+            file_count = 1
 
         logger.info("Copy completed successfully")
+        
+        # Output data per propagation
+        output_data = {
+            'srcpath': srcpath,
+            'dstpath': dstpath,
+            'recursive': recursive,
+            'files_copied': file_count
+        }
 
     except Exception as e:
         task_success = False
@@ -77,12 +92,14 @@ def copy(self, param):
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    return task_success
+    # Ritorna tupla (success, output)
+    return task_success, output_data
+
 
 def zipdir(paths, zipfilter, ziph):
     """
     Helper function per comprimere directory.
-
+    
     Nota: funzione di supporto interna, non è un task
     e non gestisce task_id / task_store.
     """
@@ -98,18 +115,24 @@ def zipdir(paths, zipfilter, ziph):
                     ziph.write(filepath, arcname)
                     logger.debug(f"Added to ZIP: {arcname}")
 
+
 @oacommon.trace
 def zip(self, param):
     """
-    Crea un archivio ZIP
+    Crea un archivio ZIP con data propagation
 
     Args:
         param: dict con:
             - zipfilename
-            - pathtozip
+            - pathtozip (può usare input da task precedente)
             - zipfilter
+            - input (opzionale, da task precedente)
+            - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
+    
+    Returns:
+        tuple: (success, output_dict) con info sul ZIP creato
     """
     func_name = myself()
     logger.info("Creating ZIP archive")
@@ -118,10 +141,18 @@ def zip(self, param):
     task_store = param.get("task_store")
     task_success = True
     error_msg = ""
+    output_data = None
 
     required_params = ['zipfilename', 'pathtozip', 'zipfilter']
 
     try:
+        # Se pathtozip non è specificato, usa l'input dal task precedente
+        if 'pathtozip' not in param and 'input' in param:
+            prev_input = param.get('input')
+            if isinstance(prev_input, dict) and 'dstpath' in prev_input:
+                param['pathtozip'] = [prev_input['dstpath']]
+                logger.info(f"Using path from previous task: {param['pathtozip']}")
+        
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
@@ -138,6 +169,14 @@ def zip(self, param):
 
         zip_size = os.path.getsize(zipfilename)
         logger.info(f"ZIP archive created successfully: {zipfilename} ({zip_size} bytes)")
+        
+        # Output data per propagation
+        output_data = {
+            'zipfilename': zipfilename,
+            'zip_size': zip_size,
+            'paths_compressed': pathtozip,
+            'filter': zipfilter
+        }
 
     except Exception as e:
         task_success = False
@@ -147,19 +186,25 @@ def zip(self, param):
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    return task_success
+    return task_success, output_data
+
 
 @oacommon.trace
 def unzip(self, param):
     """
-    Estrae un archivio ZIP
+    Estrae un archivio ZIP con data propagation
 
     Args:
         param: dict con:
-            - zipfilename
+            - zipfilename (può usare input da task precedente)
             - pathwhereunzip
+            - input (opzionale, da task precedente)
+            - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
+    
+    Returns:
+        tuple: (success, output_dict) con info sull'estrazione
     """
     func_name = myself()
     logger.info("Extracting ZIP archive")
@@ -168,10 +213,18 @@ def unzip(self, param):
     task_store = param.get("task_store")
     task_success = True
     error_msg = ""
+    output_data = None
 
     required_params = ['zipfilename', 'pathwhereunzip']
 
     try:
+        # Se zipfilename non è specificato, usa l'input dal task precedente
+        if 'zipfilename' not in param and 'input' in param:
+            prev_input = param.get('input')
+            if isinstance(prev_input, dict) and 'zipfilename' in prev_input:
+                param['zipfilename'] = prev_input['zipfilename']
+                logger.info(f"Using ZIP from previous task: {param['zipfilename']}")
+        
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
@@ -191,6 +244,13 @@ def unzip(self, param):
             zipf.extractall(pathwhereunzip)
 
         logger.info(f"ZIP extraction completed: {file_count} files extracted")
+        
+        # Output data per propagation
+        output_data = {
+            'zipfilename': zipfilename,
+            'extract_path': pathwhereunzip,
+            'files_extracted': file_count
+        }
 
     except Exception as e:
         task_success = False
@@ -200,19 +260,25 @@ def unzip(self, param):
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    return task_success
+    return task_success, output_data
+
 
 @oacommon.trace
 def readfile(self, param):
     """
-    Legge il contenuto di un file
+    Legge il contenuto di un file con data propagation
 
     Args:
         param: dict con:
-            - filename
-            - varname
+            - filename (può usare input da task precedente)
+            - varname (opzionale se si vuole solo ritornare il contenuto)
+            - input (opzionale, da task precedente)
+            - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
+    
+    Returns:
+        tuple: (success, file_content) - il contenuto del file viene propagato
     """
     func_name = myself()
     logger.info("Reading file")
@@ -221,45 +287,72 @@ def readfile(self, param):
     task_store = param.get("task_store")
     task_success = True
     error_msg = ""
-
-    required_params = ['filename', 'varname']
+    output_data = None
 
     try:
-        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
+        # Se filename non è specificato, usa l'input dal task precedente
+        if 'filename' not in param and 'input' in param:
+            prev_input = param.get('input')
+            if isinstance(prev_input, dict):
+                # Cerca vari campi possibili
+                if 'dstpath' in prev_input:
+                    param['filename'] = prev_input['dstpath']
+                elif 'filepath' in prev_input:
+                    param['filename'] = prev_input['filepath']
+                logger.info(f"Using filename from previous task: {param.get('filename')}")
+        
+        if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
         filename = oacommon.effify(gdict['filename'])
-        varname = gdict['varname']
+        varname = gdict.get('varname')  # Opzionale
 
         logger.info(f"Reading file: {filename}")
 
         content = oacommon.readfile(filename)
-        gdict[varname] = content
+        
+        # Salva in gdict se varname è specificato (retrocompatibilità)
+        if varname:
+            gdict[varname] = content
+            logger.debug(f"Content saved to variable: {varname}")
 
         logger.info(f"File read successfully: {len(content)} characters")
-        logger.debug(f"Content saved to variable: {varname}")
+        
+        # Output data per propagation - ritorna il contenuto
+        output_data = {
+            'filename': filename,
+            'content': content,
+            'size': len(content)
+        }
 
     except Exception as e:
         task_success = False
         error_msg = str(e)
-        logger.error(f"Failed to read file {filename}: {e}", exc_info=True)
+        logger.error(f"Failed to read file: {e}", exc_info=True)
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    return task_success
+    return task_success, output_data
+
 
 @oacommon.trace
 def writefile(self, param):
     """
-    Scrive contenuto in un file
+    Scrive contenuto in un file con data propagation
 
     Args:
         param: dict con:
             - filename
-            - varname
+            - varname (opzionale se c'è input dal task precedente)
+            - content (opzionale, alternativa a varname)
+            - input (opzionale, da task precedente)
+            - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
+    
+    Returns:
+        tuple: (success, output_dict) con info sul file scritto
     """
     func_name = myself()
     logger.info("Writing file")
@@ -268,48 +361,89 @@ def writefile(self, param):
     task_store = param.get("task_store")
     task_success = True
     error_msg = ""
-
-    required_params = ['filename', 'varname']
+    output_data = None
 
     try:
-        if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
-            raise ValueError(f"Missing required parameters for {func_name}")
+        # Determina il contenuto da scrivere
+        content = None
+        
+        # 1. Se c'è 'content' esplicito, usalo
+        if 'content' in param:
+            content = str(param['content'])
+            logger.debug("Using explicit 'content' parameter")
+        
+        # 2. Se c'è input dal task precedente, usalo
+        elif 'input' in param:
+            prev_input = param.get('input')
+            if isinstance(prev_input, dict) and 'content' in prev_input:
+                content = prev_input['content']
+                logger.info("Using content from previous task")
+            elif isinstance(prev_input, str):
+                content = prev_input
+                logger.info("Using string input from previous task")
+            elif isinstance(prev_input, (dict, list)):
+                content = json.dumps(prev_input, indent=2)
+                logger.info("Converting dict/list input to JSON")
+        
+        # 3. Altrimenti usa varname da gdict (retrocompatibilità)
+        elif 'varname' in param:
+            if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
+                raise ValueError("varname not found in gdict")
+            varname = gdict['varname']
+            if varname not in gdict:
+                raise ValueError(f"Variable '{varname}' not found in gdict")
+            content = str(gdict[varname])
+            logger.debug(f"Using content from gdict variable: {varname}")
+        
+        if content is None:
+            raise ValueError("No content to write (provide 'content', 'varname', or pipe from previous task)")
+        
+        if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
+            raise ValueError(f"Missing required parameter 'filename' for {func_name}")
 
         filename = oacommon.effify(gdict['filename'])
-        varname = gdict['varname']
 
         logger.info(f"Writing to file: {filename}")
 
-        if varname not in gdict:
-            raise ValueError(f"Variable '{varname}' not found in gdict")
-
-        content = str(gdict[varname])
         oacommon.writefile(filename, content)
 
         logger.info(f"File written successfully: {len(content)} characters")
+        
+        # Output data per propagation
+        output_data = {
+            'filename': filename,
+            'bytes_written': len(content),
+            'filepath': os.path.abspath(filename)
+        }
 
     except Exception as e:
         task_success = False
         error_msg = str(e)
-        logger.error(f"Failed to write file {filename}: {e}", exc_info=True)
+        logger.error(f"Failed to write file: {e}", exc_info=True)
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    return task_success
+    return task_success, output_data
+
 
 @oacommon.trace
 def replace(self, param):
     """
-    Sostituisce testo in una variabile
+    Sostituisce testo in una variabile con data propagation
 
     Args:
         param: dict con:
-            - varname
+            - varname (opzionale se c'è input)
             - leftvalue
             - rightvalue
+            - input (opzionale, da task precedente)
+            - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
+    
+    Returns:
+        tuple: (success, modified_content)
     """
     func_name = myself()
     logger.info("Replacing text in variable")
@@ -318,28 +452,56 @@ def replace(self, param):
     task_store = param.get("task_store")
     task_success = True
     error_msg = ""
+    output_data = None
 
-    required_params = ['varname', 'leftvalue', 'rightvalue']
+    required_params = ['leftvalue', 'rightvalue']
 
     try:
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        varname = gdict['varname']
         leftvalue = gdict['leftvalue']
         rightvalue = gdict['rightvalue']
 
-        logger.debug(f"Variable: {varname}, Replace: '{leftvalue}' -> '{rightvalue}'")
+        # Determina il contenuto su cui operare
+        original = None
+        
+        # 1. Se c'è input dal task precedente
+        if 'input' in param:
+            prev_input = param.get('input')
+            if isinstance(prev_input, dict) and 'content' in prev_input:
+                original = prev_input['content']
+                logger.info("Using content from previous task")
+            elif isinstance(prev_input, str):
+                original = prev_input
+        
+        # 2. Altrimenti usa varname (retrocompatibilità)
+        if original is None:
+            if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
+                raise ValueError("No input data and varname not specified")
+            varname = gdict['varname']
+            if varname not in gdict:
+                raise ValueError(f"Variable '{varname}' not found")
+            original = gdict[varname]
 
-        if varname not in gdict:
-            raise ValueError(f"Variable '{varname}' not found")
+        logger.debug(f"Replace: '{leftvalue}' -> '{rightvalue}'")
 
-        original = gdict[varname]
         modified = str(original).replace(leftvalue, rightvalue)
-        gdict[varname] = modified
+        
+        # Salva in gdict se varname è specificato (retrocompatibilità)
+        if 'varname' in gdict:
+            gdict[gdict['varname']] = modified
 
-        occurrences = original.count(leftvalue)
-        logger.info(f"Replaced {occurrences} occurrence(s) in variable '{varname}'")
+        occurrences = str(original).count(leftvalue)
+        logger.info(f"Replaced {occurrences} occurrence(s)")
+        
+        # Output data per propagation
+        output_data = {
+            'content': modified,
+            'occurrences': occurrences,
+            'leftvalue': leftvalue,
+            'rightvalue': rightvalue
+        }
 
     except Exception as e:
         task_success = False
@@ -349,19 +511,24 @@ def replace(self, param):
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    return task_success
+    return task_success, output_data
 
 
 @oacommon.trace
 def loadvarfromjson(self, param):
     """
-    Carica variabili da un file JSON nel gdict
+    Carica variabili da un file JSON nel gdict con data propagation
 
     Args:
         param: dict con:
-            - filename
+            - filename (può usare input da task precedente)
+            - input (opzionale, da task precedente)
+            - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
+    
+    Returns:
+        tuple: (success, json_data) - ritorna i dati JSON parsati
     """
     func_name = myself()
     logger.info("Loading variables from JSON file")
@@ -370,8 +537,19 @@ def loadvarfromjson(self, param):
     task_store = param.get("task_store")
     task_success = True
     error_msg = ""
+    output_data = None
 
     try:
+        # Se filename non è specificato, usa l'input dal task precedente
+        if 'filename' not in param and 'input' in param:
+            prev_input = param.get('input')
+            if isinstance(prev_input, dict):
+                if 'filepath' in prev_input:
+                    param['filename'] = prev_input['filepath']
+                elif 'filename' in prev_input:
+                    param['filename'] = prev_input['filename']
+                logger.info(f"Using filename from previous task: {param.get('filename')}")
+        
         if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
@@ -394,6 +572,9 @@ def loadvarfromjson(self, param):
             logger.debug(f"Loaded variable: {key}")
 
         logger.info(f"Loaded {var_count} variables from JSON")
+        
+        # Output data per propagation - ritorna i dati JSON
+        output_data = jdata
 
     except json.JSONDecodeError as e:
         task_success = False
@@ -402,9 +583,9 @@ def loadvarfromjson(self, param):
     except Exception as e:
         task_success = False
         error_msg = str(e)
-        logger.error(f"Failed to load JSON file: {e}", excinfo=True)
+        logger.error(f"Failed to load JSON file: {e}", exc_info=True)
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    return task_success
+    return task_success, output_data
