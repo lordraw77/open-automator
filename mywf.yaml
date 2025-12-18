@@ -24,19 +24,19 @@
     on_success: notify_ok
     on_failure: notify_ko
 
-  - name: notify_ok
+  - name: notify_ko
     module: oa-notify
     function: sendtelegramnotify
     tokenid: ${WALLET:telegram_token}
     chatid: ["${WALLET:telegram_chatid}"]
-    message: "Workflow OK"
+    message: "Workflow ko"
     on_success: end
 
   - name: notify_ok
     module: oa-notify
     function: sendtelegramnotify
-    tokenid: "7943971548:AAF4WG6g8K2N3hC2l9xZJmkG--5xcCeGdZg"
-    chatid: ["18278029"]
+    tokenid: ${WALLET:telegram_token}
+    chatid: ["${WALLET:telegram_chatid}"]
     message: "Workflow OK"
     printresponse: true
     on_success: end
