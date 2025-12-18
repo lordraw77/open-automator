@@ -76,8 +76,8 @@ def sendtelegramnotify(self, param):
         if not oacommon.checkandloadparam(self, myself, 'tokenid', 'chatid', 'message', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        tokenid = gdict['tokenid']
-        chatid = gdict['chatid']
+        tokenid = oacommon.effify(gdict['tokenid'])
+        chatid = oacommon.effify(gdict['chatid'])
         message = oacommon.effify(gdict['message'])
 
         logger.debug(f"Sending to {len(chatid)} chat(s)")

@@ -9,7 +9,9 @@ import chardet
 import paramiko
 import logging
 from logger_config import AutomatorLogger
-
+import os
+import re
+from wallet import Wallet
 # Logger per questo modulo
 logger = AutomatorLogger.get_logger('oacommon')
 
@@ -27,20 +29,85 @@ def trace(f):
 
 myself = lambda: inspect.stack()[1][3]
 
+# Cache del wallet (caricato una volta sola)
+_wallet_instance = None
+
+def get_wallet():
+    """Ottiene istanza del wallet (lazy loading)"""
+    global _wallet_instance
+    
+    if _wallet_instance is None:
+        try:
+            wallet_password = os.environ.get('OA_WALLET_PASSWORD')
+            if wallet_password:
+                _wallet_instance = Wallet(wallet_file='wallet.enc', master_password=wallet_password)
+                _wallet_instance.load_wallet()
+                logger.debug(f"Wallet loaded: {len(_wallet_instance.secrets)} secrets")
+            else:
+                logger.warning("OA_WALLET_PASSWORD not set - wallet unavailable")
+        except Exception as e:
+            logger.error(f"Failed to load wallet: {e}")
+            _wallet_instance = None
+    
+    return _wallet_instance
+
 
 def effify(nonfstr):
     """
-    Evalua f-string con interpolazione variabili da gdict
-    ATTENZIONE: Questa funzione usa eval() ed è potenzialmente pericolosa
+    Evalua f-string con interpolazione variabili da gdict e wallet
+    Supporta:
+    - {VARNAME} -> variabili da gdict
+    - ${WALLET:key} -> variabili dal wallet cifrato
+    - ${ENV:VAR} -> variabili ambiente
     """
     try:
+        result = str(nonfstr)
+        #print(f"DEBUG effify INPUT: {result}")
+        
+        # 1. PRIMA: Interpola {VARNAME} da gdict
         globals().update(gdict)
-        result = eval(f'f"{nonfstr}"')
-        logger.debug(f"Variable interpolation: '{nonfstr}' -> '{result}'")
+        result = eval(f'f"{result}"')
+        #print(f"DEBUG after gdict eval: {result}")
+        
+        # 2. POI: Sostituisci ${WALLET:key}
+        wallet_pattern = r'\$\{WALLET:(\w+)\}'
+        wallet_matches = list(re.finditer(wallet_pattern, result))
+        
+        #print(f"DEBUG wallet matches: {len(wallet_matches)}")
+        
+        if wallet_matches:
+            wallet = get_wallet()
+            #print(f"DEBUG wallet loaded: {wallet is not None and wallet.loaded}")
+            if wallet and wallet.loaded:
+                for match in wallet_matches:
+                    key = match.group(1)
+                    try:
+                        value = wallet.get_secret(key)
+                        result = result.replace(match.group(0), str(value))
+                        #print(f"DEBUG Wallet substitution: ${{WALLET:{key}}} -> ***")
+                    except KeyError:
+                        logger.warning(f"Wallet key not found: {key}")
+            else:
+                logger.warning("Wallet not available - skipping ${WALLET:...} substitution")
+        
+        # 3. INFINE: Sostituisci ${ENV:VAR}
+        env_pattern = r'\$\{ENV:(\w+)\}'
+        for match in re.finditer(env_pattern, result):
+            var = match.group(1)
+            value = os.environ.get(var)
+            if value:
+                result = result.replace(match.group(0), value)
+                #print(f"DEBUG Env substitution: ${{ENV:{var}}} -> {value}")
+        
+        print(f"DEBUG effify OUTPUT: {result}")
         return result
+        
     except Exception as e:
         logger.error(f"Failed to interpolate variable: '{nonfstr}' - {e}")
         return nonfstr
+
+
+
 
 
 def setgdict(self, gdict_param):

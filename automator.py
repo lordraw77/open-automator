@@ -569,6 +569,11 @@ def main():
             raise ValueError("Invalid YAML structure - expected 'tasks' key")
         
         tasks = conf[0]['tasks']
+
+        for k, v in conf[0].items():
+            if k != 'tasks':
+                gdict[k] = v
+        
         sizetask = len(tasks)
         
         logger.info(f"Found {sizetask} tasks to execute")

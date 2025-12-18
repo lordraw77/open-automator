@@ -175,7 +175,7 @@ def select(self, param):
 
         # Salva su file JSON
         if oacommon.checkparam('tojsonfile', param):
-            tojsonfile = param['tojsonfile']
+            tojsonfile = oacommon.effify(param['tojsonfile'])
             if format_type == 'json':
                 oacommon.writefile(filename=tojsonfile, data=formatted_results)
             else:
@@ -319,7 +319,7 @@ def execute(self, param):
 
         # Salva su file JSON se richiesto
         if oacommon.checkparam('tojsonfile', param):
-            tojsonfile = param['tojsonfile']
+            tojsonfile = oacommon.effify(param['tojsonfile'])
             result_json = {
                 'rows_affected': rows_affected,
                 'statement': statement,
