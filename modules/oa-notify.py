@@ -1,6 +1,7 @@
 """
 Open-Automator Notify Module
 Gestisce notifiche (Telegram, Email) con data propagation
+Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
 """
 
 import oacommon
@@ -24,7 +25,6 @@ def setgdict(self, gdict_param):
 
 myself = lambda: inspect.stack()[1][3]
 
-
 @oacommon.trace
 def sendtelegramnotify(self, param):
     """
@@ -32,15 +32,15 @@ def sendtelegramnotify(self, param):
 
     Args:
         param: dict con:
-            - tokenid: token del bot Telegram
-            - chatid: lista di chat_id
-            - message: messaggio da inviare (può venire da input precedente)
+            - tokenid: token del bot Telegram - supporta {WALLET:key}, {ENV:var}
+            - chatid: lista di chat_id - supporta {WALLET:key}, {ENV:var}
+            - message: messaggio da inviare (può venire da input precedente) - supporta {WALLET:key}, {ENV:var}
             - printresponse: (opzionale) stampa response
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sull'invio
     """
@@ -72,13 +72,23 @@ def sendtelegramnotify(self, param):
             elif isinstance(prev_input, str):
                 param['message'] = prev_input
                 logger.info("Using string from previous task as message")
-        
+
         if not oacommon.checkandloadparam(self, myself, 'tokenid', 'chatid', 'message', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        tokenid = oacommon.effify(gdict['tokenid'])
-        chatid = oacommon.effify(gdict['chatid'])
-        message = oacommon.effify(gdict['message'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder (IMPORTANTE per token sensibili!)
+        tokenid = oacommon.get_param(param, 'tokenid', wallet) or gdict.get('tokenid')
+        chatid_param = oacommon.get_param(param, 'chatid', wallet) or gdict.get('chatid')
+        message = oacommon.get_param(param, 'message', wallet) or gdict.get('message')
+
+        # Assicurati che chatid sia una lista
+        if isinstance(chatid_param, str):
+            chatid = [chatid_param]
+        else:
+            chatid = chatid_param
 
         logger.debug(f"Sending to {len(chatid)} chat(s)")
         logger.debug(f"Message length: {len(message)} chars")
@@ -92,7 +102,7 @@ def sendtelegramnotify(self, param):
                 '/sendMessage?chat_id=' + cid +
                 '&parse_mode=Markdown&text=' + message
             )
-            
+
             try:
                 response = requests.get(send_text, timeout=10)
 
@@ -114,7 +124,7 @@ def sendtelegramnotify(self, param):
                 if oacommon.checkparam('printresponse', param):
                     if param['printresponse']:
                         logger.info(f"Response: {response.json()}")
-            
+
             except requests.exceptions.RequestException as e:
                 error_detail = f"Connection error for chat {cid}: {str(e)}"
                 logger.error(error_detail)
@@ -129,7 +139,7 @@ def sendtelegramnotify(self, param):
             error_msg = f"{len(failed_sends)} chat(s) failed"
 
         logger.info(f"Telegram notification completed: {len(successful_sends)} sent, {len(failed_sends)} failed")
-        
+
         # Output data per propagation
         output_data = {
             'total_chats': len(chatid),
@@ -151,7 +161,6 @@ def sendtelegramnotify(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def sendmailbygmail(self, param):
     """
@@ -159,17 +168,17 @@ def sendmailbygmail(self, param):
 
     Args:
         param: dict con:
-            - senderemail: email mittente
-            - receiveremail: email destinatario
-            - senderpassword: password mittente
-            - subject: oggetto email
-            - messagetext: (opzionale) testo plain
-            - messagehtml: (opzionale) testo HTML
+            - senderemail: email mittente - supporta {WALLET:key}, {ENV:var}
+            - receiveremail: email destinatario - supporta {WALLET:key}, {ENV:var}
+            - senderpassword: password mittente - supporta {WALLET:key}, {VAULT:key}
+            - subject: oggetto email - supporta {WALLET:key}, {ENV:var}
+            - messagetext: (opzionale) testo plain - supporta {WALLET:key}, {ENV:var}
+            - messagehtml: (opzionale) testo HTML - supporta {WALLET:key}, {ENV:var}
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sull'invio
     """
@@ -197,16 +206,20 @@ def sendmailbygmail(self, param):
             elif isinstance(prev_input, str):
                 param['messagetext'] = prev_input
                 logger.info("Using string from previous task as message")
-        
+
         if not oacommon.checkandloadparam(
             self, myself, 'senderemail', 'receiveremail', 'senderpassword', 'subject', param=param
         ):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        senderemail = gdict['senderemail']
-        receiveremail = gdict['receiveremail']
-        password = gdict['senderpassword']
-        subject = gdict['subject']
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder (CRITICAMENTE IMPORTANTE per password!)
+        senderemail = oacommon.get_param(param, 'senderemail', wallet) or gdict.get('senderemail')
+        receiveremail = oacommon.get_param(param, 'receiveremail', wallet) or gdict.get('receiveremail')
+        password = oacommon.get_param(param, 'senderpassword', wallet) or gdict.get('senderpassword')
+        subject = oacommon.get_param(param, 'subject', wallet) or gdict.get('subject')
 
         logger.debug(f"From: {senderemail}")
         logger.debug(f"To: {receiveremail}")
@@ -222,21 +235,21 @@ def sendmailbygmail(self, param):
         message_type = None
 
         if oacommon.checkparam('messagetext', param) and not oacommon.checkparam('messagehtml', param):
-            text = oacommon.effify(param['messagetext'])
+            text = oacommon.get_param(param, 'messagetext', wallet) or param.get('messagetext', '')
             part1 = MIMEText(text, "plain")
             message.attach(part1)
             message_type = "plain"
             logger.debug(f"Plain text message: {len(text)} chars")
         elif oacommon.checkparam('messagehtml', param) and not oacommon.checkparam('messagetext', param):
-            html = oacommon.effify(param['messagehtml'])
+            html = oacommon.get_param(param, 'messagehtml', wallet) or param.get('messagehtml', '')
             part2 = MIMEText(html, "html")
             message.attach(part2)
             message_type = "html"
             logger.debug(f"HTML message: {len(html)} chars")
         elif oacommon.checkparam('messagetext', param) and oacommon.checkparam('messagehtml', param):
-            text = oacommon.effify(param['messagetext'])
+            text = oacommon.get_param(param, 'messagetext', wallet) or param.get('messagetext', '')
             part1 = MIMEText(text, "plain")
-            html = oacommon.effify(param['messagehtml'])
+            html = oacommon.get_param(param, 'messagehtml', wallet) or param.get('messagehtml', '')
             part2 = MIMEText(html, "html")
             message.attach(part1)
             message.attach(part2)
@@ -246,7 +259,7 @@ def sendmailbygmail(self, param):
             raise ValueError("messagetext or messagehtml are required.")
 
         context = ssl.create_default_context()
-        
+
         logger.debug("Connecting to Gmail SMTP server...")
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
             server.login(senderemail, password)
@@ -254,7 +267,7 @@ def sendmailbygmail(self, param):
             server.sendmail(senderemail, receiveremail, message.as_string())
 
         logger.info(f"Email sent successfully to {receiveremail}")
-        
+
         # Output data per propagation
         output_data = {
             'from': senderemail,
@@ -286,7 +299,6 @@ def sendmailbygmail(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def formatmessage(self, param):
     """
@@ -294,14 +306,14 @@ def formatmessage(self, param):
 
     Args:
         param: dict con:
-            - template: (opzionale) template del messaggio con placeholder {key}
+            - template: (opzionale) template del messaggio con placeholder {key} - supporta {WALLET:key}, {ENV:var}
             - data: (opzionale) dict con dati da formattare
             - format: (opzionale) 'json', 'text', 'markdown'
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, formatted_message)
     """
@@ -315,32 +327,35 @@ def formatmessage(self, param):
     output_data = None
 
     try:
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
         # Determina i dati da formattare
         data = None
-        
+
         if 'data' in param:
             data = param['data']
         elif 'input' in param:
             data = param.get('input')
             logger.info("Using data from previous task")
-        
+
         if data is None:
             raise ValueError("No data to format")
-        
-        # Formato
-        format_type = param.get('format', 'text')
-        
+
+        # Formato (con supporto placeholder)
+        format_type = oacommon.get_param(param, 'format', wallet) or param.get('format', 'text')
+
         formatted_message = None
-        
-        # Se c'è un template, usalo
+
+        # Se c'è un template, usalo (con supporto placeholder nel template stesso!)
         if 'template' in param:
-            template = param['template']
+            template = oacommon.get_param(param, 'template', wallet) or param.get('template')
             if isinstance(data, dict):
                 formatted_message = template.format(**data)
                 logger.debug("Message formatted using template")
             else:
                 formatted_message = template.format(data=data)
-        
+
         # Altrimenti formatta secondo il tipo
         elif format_type == 'json':
             formatted_message = json.dumps(data, indent=2, ensure_ascii=False)
@@ -351,7 +366,7 @@ def formatmessage(self, param):
                     lines.append(f"• **{key}**: {value}")
                 formatted_message = '\n'.join(lines)
             else:
-                formatted_message = f"``````"
+                formatted_message = f"```{str(data)}```"
         else:  # text
             if isinstance(data, dict):
                 lines = []
@@ -360,9 +375,9 @@ def formatmessage(self, param):
                 formatted_message = '\n'.join(lines)
             else:
                 formatted_message = str(data)
-        
+
         logger.info(f"Message formatted successfully ({format_type}): {len(formatted_message)} chars")
-        
+
         # Output: il messaggio formattato
         output_data = {
             'content': formatted_message,

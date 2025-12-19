@@ -29,14 +29,14 @@ def copy(self, param):
 
     Args:
         param: dict con:
-            - srcpath
-            - dstpath
-            - recursive
+            - srcpath: path sorgente - supporta {WALLET:key}, {ENV:var}
+            - dstpath: path destinazione - supporta {WALLET:key}, {ENV:var}
+            - recursive: True per directory, False per file singolo
             - input (opzionale, da task precedente)
             - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
-    
+
     Returns:
         tuple: (success, output_dict) con informazioni sulla copia
     """
@@ -55,8 +55,12 @@ def copy(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        srcpath = oacommon.effify(gdict['srcpath'])
-        dstpath = oacommon.effify(gdict['dstpath'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        srcpath = oacommon.get_param(param, 'srcpath', wallet) or gdict.get('srcpath')
+        dstpath = oacommon.get_param(param, 'dstpath', wallet) or gdict.get('dstpath')
         recursive = gdict['recursive']
 
         logger.info(f"Copy: {srcpath} -> {dstpath} (recursive: {recursive})")
@@ -75,7 +79,7 @@ def copy(self, param):
             file_count = 1
 
         logger.info("Copy completed successfully")
-        
+
         # Output data per propagation
         output_data = {
             'srcpath': srcpath,
@@ -95,16 +99,27 @@ def copy(self, param):
     # Ritorna tupla (success, output)
     return task_success, output_data
 
-
-def zipdir(paths, zipfilter, ziph):
+def zipdir(paths, zipfilter, ziph, wallet=None):
     """
-    Helper function per comprimere directory.
-    
+    Helper function per comprimere directory con supporto placeholder.
+
+    Args:
+        paths: lista di path da comprimere
+        zipfilter: filtro per i file
+        ziph: handle del file ZIP
+        wallet: wallet instance per risolvere placeholder
+
     Nota: funzione di supporto interna, non è un task
     e non gestisce task_id / task_store.
     """
     for path in paths:
-        path = oacommon.effify(path)
+        # Risolvi placeholder nel path se presente wallet
+        if wallet and isinstance(path, str) and ('{WALLET:' in path or '{ENV:' in path or '{VAULT:' in path):
+            from wallet import resolve_placeholders
+            path = resolve_placeholders(path, wallet)
+        else:
+            path = oacommon.effify(path)
+
         logger.debug(f"Processing path for ZIP: {path}")
 
         for root, dirs, files in os.walk(path):
@@ -115,7 +130,6 @@ def zipdir(paths, zipfilter, ziph):
                     ziph.write(filepath, arcname)
                     logger.debug(f"Added to ZIP: {arcname}")
 
-
 @oacommon.trace
 def zip(self, param):
     """
@@ -123,14 +137,14 @@ def zip(self, param):
 
     Args:
         param: dict con:
-            - zipfilename
-            - pathtozip (può usare input da task precedente)
-            - zipfilter
+            - zipfilename: nome file ZIP - supporta {WALLET:key}, {ENV:var}
+            - pathtozip: path da comprimere (può usare input da task precedente) - supporta {ENV:var}
+            - zipfilter: filtro file (es. "*.txt" o "*")
             - input (opzionale, da task precedente)
             - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
-    
+
     Returns:
         tuple: (success, output_dict) con info sul ZIP creato
     """
@@ -152,24 +166,28 @@ def zip(self, param):
             if isinstance(prev_input, dict) and 'dstpath' in prev_input:
                 param['pathtozip'] = [prev_input['dstpath']]
                 logger.info(f"Using path from previous task: {param['pathtozip']}")
-        
+
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        zipfilename = oacommon.effify(gdict['zipfilename'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        zipfilename = oacommon.get_param(param, 'zipfilename', wallet) or gdict.get('zipfilename')
         pathtozip = gdict['pathtozip']
-        zipfilter = gdict['zipfilter']
+        zipfilter = oacommon.get_param(param, 'zipfilter', wallet) or gdict.get('zipfilter')
 
         logger.info(f"ZIP file: {zipfilename}")
         logger.debug(f"Paths to compress: {pathtozip}")
         logger.debug(f"Filter: {zipfilter}")
 
         with zipfile.ZipFile(zipfilename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            zipdir(pathtozip, zipfilter, zipf)
+            zipdir(pathtozip, zipfilter, zipf, wallet)
 
         zip_size = os.path.getsize(zipfilename)
         logger.info(f"ZIP archive created successfully: {zipfilename} ({zip_size} bytes)")
-        
+
         # Output data per propagation
         output_data = {
             'zipfilename': zipfilename,
@@ -188,7 +206,6 @@ def zip(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def unzip(self, param):
     """
@@ -196,13 +213,13 @@ def unzip(self, param):
 
     Args:
         param: dict con:
-            - zipfilename (può usare input da task precedente)
-            - pathwhereunzip
+            - zipfilename: file ZIP da estrarre (può usare input da task precedente) - supporta {ENV:var}
+            - pathwhereunzip: directory destinazione - supporta {ENV:var}
             - input (opzionale, da task precedente)
             - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
-    
+
     Returns:
         tuple: (success, output_dict) con info sull'estrazione
     """
@@ -224,12 +241,16 @@ def unzip(self, param):
             if isinstance(prev_input, dict) and 'zipfilename' in prev_input:
                 param['zipfilename'] = prev_input['zipfilename']
                 logger.info(f"Using ZIP from previous task: {param['zipfilename']}")
-        
+
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        zipfilename = oacommon.effify(gdict['zipfilename'])
-        pathwhereunzip = oacommon.effify(gdict['pathwhereunzip'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        zipfilename = oacommon.get_param(param, 'zipfilename', wallet) or gdict.get('zipfilename')
+        pathwhereunzip = oacommon.get_param(param, 'pathwhereunzip', wallet) or gdict.get('pathwhereunzip')
 
         logger.info(f"Extracting: {zipfilename} -> {pathwhereunzip}")
 
@@ -244,7 +265,7 @@ def unzip(self, param):
             zipf.extractall(pathwhereunzip)
 
         logger.info(f"ZIP extraction completed: {file_count} files extracted")
-        
+
         # Output data per propagation
         output_data = {
             'zipfilename': zipfilename,
@@ -262,7 +283,6 @@ def unzip(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def readfile(self, param):
     """
@@ -270,13 +290,13 @@ def readfile(self, param):
 
     Args:
         param: dict con:
-            - filename (può usare input da task precedente)
+            - filename: file da leggere (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
             - varname (opzionale se si vuole solo ritornare il contenuto)
             - input (opzionale, da task precedente)
             - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
-    
+
     Returns:
         tuple: (success, file_content) - il contenuto del file viene propagato
     """
@@ -300,24 +320,28 @@ def readfile(self, param):
                 elif 'filepath' in prev_input:
                     param['filename'] = prev_input['filepath']
                 logger.info(f"Using filename from previous task: {param.get('filename')}")
-        
+
         if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        filename = oacommon.effify(gdict['filename'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        filename = oacommon.get_param(param, 'filename', wallet) or gdict.get('filename')
         varname = gdict.get('varname')  # Opzionale
 
         logger.info(f"Reading file: {filename}")
 
         content = oacommon.readfile(filename)
-        
+
         # Salva in gdict se varname è specificato (retrocompatibilità)
         if varname:
             gdict[varname] = content
             logger.debug(f"Content saved to variable: {varname}")
 
         logger.info(f"File read successfully: {len(content)} characters")
-        
+
         # Output data per propagation - ritorna il contenuto
         output_data = {
             'filename': filename,
@@ -335,7 +359,6 @@ def readfile(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def writefile(self, param):
     """
@@ -343,14 +366,14 @@ def writefile(self, param):
 
     Args:
         param: dict con:
-            - filename
+            - filename: file da scrivere - supporta {WALLET:key}, {ENV:var}
             - varname (opzionale se c'è input dal task precedente)
-            - content (opzionale, alternativa a varname)
+            - content (opzionale, alternativa a varname) - supporta {WALLET:key}, {ENV:var}
             - input (opzionale, da task precedente)
             - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
-    
+
     Returns:
         tuple: (success, output_dict) con info sul file scritto
     """
@@ -364,14 +387,19 @@ def writefile(self, param):
     output_data = None
 
     try:
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
         # Determina il contenuto da scrivere
         content = None
-        
-        # 1. Se c'è 'content' esplicito, usalo
+
+        # 1. Se c'è 'content' esplicito, usalo (con supporto placeholder)
         if 'content' in param:
-            content = str(param['content'])
+            content = oacommon.get_param(param, 'content', wallet)
+            if content is None:
+                content = str(param['content'])
             logger.debug("Using explicit 'content' parameter")
-        
+
         # 2. Se c'è input dal task precedente, usalo
         elif 'input' in param:
             prev_input = param.get('input')
@@ -384,7 +412,7 @@ def writefile(self, param):
             elif isinstance(prev_input, (dict, list)):
                 content = json.dumps(prev_input, indent=2)
                 logger.info("Converting dict/list input to JSON")
-        
+
         # 3. Altrimenti usa varname da gdict (retrocompatibilità)
         elif 'varname' in param:
             if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
@@ -394,21 +422,22 @@ def writefile(self, param):
                 raise ValueError(f"Variable '{varname}' not found in gdict")
             content = str(gdict[varname])
             logger.debug(f"Using content from gdict variable: {varname}")
-        
+
         if content is None:
             raise ValueError("No content to write (provide 'content', 'varname', or pipe from previous task)")
-        
+
         if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameter 'filename' for {func_name}")
 
-        filename = oacommon.effify(gdict['filename'])
+        # Usa get_param per supportare placeholder
+        filename = oacommon.get_param(param, 'filename', wallet) or gdict.get('filename')
 
         logger.info(f"Writing to file: {filename}")
 
         oacommon.writefile(filename, content)
 
         logger.info(f"File written successfully: {len(content)} characters")
-        
+
         # Output data per propagation
         output_data = {
             'filename': filename,
@@ -426,7 +455,6 @@ def writefile(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def replace(self, param):
     """
@@ -435,13 +463,13 @@ def replace(self, param):
     Args:
         param: dict con:
             - varname (opzionale se c'è input)
-            - leftvalue
-            - rightvalue
+            - leftvalue: testo da cercare
+            - rightvalue: testo sostitutivo
             - input (opzionale, da task precedente)
             - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
-    
+
     Returns:
         tuple: (success, modified_content)
     """
@@ -460,12 +488,16 @@ def replace(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        leftvalue = gdict['leftvalue']
-        rightvalue = gdict['rightvalue']
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # leftvalue e rightvalue potrebbero contenere placeholder
+        leftvalue = oacommon.get_param(param, 'leftvalue', wallet) or gdict.get('leftvalue')
+        rightvalue = oacommon.get_param(param, 'rightvalue', wallet) or gdict.get('rightvalue')
 
         # Determina il contenuto su cui operare
         original = None
-        
+
         # 1. Se c'è input dal task precedente
         if 'input' in param:
             prev_input = param.get('input')
@@ -474,7 +506,7 @@ def replace(self, param):
                 logger.info("Using content from previous task")
             elif isinstance(prev_input, str):
                 original = prev_input
-        
+
         # 2. Altrimenti usa varname (retrocompatibilità)
         if original is None:
             if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
@@ -487,14 +519,14 @@ def replace(self, param):
         logger.debug(f"Replace: '{leftvalue}' -> '{rightvalue}'")
 
         modified = str(original).replace(leftvalue, rightvalue)
-        
+
         # Salva in gdict se varname è specificato (retrocompatibilità)
         if 'varname' in gdict:
             gdict[gdict['varname']] = modified
 
         occurrences = str(original).count(leftvalue)
         logger.info(f"Replaced {occurrences} occurrence(s)")
-        
+
         # Output data per propagation
         output_data = {
             'content': modified,
@@ -513,7 +545,6 @@ def replace(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def loadvarfromjson(self, param):
     """
@@ -521,12 +552,12 @@ def loadvarfromjson(self, param):
 
     Args:
         param: dict con:
-            - filename (può usare input da task precedente)
+            - filename: file JSON (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
             - input (opzionale, da task precedente)
             - workflow_context (opzionale)
             - task_id (opzionale)
             - task_store (opzionale)
-    
+
     Returns:
         tuple: (success, json_data) - ritorna i dati JSON parsati
     """
@@ -549,11 +580,15 @@ def loadvarfromjson(self, param):
                 elif 'filename' in prev_input:
                     param['filename'] = prev_input['filename']
                 logger.info(f"Using filename from previous task: {param.get('filename')}")
-        
+
         if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        filename = oacommon.effify(gdict['filename'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        filename = oacommon.get_param(param, 'filename', wallet) or gdict.get('filename')
 
         logger.info(f"Loading JSON: {filename}")
 
@@ -572,7 +607,7 @@ def loadvarfromjson(self, param):
             logger.debug(f"Loaded variable: {key}")
 
         logger.info(f"Loaded {var_count} variables from JSON")
-        
+
         # Output data per propagation - ritorna i dati JSON
         output_data = jdata
 

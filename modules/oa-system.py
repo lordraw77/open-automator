@@ -1,6 +1,7 @@
 """
 Open-Automator System Module
 Gestisce operazioni di sistema locale e remoto (SSH, SCP, comandi) con data propagation
+Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
 """
 
 import oacommon
@@ -23,7 +24,6 @@ def setgdict(self, gdict_param):
     gdict = gdict_param
     self.gdict = gdict_param
 
-
 @oacommon.trace
 def runcmd(self, param):
     """
@@ -31,7 +31,7 @@ def runcmd(self, param):
 
     Args:
         param: dict con:
-            - command: comando da eseguire (può usare input da task precedente)
+            - command: comando da eseguire (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
             - printout: (opzionale) stampa output, default False
             - saveonvar: (opzionale) salva output in variabile
             - shell: (opzionale) usa shell, default True
@@ -40,7 +40,7 @@ def runcmd(self, param):
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con output del comando
     """
@@ -66,16 +66,21 @@ def runcmd(self, param):
                 logger.info("Using command from previous task")
             elif isinstance(prev_input, str):
                 param['command'] = prev_input
-        
+
         if not oacommon.checkandloadparam(self, myself, "command", param=param):
             raise ValueError(f"Missing required parameter 'command' for {func_name}")
 
-        command = oacommon.effify(gdict["command"])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        command = oacommon.get_param(param, 'command', wallet) or gdict.get('command')
+
         printout = param.get("printout", False)
         use_shell = param.get("shell", True)
         timeout = param.get("timeout", None)
 
-        logger.info(f"Command: {command}")
+        logger.info(f"Command: {command[:100]}..." if len(command) > 100 else f"Command: {command}")
         if timeout:
             logger.debug(f"Timeout: {timeout}s")
 
@@ -89,7 +94,7 @@ def runcmd(self, param):
                 timeout=timeout,
                 text=True
             )
-            
+
             stdout = result.stdout
             stderr = result.stderr
             return_code = result.returncode
@@ -149,7 +154,6 @@ def runcmd(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def systemd(self, param):
     """
@@ -157,15 +161,18 @@ def systemd(self, param):
 
     Args:
         param: dict con:
-            - remoteserver, remoteuser, remotepassword, remoteport
-            - servicename: nome del servizio
+            - remoteserver: host remoto - supporta {WALLET:key}, {ENV:var}
+            - remoteuser: username SSH - supporta {WALLET:key}, {ENV:var}
+            - remotepassword: password SSH - supporta {WALLET:key}, {VAULT:key}
+            - remoteport: porta SSH - supporta {ENV:var}
+            - servicename: nome del servizio - supporta {WALLET:key}, {ENV:var}
             - servicestate: start|stop|restart|status|daemon-reload
             - saveonvar: (opzionale) salva output in variabile
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con output systemd
     """
@@ -190,15 +197,19 @@ def systemd(self, param):
             if isinstance(prev_input, dict) and 'servicename' in prev_input:
                 param['servicename'] = prev_input['servicename']
                 logger.info("Using servicename from previous task")
-        
+
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        remoteserver = oacommon.effify(gdict['remoteserver'])
-        remoteuser = oacommon.effify(gdict['remoteuser'])
-        remotepassword = oacommon.effify(gdict['remotepassword'])
-        remoteport = oacommon.effify(gdict['remoteport'])
-        servicename = oacommon.effify(gdict['servicename'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder (CRITICO per password SSH!)
+        remoteserver = oacommon.get_param(param, 'remoteserver', wallet) or gdict.get('remoteserver')
+        remoteuser = oacommon.get_param(param, 'remoteuser', wallet) or gdict.get('remoteuser')
+        remotepassword = oacommon.get_param(param, 'remotepassword', wallet) or gdict.get('remotepassword')
+        remoteport = oacommon.get_param(param, 'remoteport', wallet) or gdict.get('remoteport')
+        servicename = oacommon.get_param(param, 'servicename', wallet) or gdict.get('servicename')
         servicestate = gdict['servicestate']
 
         logger.info(f"Service: {servicename}, State: {servicestate} on {remoteserver}")
@@ -244,7 +255,6 @@ def systemd(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def remotecommand(self, param):
     """
@@ -252,14 +262,17 @@ def remotecommand(self, param):
 
     Args:
         param: dict con:
-            - remoteserver, remoteuser, remotepassword, remoteport
-            - command: comando da eseguire (può usare input da task precedente)
+            - remoteserver: host remoto - supporta {WALLET:key}, {ENV:var}
+            - remoteuser: username SSH - supporta {WALLET:key}, {ENV:var}
+            - remotepassword: password SSH - supporta {WALLET:key}, {VAULT:key}
+            - remoteport: porta SSH - supporta {ENV:var}
+            - command: comando da eseguire (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
             - saveonvar: (opzionale) salva output in variabile
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con output del comando remoto
     """
@@ -286,18 +299,22 @@ def remotecommand(self, param):
                 logger.info("Using command from previous task")
             elif isinstance(prev_input, str):
                 param['command'] = prev_input
-        
+
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        remoteserver = oacommon.effify(gdict['remoteserver'])
-        remoteuser = oacommon.effify(gdict['remoteuser'])
-        remotepassword = oacommon.effify(gdict['remotepassword'])
-        remoteport = oacommon.effify(gdict['remoteport'])
-        command = oacommon.effify(gdict['command'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder (CRITICO per password SSH!)
+        remoteserver = oacommon.get_param(param, 'remoteserver', wallet) or gdict.get('remoteserver')
+        remoteuser = oacommon.get_param(param, 'remoteuser', wallet) or gdict.get('remoteuser')
+        remotepassword = oacommon.get_param(param, 'remotepassword', wallet) or gdict.get('remotepassword')
+        remoteport = oacommon.get_param(param, 'remoteport', wallet) or gdict.get('remoteport')
+        command = oacommon.get_param(param, 'command', wallet) or gdict.get('command')
 
         logger.info(f"Target: {remoteuser}@{remoteserver}:{remoteport}")
-        logger.debug(f"Command: {command}")
+        logger.debug(f"Command: {command[:100]}..." if len(command) > 100 else f"Command: {command}")
 
         output = oacommon.sshremotecommand(
             remoteserver, remoteport, remoteuser, remotepassword, command
@@ -336,7 +353,6 @@ def remotecommand(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def scp(self, param):
     """
@@ -344,16 +360,19 @@ def scp(self, param):
 
     Args:
         param: dict con:
-            - remoteserver, remoteuser, remotepassword, remoteport
-            - localpath: path locale (può usare input da task precedente)
-            - remotepath: path remoto
+            - remoteserver: host remoto - supporta {WALLET:key}, {ENV:var}
+            - remoteuser: username SSH - supporta {WALLET:key}, {ENV:var}
+            - remotepassword: password SSH - supporta {WALLET:key}, {VAULT:key}
+            - remoteport: porta SSH - supporta {ENV:var}
+            - localpath: path locale (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
+            - remotepath: path remoto - supporta {WALLET:key}, {ENV:var}
             - recursive: True/False
             - direction: localtoremote|remotetolocal
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sul trasferimento
     """
@@ -386,27 +405,36 @@ def scp(self, param):
                 elif 'dstpath' in prev_input:
                     param['localpath'] = prev_input['dstpath']
                 logger.info("Using localpath from previous task")
-        
+
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        remoteserver = oacommon.effify(gdict['remoteserver'])
-        remoteuser = oacommon.effify(gdict['remoteuser'])
-        remotepassword = oacommon.effify(gdict['remotepassword'])
-        remoteport = oacommon.effify(gdict['remoteport'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder (CRITICO per password SSH!)
+        remoteserver = oacommon.get_param(param, 'remoteserver', wallet) or gdict.get('remoteserver')
+        remoteuser = oacommon.get_param(param, 'remoteuser', wallet) or gdict.get('remoteuser')
+        remotepassword = oacommon.get_param(param, 'remotepassword', wallet) or gdict.get('remotepassword')
+        remoteport = oacommon.get_param(param, 'remoteport', wallet) or gdict.get('remoteport')
         direction = gdict['direction']
         recursive = gdict['recursive']
 
-        # Gestione multi-path
-        if isinstance(gdict['localpath'], list):
-            localpath = list(gdict['localpath'])
-        else:
-            localpath = oacommon.effify(gdict['localpath'])
+        # Gestione multi-path con supporto placeholder
+        localpath_param = gdict['localpath']
+        remotepath_param = gdict['remotepath']
 
-        if isinstance(gdict['remotepath'], list):
-            remotepath = list(gdict['remotepath'])
+        # Risolvi placeholder per localpath
+        if isinstance(localpath_param, list):
+            localpath = [oacommon.get_param({'path': p}, 'path', wallet) or p for p in localpath_param]
         else:
-            remotepath = oacommon.effify(gdict['remotepath'])
+            localpath = oacommon.get_param(param, 'localpath', wallet) or localpath_param
+
+        # Risolvi placeholder per remotepath
+        if isinstance(remotepath_param, list):
+            remotepath = [oacommon.get_param({'path': p}, 'path', wallet) or p for p in remotepath_param]
+        else:
+            remotepath = oacommon.get_param(param, 'remotepath', wallet) or remotepath_param
 
         logger.info(f"Direction: {direction} | Target: {remoteuser}@{remoteserver}:{remoteport}")
         logger.debug(f"Local: {localpath} | Remote: {remotepath} | Recursive: {recursive}")
@@ -437,8 +465,6 @@ def scp(self, param):
             if ismultipath:
                 for i, res in enumerate(lres, 1):
                     lp, rp = res.split('|')
-                    lp = oacommon.effify(lp)
-                    rp = oacommon.effify(rp)
                     logger.debug(f"[{i}/{len(lres)}] Uploading: {lp} -> {rp}")
                     scp_client.put(lp, recursive=recursive, remote_path=rp)
                     files_transferred += 1
@@ -451,8 +477,6 @@ def scp(self, param):
             if ismultipath:
                 for i, res in enumerate(lres, 1):
                     lp, rp = res.split('|')
-                    lp = oacommon.effify(lp)
-                    rp = oacommon.effify(rp)
                     logger.debug(f"[{i}/{len(lres)}] Downloading: {rp} -> {lp}")
                     scp_client.get(remote_path=rp, local_path=lp, recursive=recursive)
                     files_transferred += 1
@@ -495,7 +519,6 @@ def scp(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def execute_script(self, param):
     """
@@ -503,15 +526,15 @@ def execute_script(self, param):
 
     Args:
         param: dict con:
-            - script_path: path dello script (può usare input da task precedente)
-            - args: (opzionale) lista di argomenti
+            - script_path: path dello script (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
+            - args: (opzionale) lista di argomenti - supporta {WALLET:key}, {ENV:var}
             - interpreter: (opzionale) interprete (es. 'python3', 'bash'), default auto-detect
             - timeout: (opzionale) timeout in secondi
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con output dello script
     """
@@ -534,12 +557,28 @@ def execute_script(self, param):
                 elif 'script_path' in prev_input:
                     param['script_path'] = prev_input['script_path']
                 logger.info("Using script path from previous task")
-        
+
         if not oacommon.checkandloadparam(self, myself, "script_path", param=param):
             raise ValueError(f"Missing required parameter 'script_path' for {func_name}")
 
-        script_path = oacommon.effify(gdict["script_path"])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        script_path = oacommon.get_param(param, 'script_path', wallet) or gdict.get('script_path')
+
+        # Args con supporto placeholder
         args = param.get("args", [])
+        if isinstance(args, list):
+            resolved_args = []
+            for arg in args:
+                if isinstance(arg, str):
+                    resolved_arg = oacommon.get_param({'arg': arg}, 'arg', wallet) or arg
+                    resolved_args.append(resolved_arg)
+                else:
+                    resolved_args.append(arg)
+            args = resolved_args
+
         interpreter = param.get("interpreter")
         timeout = param.get("timeout", None)
 

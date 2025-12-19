@@ -1,6 +1,7 @@
 """
 Open-Automator Git Module
 Gestisce operazioni Git (clone, pull, push, tag, branch) con data propagation
+Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
 """
 
 import oacommon
@@ -22,22 +23,21 @@ def setgdict(self, gdict_param):
     gdict = gdict_param
     self.gdict = gdict_param
 
-
 def run_git_command(command, cwd=None, timeout=300):
     """
     Helper per eseguire comandi git
-    
+
     Args:
         command: lista con comando git e argomenti
         cwd: directory di lavoro
         timeout: timeout in secondi
-    
+
     Returns:
         tuple: (success, stdout, stderr, return_code)
     """
     try:
         logger.debug(f"Running git command: {' '.join(command)}")
-        
+
         result = subprocess.run(
             command,
             cwd=cwd,
@@ -46,17 +46,16 @@ def run_git_command(command, cwd=None, timeout=300):
             timeout=timeout,
             text=True
         )
-        
+
         success = result.returncode == 0
         return success, result.stdout, result.stderr, result.returncode
-    
+
     except subprocess.TimeoutExpired as e:
         logger.error(f"Git command timeout after {timeout}s")
         return False, "", f"Timeout after {timeout}s", -1
     except Exception as e:
         logger.error(f"Git command failed: {e}")
         return False, "", str(e), -1
-
 
 @oacommon.trace
 def clone(self, param):
@@ -65,18 +64,18 @@ def clone(self, param):
 
     Args:
         param: dict con:
-            - repo_url: URL del repository (https o ssh)
+            - repo_url: URL del repository (https o ssh) - supporta {WALLET:key}, {ENV:var}
             - dest_path: path di destinazione locale
             - branch: (opzionale) branch specifico da clonare
             - depth: (opzionale) clone shallow con depth specificato
             - recursive: (opzionale) clone ricorsivo dei submodules, default False
-            - username: (opzionale) username per HTTPS auth
-            - password: (opzionale) password/token per HTTPS auth
+            - username: (opzionale) username per HTTPS auth - supporta {WALLET:key}, {ENV:var}
+            - password: (opzionale) password/token per HTTPS auth - supporta {WALLET:key}, {ENV:var}
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sul clone
     """
@@ -98,17 +97,21 @@ def clone(self, param):
             if isinstance(prev_input, dict) and 'repo_url' in prev_input:
                 param['repo_url'] = prev_input['repo_url']
                 logger.info("Using repo_url from previous task")
-        
+
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        repo_url = oacommon.effify(gdict['repo_url'])
-        dest_path = oacommon.effify(gdict['dest_path'])
-        branch = param.get('branch')
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder WALLET/ENV
+        repo_url = oacommon.get_param(param, 'repo_url', wallet) or gdict.get('repo_url')
+        dest_path = oacommon.get_param(param, 'dest_path', wallet) or gdict.get('dest_path')
+        branch = oacommon.get_param(param, 'branch', wallet)
         depth = param.get('depth')
         recursive = param.get('recursive', False)
-        username = param.get('username')
-        password = param.get('password')
+        username = oacommon.get_param(param, 'username', wallet)
+        password = oacommon.get_param(param, 'password', wallet)
 
         logger.info(f"Cloning repository: {repo_url}")
         logger.info(f"Destination: {dest_path}")
@@ -122,23 +125,23 @@ def clone(self, param):
         if username and password and repo_url.startswith('https://'):
             # Inserisci credenziali nell'URL
             clone_url = repo_url.replace('https://', f'https://{username}:{password}@')
-            logger.debug("Using HTTPS authentication")
+            logger.debug("Using HTTPS authentication (credentials from wallet/env)")
 
         # Costruisci comando git clone
         command = ['git', 'clone']
-        
+
         if branch:
             command.extend(['-b', branch])
             logger.debug(f"Branch: {branch}")
-        
+
         if depth:
             command.extend(['--depth', str(depth)])
             logger.debug(f"Shallow clone depth: {depth}")
-        
+
         if recursive:
             command.append('--recursive')
             logger.debug("Recursive submodule clone enabled")
-        
+
         command.extend([clone_url, dest_path])
 
         # Esegui clone
@@ -178,7 +181,6 @@ def clone(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def pull(self, param):
     """
@@ -186,14 +188,14 @@ def pull(self, param):
 
     Args:
         param: dict con:
-            - repo_path: path del repository locale
+            - repo_path: path del repository locale - supporta {ENV:var}
             - branch: (opzionale) branch da pullare
             - rebase: (opzionale) usa rebase invece di merge, default False
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sul pull
     """
@@ -216,12 +218,16 @@ def pull(self, param):
                 elif 'repo_path' in prev_input:
                     param['repo_path'] = prev_input['repo_path']
                 logger.info("Using repo_path from previous task")
-        
+
         if not oacommon.checkandloadparam(self, myself, 'repo_path', param=param):
             raise ValueError(f"Missing required parameter 'repo_path' for {func_name}")
 
-        repo_path = oacommon.effify(gdict['repo_path'])
-        branch = param.get('branch')
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
+        branch = oacommon.get_param(param, 'branch', wallet)
         rebase = param.get('rebase', False)
 
         logger.info(f"Pulling repository: {repo_path}")
@@ -232,11 +238,11 @@ def pull(self, param):
 
         # Costruisci comando git pull
         command = ['git', 'pull']
-        
+
         if rebase:
             command.append('--rebase')
             logger.debug("Using rebase mode")
-        
+
         if branch:
             command.extend(['origin', branch])
             logger.debug(f"Branch: {branch}")
@@ -284,7 +290,6 @@ def pull(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def push(self, param):
     """
@@ -292,7 +297,7 @@ def push(self, param):
 
     Args:
         param: dict con:
-            - repo_path: path del repository locale
+            - repo_path: path del repository locale - supporta {ENV:var}
             - branch: (opzionale) branch da pushare
             - remote: (opzionale) remote name, default 'origin'
             - force: (opzionale) force push, default False
@@ -301,7 +306,7 @@ def push(self, param):
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sul push
     """
@@ -324,13 +329,17 @@ def push(self, param):
                 elif 'dest_path' in prev_input:
                     param['repo_path'] = prev_input['dest_path']
                 logger.info("Using repo_path from previous task")
-        
+
         if not oacommon.checkandloadparam(self, myself, 'repo_path', param=param):
             raise ValueError(f"Missing required parameter 'repo_path' for {func_name}")
 
-        repo_path = oacommon.effify(gdict['repo_path'])
-        branch = param.get('branch')
-        remote = param.get('remote', 'origin')
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
+        branch = oacommon.get_param(param, 'branch', wallet)
+        remote = oacommon.get_param(param, 'remote', wallet) or param.get('remote', 'origin')
         force = param.get('force', False)
         push_tags = param.get('tags', False)
 
@@ -342,17 +351,17 @@ def push(self, param):
 
         # Costruisci comando git push
         command = ['git', 'push']
-        
+
         if force:
             command.append('--force')
             logger.warning("Force push enabled")
-        
+
         if push_tags:
             command.append('--tags')
             logger.debug("Pushing tags")
-        
+
         command.append(remote)
-        
+
         if branch:
             command.append(branch)
             logger.debug(f"Branch: {branch}")
@@ -396,7 +405,6 @@ def push(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def tag(self, param):
     """
@@ -404,9 +412,9 @@ def tag(self, param):
 
     Args:
         param: dict con:
-            - repo_path: path del repository locale
+            - repo_path: path del repository locale - supporta {ENV:var}
             - operation: 'create'|'list'|'delete'
-            - tag_name: (opzionale) nome del tag (per create/delete)
+            - tag_name: (opzionale) nome del tag (per create/delete) - supporta {ENV:var}
             - message: (opzionale) messaggio del tag annotato
             - commit: (opzionale) commit su cui creare il tag
             - push: (opzionale) push del tag dopo creazione, default False
@@ -414,7 +422,7 @@ def tag(self, param):
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sui tag
     """
@@ -434,16 +442,20 @@ def tag(self, param):
             if isinstance(prev_input, dict) and 'repo_path' in prev_input:
                 param['repo_path'] = prev_input['repo_path']
                 logger.info("Using repo_path from previous task")
-        
+
         required_params = ['repo_path', 'operation']
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        repo_path = oacommon.effify(gdict['repo_path'])
-        operation = gdict['operation']
-        tag_name = param.get('tag_name')
-        message = param.get('message')
-        commit = param.get('commit')
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
+        operation = oacommon.get_param(param, 'operation', wallet) or gdict.get('operation')
+        tag_name = oacommon.get_param(param, 'tag_name', wallet)
+        message = oacommon.get_param(param, 'message', wallet)
+        commit = oacommon.get_param(param, 'commit', wallet)
         push_tag = param.get('push', False)
 
         logger.info(f"Git tag operation: {operation}")
@@ -455,34 +467,34 @@ def tag(self, param):
         if operation == 'create':
             if not tag_name:
                 raise ValueError("tag_name required for create operation")
-            
+
             # Costruisci comando git tag
             command = ['git', 'tag']
-            
+
             if message:
                 command.extend(['-a', tag_name, '-m', message])
                 logger.debug(f"Creating annotated tag: {tag_name}")
             else:
                 command.append(tag_name)
                 logger.debug(f"Creating lightweight tag: {tag_name}")
-            
+
             if commit:
                 command.append(commit)
                 logger.debug(f"On commit: {commit}")
-            
+
             # Crea tag
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
             )
-            
+
             if not success:
                 task_success = False
                 error_msg = f"Git tag create failed: {stderr}"
                 logger.error(error_msg)
             else:
                 logger.info(f"Tag '{tag_name}' created successfully")
-                
+
                 # Push del tag se richiesto
                 if push_tag:
                     push_success, push_stdout, push_stderr, _ = run_git_command(
@@ -493,7 +505,7 @@ def tag(self, param):
                         logger.info(f"Tag '{tag_name}' pushed to remote")
                     else:
                         logger.warning(f"Tag created but push failed: {push_stderr}")
-            
+
             output_data = {
                 'operation': 'create',
                 'tag_name': tag_name,
@@ -502,16 +514,16 @@ def tag(self, param):
                 'pushed': push_tag and success,
                 'repo_path': os.path.abspath(repo_path)
             }
-        
+
         elif operation == 'list':
             # Lista tutti i tag
             command = ['git', 'tag', '-l']
-            
+
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
             )
-            
+
             if not success:
                 task_success = False
                 error_msg = f"Git tag list failed: {stderr}"
@@ -522,33 +534,33 @@ def tag(self, param):
                 if tags:
                     logger.info(f"Tags: {', '.join(tags[:10])}" + 
                               (f" ... (+{len(tags)-10} more)" if len(tags) > 10 else ""))
-            
+
             output_data = {
                 'operation': 'list',
                 'tags': tags if success else [],
                 'tag_count': len(tags) if success else 0,
                 'repo_path': os.path.abspath(repo_path)
             }
-        
+
         elif operation == 'delete':
             if not tag_name:
                 raise ValueError("tag_name required for delete operation")
-            
+
             # Elimina tag locale
             command = ['git', 'tag', '-d', tag_name]
-            
+
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
             )
-            
+
             if not success:
                 task_success = False
                 error_msg = f"Git tag delete failed: {stderr}"
                 logger.error(error_msg)
             else:
                 logger.info(f"Tag '{tag_name}' deleted locally")
-                
+
                 # Elimina tag remoto se richiesto
                 if push_tag:
                     push_success, push_stdout, push_stderr, _ = run_git_command(
@@ -559,14 +571,14 @@ def tag(self, param):
                         logger.info(f"Tag '{tag_name}' deleted from remote")
                     else:
                         logger.warning(f"Tag deleted locally but remote delete failed: {push_stderr}")
-            
+
             output_data = {
                 'operation': 'delete',
                 'tag_name': tag_name,
                 'deleted_remote': push_tag and success,
                 'repo_path': os.path.abspath(repo_path)
             }
-        
+
         else:
             raise ValueError(f"Invalid operation: {operation}. Use 'create', 'list', or 'delete'")
 
@@ -580,7 +592,6 @@ def tag(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def branch(self, param):
     """
@@ -588,16 +599,16 @@ def branch(self, param):
 
     Args:
         param: dict con:
-            - repo_path: path del repository locale
+            - repo_path: path del repository locale - supporta {ENV:var}
             - operation: 'create'|'list'|'delete'|'checkout'
-            - branch_name: (opzionale) nome del branch (per create/delete/checkout)
+            - branch_name: (opzionale) nome del branch (per create/delete/checkout) - supporta {ENV:var}
             - from_branch: (opzionale) branch/commit sorgente per create
             - force: (opzionale) force delete, default False
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con info sui branch
     """
@@ -617,15 +628,19 @@ def branch(self, param):
             if isinstance(prev_input, dict) and 'repo_path' in prev_input:
                 param['repo_path'] = prev_input['repo_path']
                 logger.info("Using repo_path from previous task")
-        
+
         required_params = ['repo_path', 'operation']
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        repo_path = oacommon.effify(gdict['repo_path'])
-        operation = gdict['operation']
-        branch_name = param.get('branch_name')
-        from_branch = param.get('from_branch')
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
+        operation = oacommon.get_param(param, 'operation', wallet) or gdict.get('operation')
+        branch_name = oacommon.get_param(param, 'branch_name', wallet)
+        from_branch = oacommon.get_param(param, 'from_branch', wallet)
         force = param.get('force', False)
 
         logger.info(f"Git branch operation: {operation}")
@@ -637,45 +652,45 @@ def branch(self, param):
         if operation == 'create':
             if not branch_name:
                 raise ValueError("branch_name required for create operation")
-            
+
             # Costruisci comando git branch
             command = ['git', 'branch', branch_name]
-            
+
             if from_branch:
                 command.append(from_branch)
                 logger.debug(f"Creating branch '{branch_name}' from '{from_branch}'")
             else:
                 logger.debug(f"Creating branch '{branch_name}' from current HEAD")
-            
+
             # Crea branch
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
             )
-            
+
             if not success:
                 task_success = False
                 error_msg = f"Git branch create failed: {stderr}"
                 logger.error(error_msg)
             else:
                 logger.info(f"Branch '{branch_name}' created successfully")
-            
+
             output_data = {
                 'operation': 'create',
                 'branch_name': branch_name,
                 'from_branch': from_branch,
                 'repo_path': os.path.abspath(repo_path)
             }
-        
+
         elif operation == 'list':
             # Lista tutti i branch
             command = ['git', 'branch', '-a']
-            
+
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
             )
-            
+
             if not success:
                 task_success = False
                 error_msg = f"Git branch list failed: {stderr}"
@@ -683,13 +698,13 @@ def branch(self, param):
             else:
                 branches = [b.strip().replace('* ', '') for b in stdout.split('\n') if b.strip()]
                 current_branch = next((b.replace('* ', '') for b in stdout.split('\n') if b.startswith('*')), None)
-                
+
                 logger.info(f"Found {len(branches)} branch(es)")
                 logger.info(f"Current branch: {current_branch}")
                 if branches:
                     logger.debug(f"Branches: {', '.join(branches[:10])}" + 
                                (f" ... (+{len(branches)-10} more)" if len(branches) > 10 else ""))
-            
+
             output_data = {
                 'operation': 'list',
                 'branches': branches if success else [],
@@ -697,11 +712,11 @@ def branch(self, param):
                 'branch_count': len(branches) if success else 0,
                 'repo_path': os.path.abspath(repo_path)
             }
-        
+
         elif operation == 'delete':
             if not branch_name:
                 raise ValueError("branch_name required for delete operation")
-            
+
             # Elimina branch
             command = ['git', 'branch']
             if force:
@@ -710,42 +725,42 @@ def branch(self, param):
             else:
                 command.append('-d')
                 logger.debug(f"Deleting branch '{branch_name}'")
-            
+
             command.append(branch_name)
-            
+
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
             )
-            
+
             if not success:
                 task_success = False
                 error_msg = f"Git branch delete failed: {stderr}"
                 logger.error(error_msg)
             else:
                 logger.info(f"Branch '{branch_name}' deleted successfully")
-            
+
             output_data = {
                 'operation': 'delete',
                 'branch_name': branch_name,
                 'force': force,
                 'repo_path': os.path.abspath(repo_path)
             }
-        
+
         elif operation == 'checkout':
             if not branch_name:
                 raise ValueError("branch_name required for checkout operation")
-            
+
             # Checkout branch
             command = ['git', 'checkout', branch_name]
-            
+
             logger.debug(f"Checking out branch '{branch_name}'")
-            
+
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
             )
-            
+
             if not success:
                 task_success = False
                 error_msg = f"Git checkout failed: {stderr}"
@@ -753,13 +768,13 @@ def branch(self, param):
             else:
                 logger.info(f"Checked out branch '{branch_name}'")
                 logger.info(f"Checkout output: {stderr.strip()}")
-            
+
             output_data = {
                 'operation': 'checkout',
                 'branch_name': branch_name,
                 'repo_path': os.path.abspath(repo_path)
             }
-        
+
         else:
             raise ValueError(f"Invalid operation: {operation}. Use 'create', 'list', 'delete', or 'checkout'")
 
@@ -773,7 +788,6 @@ def branch(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def status(self, param):
     """
@@ -781,13 +795,13 @@ def status(self, param):
 
     Args:
         param: dict con:
-            - repo_path: path del repository locale
+            - repo_path: path del repository locale - supporta {ENV:var}
             - short: (opzionale) formato short, default False
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_dict) con status info
     """
@@ -805,11 +819,15 @@ def status(self, param):
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'repo_path' in prev_input:
                 param['repo_path'] = prev_input['repo_path']
-        
+
         if not oacommon.checkandloadparam(self, myself, 'repo_path', param=param):
             raise ValueError(f"Missing required parameter 'repo_path' for {func_name}")
 
-        repo_path = oacommon.effify(gdict['repo_path'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
         short_format = param.get('short', False)
 
         if not os.path.exists(os.path.join(repo_path, '.git')):
@@ -828,7 +846,7 @@ def status(self, param):
         else:
             logger.info("Git status retrieved successfully")
             logger.info(f"Status:\n{stdout}")
-            
+
             # Verifica se ci sono modifiche
             has_changes = bool(stdout.strip()) and 'nothing to commit' not in stdout
 

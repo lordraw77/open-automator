@@ -1,6 +1,7 @@
 """
 Open-Automator PostgreSQL Module
 Gestisce operazioni su database PostgreSQL con data propagation
+Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
 """
 
 import psycopg2
@@ -22,7 +23,6 @@ def setgdict(self, gdict_param):
 
 myself = lambda: inspect.stack()[1][3]
 
-
 def executeFatchAll(pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport, statement):
     """Helper per eseguire SELECT e fetchare tutte le righe"""
     conn = psycopg2.connect(
@@ -34,16 +34,15 @@ def executeFatchAll(pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport, 
     )
     cur = conn.cursor()
     cur.execute(statement)
-    
+
     # Recupera anche i nomi delle colonne
     columns = [desc[0] for desc in cur.description] if cur.description else []
     rows = cur.fetchall()
-    
+
     cur.close()
     conn.close()
-    
-    return rows, columns
 
+    return rows, columns
 
 def executeStatement(pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport, statement):
     """Helper per eseguire INSERT/UPDATE/DELETE"""
@@ -62,7 +61,6 @@ def executeStatement(pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport,
     conn.close()
     return rows
 
-
 @oacommon.trace
 def select(self, param):
     """
@@ -70,12 +68,12 @@ def select(self, param):
 
     Args:
         param: dict con:
-            - pgdatabase: nome database
-            - pgdbhost: host
-            - pgdbusername: username
-            - pgdbpassword: password
-            - pgdbport: porta
-            - statement: query SQL (può usare input da task precedente)
+            - pgdatabase: nome database - supporta {WALLET:key}, {ENV:var}
+            - pgdbhost: host - supporta {WALLET:key}, {ENV:var}
+            - pgdbusername: username - supporta {WALLET:key}, {ENV:var}
+            - pgdbpassword: password - supporta {WALLET:key}, {VAULT:key}
+            - pgdbport: porta - supporta {ENV:var}
+            - statement: query SQL (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
             - printout: (opzionale) stampa risultato, default False
             - tojsonfile: (opzionale) percorso file JSON
             - saveonvar: (opzionale) salva in variabile
@@ -84,7 +82,7 @@ def select(self, param):
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_data) con risultati query
     """
@@ -107,7 +105,7 @@ def select(self, param):
                 elif 'query' in prev_input:
                     param['statement'] = prev_input['query']
                 logger.info("Using SQL statement from previous task")
-        
+
         if not oacommon.checkandloadparam(
             self, myself, 
             'pgdatabase', 'pgdbhost', 'pgdbusername', 'pgdbpassword', 'pgdbport', 'statement', 
@@ -115,18 +113,22 @@ def select(self, param):
         ):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        pgdatabase = oacommon.effify(gdict['pgdatabase'])
-        pgdbhost = oacommon.effify(gdict['pgdbhost'])
-        pgdbusername = oacommon.effify(gdict['pgdbusername'])
-        pgdbpassword = oacommon.effify(gdict['pgdbpassword'])
-        pgdbport = oacommon.effify(gdict['pgdbport'])
-        statement = oacommon.effify(gdict['statement'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder (CRITICO per password!)
+        pgdatabase = oacommon.get_param(param, 'pgdatabase', wallet) or gdict.get('pgdatabase')
+        pgdbhost = oacommon.get_param(param, 'pgdbhost', wallet) or gdict.get('pgdbhost')
+        pgdbusername = oacommon.get_param(param, 'pgdbusername', wallet) or gdict.get('pgdbusername')
+        pgdbpassword = oacommon.get_param(param, 'pgdbpassword', wallet) or gdict.get('pgdbpassword')
+        pgdbport = oacommon.get_param(param, 'pgdbport', wallet) or gdict.get('pgdbport')
+        statement = oacommon.get_param(param, 'statement', wallet) or gdict.get('statement')
 
         printout = param.get('printout', False)
         format_type = param.get('format', 'dict')
 
         logger.info(f"Executing SELECT on {pgdbhost}:{pgdbport}/{pgdatabase}")
-        logger.debug(f"Statement: {statement}")
+        logger.debug(f"Statement: {statement[:100]}..." if len(statement) > 100 else f"Statement: {statement}")
 
         resultset, columns = executeFatchAll(
             pgdatabase=pgdatabase,
@@ -175,17 +177,17 @@ def select(self, param):
 
         # Salva su file JSON
         if oacommon.checkparam('tojsonfile', param):
-            tojsonfile = oacommon.effify(param['tojsonfile'])
+            tojsonfile_param = oacommon.get_param(param, 'tojsonfile', wallet) or param.get('tojsonfile')
             if format_type == 'json':
-                oacommon.writefile(filename=tojsonfile, data=formatted_results)
+                oacommon.writefile(filename=tojsonfile_param, data=formatted_results)
             else:
                 # Converti in dict per JSON
                 temp_results = []
                 for row in resultset:
                     row_dict = {columns[i]: row[i] for i in range(len(columns))}
                     temp_results.append(row_dict)
-                oacommon.writefile(filename=tojsonfile, data=json.dumps(temp_results, default=str, indent=2))
-            logger.info(f"Result saved to JSON file: {tojsonfile}")
+                oacommon.writefile(filename=tojsonfile_param, data=json.dumps(temp_results, default=str, indent=2))
+            logger.info(f"Result saved to JSON file: {tojsonfile_param}")
 
         # Output data per propagation
         output_data = {
@@ -218,7 +220,6 @@ def select(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def execute(self, param):
     """
@@ -226,19 +227,19 @@ def execute(self, param):
 
     Args:
         param: dict con:
-            - pgdatabase: nome database
-            - pgdbhost: host
-            - pgdbusername: username
-            - pgdbpassword: password
-            - pgdbport: porta
-            - statement: statement SQL (può usare input da task precedente)
+            - pgdatabase: nome database - supporta {WALLET:key}, {ENV:var}
+            - pgdbhost: host - supporta {WALLET:key}, {ENV:var}
+            - pgdbusername: username - supporta {WALLET:key}, {ENV:var}
+            - pgdbpassword: password - supporta {WALLET:key}, {VAULT:key}
+            - pgdbport: porta - supporta {ENV:var}
+            - statement: statement SQL (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
             - printout: (opzionale) stampa risultato, default False
             - fail_on_zero: (opzionale) fallisce se 0 righe affette, default False
             - input: (opzionale) dati dal task precedente
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_data) con numero righe affette
     """
@@ -276,7 +277,7 @@ def execute(self, param):
                             param['statement'] = f"INSERT INTO {table_name} ({columns}) VALUES {', '.join(values_list)}"
                             logger.info(f"Generated INSERT statement from input data")
                 logger.info("Using SQL statement from previous task")
-        
+
         if not oacommon.checkandloadparam(
             self, myself,
             'pgdatabase', 'pgdbhost', 'pgdbusername', 'pgdbpassword', 'pgdbport', 'statement',
@@ -284,18 +285,22 @@ def execute(self, param):
         ):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        pgdatabase = oacommon.effify(gdict['pgdatabase'])
-        pgdbhost = oacommon.effify(gdict['pgdbhost'])
-        pgdbusername = oacommon.effify(gdict['pgdbusername'])
-        pgdbpassword = oacommon.effify(gdict['pgdbpassword'])
-        pgdbport = oacommon.effify(gdict['pgdbport'])
-        statement = oacommon.effify(gdict['statement'])
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder (CRITICO per password!)
+        pgdatabase = oacommon.get_param(param, 'pgdatabase', wallet) or gdict.get('pgdatabase')
+        pgdbhost = oacommon.get_param(param, 'pgdbhost', wallet) or gdict.get('pgdbhost')
+        pgdbusername = oacommon.get_param(param, 'pgdbusername', wallet) or gdict.get('pgdbusername')
+        pgdbpassword = oacommon.get_param(param, 'pgdbpassword', wallet) or gdict.get('pgdbpassword')
+        pgdbport = oacommon.get_param(param, 'pgdbport', wallet) or gdict.get('pgdbport')
+        statement = oacommon.get_param(param, 'statement', wallet) or gdict.get('statement')
 
         printout = param.get('printout', False)
         fail_on_zero = param.get('fail_on_zero', False)
 
         logger.info(f"Executing statement on {pgdbhost}:{pgdbport}/{pgdatabase}")
-        logger.debug(f"Statement: {statement}")
+        logger.debug(f"Statement: {statement[:100]}..." if len(statement) > 100 else f"Statement: {statement}")
 
         rows_affected = executeStatement(
             pgdatabase=pgdatabase,
@@ -319,14 +324,14 @@ def execute(self, param):
 
         # Salva su file JSON se richiesto
         if oacommon.checkparam('tojsonfile', param):
-            tojsonfile = oacommon.effify(param['tojsonfile'])
+            tojsonfile_param = oacommon.get_param(param, 'tojsonfile', wallet) or param.get('tojsonfile')
             result_json = {
                 'rows_affected': rows_affected,
                 'statement': statement,
                 'database': pgdatabase
             }
-            oacommon.writefile(filename=tojsonfile, data=json.dumps(result_json, indent=2))
-            logger.info(f"Result saved to JSON file: {tojsonfile}")
+            oacommon.writefile(filename=tojsonfile_param, data=json.dumps(result_json, indent=2))
+            logger.info(f"Result saved to JSON file: {tojsonfile_param}")
 
         # Output data per propagation
         output_data = {
@@ -362,7 +367,6 @@ def execute(self, param):
 
     return task_success, output_data
 
-
 @oacommon.trace
 def insert(self, param):
     """
@@ -370,14 +374,14 @@ def insert(self, param):
 
     Args:
         param: dict con:
-            - pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport
-            - table: nome tabella
+            - pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport - supportano {WALLET:key}, {ENV:var}
+            - table: nome tabella - supporta {WALLET:key}, {ENV:var}
             - data: (opzionale) dict o lista di dict da inserire
             - input: (opzionale) dati dal task precedente (se formato corretto)
             - workflow_context: (opzionale) contesto workflow
             - task_id: (opzionale) id univoco del task
             - task_store: (opzionale) istanza di TaskResultStore
-    
+
     Returns:
         tuple: (success, output_data)
     """
@@ -393,7 +397,7 @@ def insert(self, param):
     try:
         # Determina i dati da inserire
         insert_data = None
-        
+
         if 'data' in param:
             insert_data = param['data']
         elif 'input' in param:
@@ -407,10 +411,10 @@ def insert(self, param):
             elif isinstance(prev_input, list):
                 insert_data = prev_input
             logger.info("Using data from previous task for INSERT")
-        
+
         if not insert_data:
             raise ValueError("No data to insert (provide 'data' or pipe from previous task)")
-        
+
         if not oacommon.checkandloadparam(
             self, myself,
             'pgdatabase', 'pgdbhost', 'pgdbusername', 'pgdbpassword', 'pgdbport', 'table',
@@ -418,33 +422,36 @@ def insert(self, param):
         ):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        table_name = gdict['table']
-        
+        # Recupera wallet per risoluzione placeholder
+        wallet = gdict.get('_wallet')
+
+        # Usa get_param per supportare placeholder
+        pgdatabase = oacommon.get_param(param, 'pgdatabase', wallet) or gdict.get('pgdatabase')
+        pgdbhost = oacommon.get_param(param, 'pgdbhost', wallet) or gdict.get('pgdbhost')
+        pgdbusername = oacommon.get_param(param, 'pgdbusername', wallet) or gdict.get('pgdbusername')
+        pgdbpassword = oacommon.get_param(param, 'pgdbpassword', wallet) or gdict.get('pgdbpassword')
+        pgdbport = oacommon.get_param(param, 'pgdbport', wallet) or gdict.get('pgdbport')
+        table_name = oacommon.get_param(param, 'table', wallet) or gdict.get('table')
+
         # Converti in lista se è un singolo dict
         if isinstance(insert_data, dict):
             insert_data = [insert_data]
-        
+
         if not isinstance(insert_data, list) or len(insert_data) == 0:
             raise ValueError("Insert data must be a non-empty list of dicts")
-        
+
         # Genera statement INSERT
         first_row = insert_data[0]
         columns = ', '.join(first_row.keys())
-        
+
         # Usa parametrizzazione per sicurezza
         placeholders = ', '.join(['%s'] * len(first_row))
         statement = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-        
+
         logger.info(f"Inserting {len(insert_data)} row(s) into {table_name}")
         logger.debug(f"Statement template: {statement}")
 
         # Connessione
-        pgdatabase = oacommon.effify(gdict['pgdatabase'])
-        pgdbhost = oacommon.effify(gdict['pgdbhost'])
-        pgdbusername = oacommon.effify(gdict['pgdbusername'])
-        pgdbpassword = oacommon.effify(gdict['pgdbpassword'])
-        pgdbport = oacommon.effify(gdict['pgdbport'])
-        
         conn = psycopg2.connect(
             host=pgdbhost,
             port=pgdbport,
@@ -453,13 +460,13 @@ def insert(self, param):
             password=pgdbpassword
         )
         cur = conn.cursor()
-        
+
         # Execute many per performance
         values_list = [tuple(row.values()) for row in insert_data]
         cur.executemany(statement, values_list)
         conn.commit()
         rows_affected = cur.rowcount
-        
+
         cur.close()
         conn.close()
 

@@ -325,3 +325,29 @@ def appendfile(filename, data):
     except Exception as e:
         logger.error(f"Failed to append to file {filename}: {e}")
         raise
+
+def get_param(param_dict, key, wallet=None):
+    from wallet import resolve_placeholders
+
+    if key not in param_dict:
+        return None
+
+    value = param_dict[key]
+
+    if not isinstance(value, str):
+        return value
+
+    # Risolvi placeholder WALLET/ENV/VAULT
+    if wallet and ('{WALLET:' in value or '{VAULT:' in value or '{ENV:' in value):
+        value = resolve_placeholders(value, wallet)
+
+    # Risolvi variabili gdict con effify (retrocompatibilita)
+    if value and ('f"' in str(value) or "f'" in str(value)):
+        value = effify(value)
+
+    return value
+
+
+def resolve_param(param_dict, key, default=None, wallet=None):
+    value = get_param(param_dict, key, wallet)
+    return value if value is not None else default
