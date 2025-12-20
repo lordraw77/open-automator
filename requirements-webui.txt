@@ -1,0 +1,24 @@
+# Open-Automator Web UI Dependencies
+
+# Core framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# WebSocket support
+websockets==12.0
+
+# YAML support (già presente)
+PyYAML>=6.0
+
+# Data validation
+pydantic==2.5.3
+
+# Cryptography (già presente per wallet)
+cryptography>=41.0.0
+
+# Database (già presente)
+psycopg2-binary>=2.9.9
+
+# Utilities (già presenti)
+tabulate>=0.9.0

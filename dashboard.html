@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open-Automator Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .workflow-area {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px dashed #667eea;
+        }
+
+        .upload-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .workflow-list {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .workflow-list h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .workflow-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .workflow-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .workflow-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .workflow-item .wf-id {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .workflow-item .wf-tasks {
+            font-size: 0.85em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .status-loaded { background: #17a2b8; color: white; }
+        .status-running { background: #ffc107; color: #000; }
+        .status-completed { background: #28a745; color: white; }
+        .status-failed { background: #dc3545; color: white; }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .results-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .results-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .task-result {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #ccc;
+        }
+
+        .task-result.success {
+            border-left-color: #28a745;
+        }
+
+        .task-result.failed {
+            border-left-color: #dc3545;
+        }
+
+        .task-result .task-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .task-result .task-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .task-result .task-output {
+            background: #fff;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading::after {
+            content: " .";
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: " ."; }
+            40% { content: " .."; }
+            60% { content: " ..."; }
+            80%, 100% { content: ""; }
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: #28a745;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #dc3545;
+            color: white;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">⚫ Disconnected</div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Open-Automator Dashboard</h1>
+            <p>Workflow Automation & Data Propagation Engine</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="upload-section">
+                    <h3>📤 Upload Workflow</h3>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="workflowFile" accept=".yaml,.yml" />
+                        <label for="workflowFile" class="file-input-label">
+                            Choose YAML File
+                        </label>
+                    </div>
+                    <div id="uploadStatus" style="margin-top: 10px;"></div>
+                </div>
+
+                <div class="workflow-list">
+                    <h3>📋 Workflows</h3>
+                    <div id="workflowsList">
+                        <p style="color: #999; text-align: center;">No workflows loaded</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main workflow area -->
+            <div class="workflow-area">
+                <div id="workflowDetails" style="display: none;">
+                    <h2 id="currentWorkflowTitle">Workflow Details</h2>
+                    <div style="margin: 20px 0;">
+                        <button class="btn btn-success" onclick="executeWorkflow()">
+                            ▶️ Execute Workflow
+                        </button>
+                        <button class="btn btn-primary" onclick="refreshStatus()">
+                            🔄 Refresh Status
+                        </button>
+                    </div>
+
+                    <div class="results-section">
+                        <h3>📊 Execution Status</h3>
+                        <div id="executionStatus">
+                            <p style="color: #999;">No execution data available</p>
+                        </div>
+                    </div>
+
+                    <div class="results-section">
+                        <h3>📈 Task Results</h3>
+                        <div id="taskResults">
+                            <p style="color: #999;">Execute workflow to see results</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="noWorkflowSelected" style="text-align: center; padding: 100px 20px;">
+                    <h2 style="color: #999;">👈 Upload or select a workflow to begin</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let currentWorkflowId = null;
+        let ws = null;
+        let statusInterval = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadWorkflows();
+            updateConnectionStatus(false);
+        });
+
+        // File upload handler
+        document.getElementById('workflowFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.innerHTML = '<p style="color: #667eea;">Uploading...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/workflows/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = `<p style="color: #28a745;">✓ ${data.message}</p>`;
+                    loadWorkflows();
+                    setTimeout(() => statusDiv.innerHTML = '', 3000);
+                } else {
+                    statusDiv.innerHTML = `<p style="color: #dc3545;">✗ Error: ${data.detail}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p style="color: #dc3545;">✗ Upload failed: ${error.message}</p>`;
+            }
+        });
+
+        // Load workflows list
+        async function loadWorkflows() {
+            try {
+                const response = await fetch(`${API_BASE}/workflows`);
+                const data = await response.json();
+
+                const listDiv = document.getElementById('workflowsList');
+
+                if (data.workflows.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #999; text-align: center;">No workflows loaded</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = data.workflows.map(wf => `
+                    <div class="workflow-item ${wf.id === currentWorkflowId ? 'active' : ''}" 
+                         onclick="selectWorkflow('${wf.id}')">
+                        <div class="wf-id">${wf.id}</div>
+                        <div class="wf-tasks">${wf.content[0].tasks.length} tasks</div>
+                        <span class="status-badge status-${wf.status}">${wf.status}</span>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Failed to load workflows:', error);
+            }
+        }
+
+        // Select workflow
+        function selectWorkflow(workflowId) {
+            currentWorkflowId = workflowId;
+            loadWorkflows();
+
+            document.getElementById('noWorkflowSelected').style.display = 'none';
+            document.getElementById('workflowDetails').style.display = 'block';
+            document.getElementById('currentWorkflowTitle').textContent = `Workflow: ${workflowId}`;
+
+            refreshStatus();
+            connectWebSocket(workflowId);
+        }
+
+        // Execute workflow
+        async function executeWorkflow() {
+            if (!currentWorkflowId) return;
+
+            const statusDiv = document.getElementById('executionStatus');
+            statusDiv.innerHTML = '<div class="loading">Executing workflow</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/workflows/${currentWorkflowId}/execute`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <p style="color: #28a745;">✓ ${data.message}</p>
+                        <span class="status-badge status-running">running</span>
+                    `;
+
+                    // Start polling for updates
+                    startStatusPolling();
+                } else {
+                    statusDiv.innerHTML = `<p style="color: #dc3545;">✗ Error: ${data.detail}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p style="color: #dc3545;">✗ Execution failed: ${error.message}</p>`;
+            }
+        }
+
+        // Refresh status
+        async function refreshStatus() {
+            if (!currentWorkflowId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/workflows/${currentWorkflowId}/status`);
+                const data = await response.json();
+
+                displayStatus(data);
+
+                // Load results if available
+                if (data.status === 'completed' || data.status === 'failed') {
+                    await loadResults();
+                }
+            } catch (error) {
+                console.error('Failed to refresh status:', error);
+            }
+        }
+
+        // Display status
+        function displayStatus(data) {
+            const statusDiv = document.getElementById('executionStatus');
+
+            let html = `<span class="status-badge status-${data.status}">${data.status}</span>`;
+
+            if (data.last_execution) {
+                html += `
+                    <p style="margin-top: 10px;">
+                        <strong>Last Execution:</strong> ${new Date(data.last_execution.timestamp).toLocaleString()}
+                    </p>
+                    <p><strong>Success:</strong> ${data.last_execution.success ? '✓ Yes' : '✗ No'}</p>
+                `;
+
+                if (data.last_execution.error) {
+                    html += `<p style="color: #dc3545;"><strong>Error:</strong> ${data.last_execution.error}</p>`;
+                }
+            }
+
+            statusDiv.innerHTML = html;
+        }
+
+        // Load results
+        async function loadResults() {
+            if (!currentWorkflowId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/workflows/${currentWorkflowId}/results`);
+                const data = await response.json();
+
+                displayResults(data.results || data.last_execution?.results || {});
+            } catch (error) {
+                console.error('Failed to load results:', error);
+            }
+        }
+
+        // Display results
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('taskResults');
+
+            if (Object.keys(results).length === 0) {
+                resultsDiv.innerHTML = '<p style="color: #999;">No results available</p>';
+                return;
+            }
+
+            resultsDiv.innerHTML = Object.entries(results).map(([name, result]) => `
+                <div class="task-result ${result.status}">
+                    <div class="task-name">
+                        ${result.status === 'success' ? '✓' : '✗'} ${result.task_name}
+                    </div>
+                    <div class="task-info">
+                        Status: <strong>${result.status}</strong> | 
+                        Duration: <strong>${result.duration.toFixed(2)}s</strong> |
+                        Time: ${new Date(result.timestamp).toLocaleTimeString()}
+                    </div>
+                    ${result.error ? `<p style="color: #dc3545; margin-top: 8px;">Error: ${result.error}</p>` : ''}
+                    ${result.output ? `
+                        <div class="task-output">
+                            <strong>Output:</strong><br>
+                            <pre>${JSON.stringify(result.output, null, 2)}</pre>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        // WebSocket connection
+        function connectWebSocket(workflowId) {
+            if (ws) ws.close();
+
+            ws = new WebSocket(`ws://localhost:8000/ws/${workflowId}`);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                updateConnectionStatus(true);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'status_update') {
+                    displayResults(data.results);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                updateConnectionStatus(false);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus(false);
+            };
+        }
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.className = 'connection-status connected';
+                statusEl.textContent = '🟢 Connected';
+            } else {
+                statusEl.className = 'connection-status disconnected';
+                statusEl.textContent = '🔴 Disconnected';
+            }
+        }
+
+        // Status polling
+        function startStatusPolling() {
+            if (statusInterval) clearInterval(statusInterval);
+
+            statusInterval = setInterval(() => {
+                refreshStatus();
+            }, 2000);
+
+            // Stop dopo 5 minuti
+            setTimeout(() => {
+                if (statusInterval) {
+                    clearInterval(statusInterval);
+                    statusInterval = null;
+                }
+            }, 300000);
+        }
+
+        // Request status via WebSocket every 3 seconds
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN && currentWorkflowId) {
+                ws.send('get_status');
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
