@@ -326,27 +326,112 @@ def appendfile(filename, data):
         logger.error(f"Failed to append to file {filename}: {e}")
         raise
 
-def get_param(param_dict, key, wallet=None):
+# def get_param(param_dict, key, wallet=None):
+#     from wallet import resolve_placeholders
+
+#     if key not in param_dict:
+#         return None
+
+#     value = param_dict[key]
+
+#     if not isinstance(value, str):
+#         return value
+
+#     # Risolvi placeholder WALLET/ENV/VAULT
+#     if wallet and ('{WALLET:' in value or '{VAULT:' in value or '{ENV:' in value):
+#         value = resolve_placeholders(value, wallet)
+
+#     # Risolvi placeholder variabili workflow ${VARNAME}
+#     if "${" in value and "}" in value:
+#         import re
+#         pattern = r'\$\{([A-Z_][A-Z0-9_]*)\}'
+        
+#         def replace_var(match):
+#             varname = match.group(1)
+#             # Cerca nel gdict globale
+#             if varname in gdict:
+#                 resolved = gdict[varname]
+#                 logger.debug(f"Resolved ${{{varname}}} -> {resolved}")
+#                 return str(resolved)
+#             else:
+#                 logger.warning(f"Variable ${{{varname}}} not found in workflow variables")
+#                 return match.group(0)  # Lascia invariato
+        
+#         value = re.sub(pattern, replace_var, value)
+    
+
+#     # Risolvi variabili gdict con effify (retrocompatibilita)
+#     if value and ('f"' in str(value) or "f'" in str(value)):
+#         value = effify(value)
+
+#     return value
+
+def get_param(paramdict, key, wallet=None):
+    """
+    Ottiene parametro con risoluzione placeholder WALLET/ENV/VAULT e variabili gdict
+    Supporta stringhe e liste di stringhe
+    """
     from wallet import resolve_placeholders
-
-    if key not in param_dict:
+    
+    if key not in paramdict:
         return None
-
-    value = param_dict[key]
-
+    
+    value = paramdict[key]
+    
+    # ✅ AGGIUNGI: Gestione liste
+    if isinstance(value, list):
+        resolved_list = []
+        for item in value:
+            if isinstance(item, str):
+                resolved_item = _resolve_string_value(item, wallet)
+                resolved_list.append(resolved_item)
+            else:
+                resolved_list.append(item)
+        return resolved_list
+    
+    # Gestione stringhe
     if not isinstance(value, str):
         return value
+    
+    return _resolve_string_value(value, wallet)
 
-    # Risolvi placeholder WALLET/ENV/VAULT
-    if wallet and ('{WALLET:' in value or '{VAULT:' in value or '{ENV:' in value):
+
+def _resolve_string_value(value, wallet=None):
+    """
+    Helper per risolvere placeholder in una stringa
+    """
+    from wallet import resolve_placeholders
+    
+    if not isinstance(value, str):
+        return value
+    
+    # 1. Risolvi placeholder WALLET/ENV/VAULT
+    if wallet and ("WALLET" in value or "VAULT" in value or "ENV" in value):
         value = resolve_placeholders(value, wallet)
-
-    # Risolvi variabili gdict con effify (retrocompatibilita)
-    if value and ('f"' in str(value) or "f'" in str(value)):
+    
+    # 2. Risolvi placeholder variabili workflow ${VARNAME}
+    if "${" in value and "}" in value:
+        import re
+        pattern = r'\$\{([A-Z_][A-Z0-9_]*)\}'
+        
+        def replace_var(match):
+            varname = match.group(1)
+            # Cerca nel gdict globale
+            if varname in gdict:
+                resolved = gdict[varname]
+                logger.debug(f"Resolved ${{{varname}}} -> {resolved}")
+                return str(resolved)
+            else:
+                logger.warning(f"Variable ${{{varname}}} not found in workflow variables")
+                return match.group(0)  # Lascia invariato
+        
+        value = re.sub(pattern, replace_var, value)
+    
+    # 3. Risolvi variabili gdict con effify (retrocompatibilità)
+    if value and ("{" in str(value) or "}" in str(value)):
         value = effify(value)
-
+    
     return value
-
 
 def resolve_param(param_dict, key, default=None, wallet=None):
     value = get_param(param_dict, key, wallet)

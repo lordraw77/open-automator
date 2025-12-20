@@ -15,7 +15,7 @@ from email.mime.multipart import MIMEMultipart
 from logger_config import AutomatorLogger
 
 logger = AutomatorLogger.get_logger('oa-notify')
-
+logger.setLevel('DEBUG')
 gdict = {}
 
 def setgdict(self, gdict_param):
@@ -83,7 +83,10 @@ def sendtelegramnotify(self, param):
         tokenid = oacommon.get_param(param, 'tokenid', wallet) or gdict.get('tokenid')
         chatid_param = oacommon.get_param(param, 'chatid', wallet) or gdict.get('chatid')
         message = oacommon.get_param(param, 'message', wallet) or gdict.get('message')
-
+        logger.debug(f"Token ID length: {len(tokenid)} chars")
+        logger.debug(f"Chat ID param type: {type(chatid_param)}")
+        logger.debug(f"Message length: {len(message)} chars")
+        
         # Assicurati che chatid sia una lista
         if isinstance(chatid_param, str):
             chatid = [chatid_param]
@@ -91,6 +94,7 @@ def sendtelegramnotify(self, param):
             chatid = chatid_param
 
         logger.debug(f"Sending to {len(chatid)} chat(s)")
+        logger.debug(f"Chat IDs: {chatid}")
         logger.debug(f"Message length: {len(message)} chars")
 
         successful_sends = []

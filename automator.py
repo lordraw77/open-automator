@@ -539,7 +539,7 @@ def main():
     elif DEBUG:
         AutomatorLogger.set_console_level('INFO')
         logger.debug("DEBUG mode enabled")
-
+        
     if not tasksfile:
         tasksfile = 'automator.yaml'
 
@@ -596,6 +596,15 @@ def main():
 
         if not conf or not isinstance(conf, list) or 'tasks' not in conf[0]:
             raise ValueError("Invalid YAML structure - expected 'tasks' key")
+
+        # Carica le variabili YAML (escluso 'tasks') nel gdict come "environment"
+        workflow_vars = {k: v for k, v in conf[0].items() if k != 'tasks'}
+        if workflow_vars:
+            logger.info(f"Loading {len(workflow_vars)} workflow variables into gdict")
+            gdict.update(workflow_vars)
+            if DEBUG2:
+                logger.debug(f"Workflow variables: {list(workflow_vars.keys())}")
+
 
         tasks = conf[0]['tasks']
         sizetask = len(tasks)
