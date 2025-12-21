@@ -104,6 +104,193 @@
             transform: translateY(-2px);
         }
 
+        /* WALLET SECTION */
+        .wallet-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .wallet-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .wallet-section h4 {
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .wallet-status-box {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .wallet-status-box strong {
+            color: #333;
+        }
+
+        #walletStatusText {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        #walletStatusText.loaded {
+            color: #28a745;
+        }
+
+        #walletInfo {
+            font-size: 0.85em;
+            color: #666;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .wallet-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: #f8f9fa;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            background: #e9ecef;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .wallet-tab-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea.form-input {
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+
+        .full-width {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .secrets-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+
+        .secret-item {
+            padding: 8px 12px;
+            background: white;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e9ecef;
+        }
+
+        .secret-item:hover {
+            background: #f8f9fa;
+        }
+
+        .secret-key {
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: #667eea;
+        }
+
+        .secret-actions button {
+            padding: 4px 8px;
+            border: none;
+            background: #dc3545;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.3s;
+        }
+
+        .secret-actions button:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            overflow: auto;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            margin: 100px auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-content h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
         .workflow-list {
             background: white;
             padding: 20px;
@@ -194,6 +381,10 @@
         .btn-danger {
             background: #dc3545;
             color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
         }
 
         .results-section {
@@ -292,17 +483,18 @@
     </style>
 </head>
 <body>
-    <div class="connection-status" id="connectionStatus">⚫ Disconnected</div>
+    <div class="connection-status disconnected" id="connectionStatus">⚫ Disconnected</div>
 
     <div class="container">
         <div class="header">
             <h1>🚀 Open-Automator Dashboard</h1>
-            <p>Workflow Automation & Data Propagation Engine</p>
+            <p>Workflow Automation & Data Propagation Engine with Secure Wallet</p>
         </div>
 
         <div class="main-content">
             <!-- Sidebar -->
             <div class="sidebar">
+                <!-- Upload Workflow -->
                 <div class="upload-section">
                     <h3>📤 Upload Workflow</h3>
                     <div class="file-input-wrapper">
@@ -314,6 +506,98 @@
                     <div id="uploadStatus" style="margin-top: 10px;"></div>
                 </div>
 
+                <!-- WALLET MANAGEMENT SECTION -->
+                <div class="wallet-section">
+                    <h3>🔐 Wallet Manager</h3>
+
+                    <div id="walletStatus" class="wallet-status-box">
+                        <strong>Status:</strong> <span id="walletStatusText">Not Loaded</span>
+                        <br>
+                        <span id="walletInfo"></span>
+                    </div>
+
+                    <div class="wallet-tabs">
+                        <button class="tab-btn active" onclick="showWalletTab('load')" id="loadTab">Load</button>
+                        <button class="tab-btn" onclick="showWalletTab('create')" id="createTab">Create</button>
+                    </div>
+
+                    <div id="loadWalletForm" class="wallet-tab-content">
+                        <form onsubmit="event.preventDefault(); loadWallet();">
+                            <div class="form-group">
+                                <label>Wallet File:</label>
+                                <input type="text" id="loadWalletFile" value="wallet.enc" class="form-input">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Type:</label>
+                                <select id="loadWalletType" class="form-input">
+                                    <option value="encrypted">Encrypted (.enc)</option>
+                                    <option value="plain">Plain (.json)</option>
+                                </select>
+                            </div>
+
+                            <div id="loadPasswordDiv" class="form-group">
+                                <label>Master Password:</label>
+                                <input type="password" id="loadMasterPassword" class="form-input">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary full-width">
+                                🔓 Load Wallet
+                            </button>
+                        </form>
+                    </div>
+
+                    <div id="createWalletForm" class="wallet-tab-content" style="display: none;">
+                        <form onsubmit="event.preventDefault(); createWallet();">
+                            <div class="form-group">
+                                <label>Wallet File:</label>
+                                <input type="text" id="createWalletFile" value="my_wallet.enc" class="form-input">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Type:</label>
+                                <select id="createWalletType" class="form-input">
+                                    <option value="encrypted">Encrypted (.enc)</option>
+                                    <option value="plain">Plain (.json)</option>
+                                </select>
+                            </div>
+
+                            <div id="createPasswordDiv" class="form-group">
+                                <label>Master Password:</label>
+                                <input type="password" id="createMasterPassword" class="form-input">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Initial Secrets (JSON):</label>
+                                <textarea id="createSecrets" rows="3" class="form-input" 
+                                          placeholder='{"key": "value"}'>{}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-success full-width">
+                                ✨ Create Wallet
+                            </button>
+                        </form>
+                    </div>
+
+                    <div id="secretsManager" style="display: none;">
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+
+                        <h4 style="font-size: 0.95em; margin-bottom: 10px;">Secrets</h4>
+                        <div id="secretsList" class="secrets-list"></div>
+
+                        <button class="btn btn-primary full-width" onclick="showAddSecretForm()">
+                            ➕ Add Secret
+                        </button>
+
+                        <button class="btn btn-danger full-width" onclick="unloadWallet()" style="margin-top: 5px;">
+                            🔒 Unload Wallet
+                        </button>
+                    </div>
+
+                    <div id="walletMessage"></div>
+                </div>
+
+                <!-- Workflows List -->
                 <div class="workflow-list">
                     <h3>📋 Workflows</h3>
                     <div id="workflowsList">
@@ -352,22 +636,337 @@
 
                 <div id="noWorkflowSelected" style="text-align: center; padding: 100px 20px;">
                     <h2 style="color: #999;">👈 Upload or select a workflow to begin</h2>
+                    <p style="color: #999; margin-top: 20px;">💡 Use Wallet Manager to store credentials securely</p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Add Secret Modal -->
+    <div id="addSecretModal" class="modal">
+        <div class="modal-content">
+            <h3>➕ Add New Secret</h3>
+            <form onsubmit="event.preventDefault(); addSecret();">
+                <div class="form-group">
+                    <label>Secret Key:</label>
+                    <input type="text" id="secretKey" required class="form-input" 
+                           placeholder="e.g., db_password">
+                </div>
+
+                <div class="form-group">
+                    <label>Secret Value:</label>
+                    <input type="password" id="secretValue" required class="form-input"
+                           placeholder="The secret value">
+                </div>
+
+                <div id="secretPasswordDiv" class="form-group">
+                    <label>Master Password:</label>
+                    <input type="password" id="secretMasterPassword" class="form-input">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success" style="flex: 1;">💾 Save</button>
+                    <button type="button" class="btn btn-danger" onclick="closeAddSecretModal()" style="flex: 1;">✖ Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script>
         const API_BASE = 'http://localhost:8000/api';
         let currentWorkflowId = null;
+        let currentWalletType = 'encrypted';
         let ws = null;
         let statusInterval = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadWorkflows();
+            checkWalletStatus();
             updateConnectionStatus(false);
+
+            // Setup wallet type toggles
+            document.getElementById('loadWalletType').addEventListener('change', (e) => {
+                document.getElementById('loadPasswordDiv').style.display = 
+                    e.target.value === 'encrypted' ? 'block' : 'none';
+            });
+
+            document.getElementById('createWalletType').addEventListener('change', (e) => {
+                document.getElementById('createPasswordDiv').style.display = 
+                    e.target.value === 'encrypted' ? 'block' : 'none';
+            });
         });
+
+        // ============= WALLET MANAGEMENT =============
+
+        // Check wallet status
+        async function checkWalletStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/wallet/status`);
+                const data = await response.json();
+                updateWalletStatusUI(data);
+            } catch (error) {
+                console.error('Failed to check wallet status:', error);
+            }
+        }
+
+        // Update wallet status UI
+        function updateWalletStatusUI(data) {
+            const statusText = document.getElementById('walletStatusText');
+            const statusInfo = document.getElementById('walletInfo');
+            const secretsManager = document.getElementById('secretsManager');
+
+            if (data.loaded) {
+                statusText.textContent = '✅ Loaded';
+                statusText.className = 'loaded';
+                statusInfo.textContent = `${data.wallet_type} | ${data.secrets_count} secrets | ${data.wallet_file}`;
+                secretsManager.style.display = 'block';
+                currentWalletType = data.wallet_type;
+                loadSecretsList();
+            } else {
+                statusText.textContent = '❌ Not Loaded';
+                statusText.className = '';
+                statusInfo.textContent = data.message || '';
+                secretsManager.style.display = 'none';
+            }
+        }
+
+        // Show wallet tab
+        function showWalletTab(tab) {
+            const loadTab = document.getElementById('loadTab');
+            const createTab = document.getElementById('createTab');
+            const loadForm = document.getElementById('loadWalletForm');
+            const createForm = document.getElementById('createWalletForm');
+
+            if (tab === 'load') {
+                loadTab.classList.add('active');
+                createTab.classList.remove('active');
+                loadForm.style.display = 'block';
+                createForm.style.display = 'none';
+            } else {
+                createTab.classList.add('active');
+                loadTab.classList.remove('active');
+                createForm.style.display = 'block';
+                loadForm.style.display = 'none';
+            }
+        }
+
+        // Load wallet
+        async function loadWallet() {
+            const walletFile = document.getElementById('loadWalletFile').value;
+            const walletType = document.getElementById('loadWalletType').value;
+            const masterPassword = document.getElementById('loadMasterPassword').value;
+            const messageDiv = document.getElementById('walletMessage');
+
+            messageDiv.innerHTML = '<p style="color: #667eea; font-size: 0.85em; margin-top: 10px;">⏳ Loading...</p>';
+
+            try {
+                const formData = new FormData();
+                formData.append('wallet_file', walletFile);
+                formData.append('wallet_type', walletType);
+                if (walletType === 'encrypted') {
+                    formData.append('master_password', masterPassword);
+                }
+
+                const response = await fetch(`${API_BASE}/wallet/load`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.innerHTML = `<p style="color: #28a745; font-size: 0.85em; margin-top: 10px;">✓ ${data.message}</p>`;
+                    checkWalletStatus();
+                    document.getElementById('loadMasterPassword').value = '';
+                    setTimeout(() => messageDiv.innerHTML = '', 3000);
+                } else {
+                    messageDiv.innerHTML = `<p style="color: #dc3545; font-size: 0.85em; margin-top: 10px;">✗ ${data.detail}</p>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<p style="color: #dc3545; font-size: 0.85em; margin-top: 10px;">✗ ${error.message}</p>`;
+            }
+        }
+
+        // Create wallet
+        async function createWallet() {
+            const walletFile = document.getElementById('createWalletFile').value;
+            const walletType = document.getElementById('createWalletType').value;
+            const masterPassword = document.getElementById('createMasterPassword').value;
+            const secrets = document.getElementById('createSecrets').value;
+            const messageDiv = document.getElementById('walletMessage');
+
+            try {
+                JSON.parse(secrets);
+            } catch (e) {
+                messageDiv.innerHTML = '<p style="color: #dc3545; font-size: 0.85em; margin-top: 10px;">✗ Invalid JSON</p>';
+                return;
+            }
+
+            messageDiv.innerHTML = '<p style="color: #667eea; font-size: 0.85em; margin-top: 10px;">⏳ Creating...</p>';
+
+            try {
+                const formData = new FormData();
+                formData.append('wallet_file', walletFile);
+                formData.append('wallet_type', walletType);
+                formData.append('secrets', secrets);
+                if (walletType === 'encrypted') {
+                    formData.append('master_password', masterPassword);
+                }
+
+                const response = await fetch(`${API_BASE}/wallet/create`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.innerHTML = `<p style="color: #28a745; font-size: 0.85em; margin-top: 10px;">✓ ${data.message}</p>`;
+                    checkWalletStatus();
+                    document.getElementById('createMasterPassword').value = '';
+                    document.getElementById('createSecrets').value = '{}';
+                    showWalletTab('load');
+                    document.getElementById('loadWalletFile').value = walletFile;
+                    setTimeout(() => messageDiv.innerHTML = '', 3000);
+                } else {
+                    messageDiv.innerHTML = `<p style="color: #dc3545; font-size: 0.85em; margin-top: 10px;">✗ ${data.detail}</p>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<p style="color: #dc3545; font-size: 0.85em; margin-top: 10px;">✗ ${error.message}</p>`;
+            }
+        }
+
+        // Load secrets list
+        async function loadSecretsList() {
+            try {
+                const response = await fetch(`${API_BASE}/wallet/secrets`);
+                const data = await response.json();
+
+                const listDiv = document.getElementById('secretsList');
+
+                if (data.secrets && data.secrets.length > 0) {
+                    listDiv.innerHTML = data.secrets.map(key => `
+                        <div class="secret-item">
+                            <span class="secret-key">${key}</span>
+                            <div class="secret-actions">
+                                <button onclick="deleteSecret('${key}')">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listDiv.innerHTML = '<p style="color: #999; text-align: center; font-size: 0.85em; padding: 10px;">No secrets yet</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load secrets:', error);
+            }
+        }
+
+        // Show add secret modal
+        function showAddSecretForm() {
+            document.getElementById('addSecretModal').style.display = 'block';
+            document.getElementById('secretPasswordDiv').style.display = 
+                currentWalletType === 'encrypted' ? 'block' : 'none';
+        }
+
+        // Close add secret modal
+        function closeAddSecretModal() {
+            document.getElementById('addSecretModal').style.display = 'none';
+            document.getElementById('secretKey').value = '';
+            document.getElementById('secretValue').value = '';
+            document.getElementById('secretMasterPassword').value = '';
+        }
+
+        // Add secret
+        async function addSecret() {
+            const key = document.getElementById('secretKey').value;
+            const value = document.getElementById('secretValue').value;
+            const masterPassword = document.getElementById('secretMasterPassword').value;
+
+            try {
+                const formData = new FormData();
+                formData.append('key', key);
+                formData.append('value', value);
+                if (currentWalletType === 'encrypted') {
+                    formData.append('master_password', masterPassword);
+                }
+
+                const response = await fetch(`${API_BASE}/wallet/secret/add`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`✓ ${data.message}`);
+                    closeAddSecretModal();
+                    loadSecretsList();
+                    checkWalletStatus();
+                } else {
+                    alert(`✗ ${data.detail}`);
+                }
+            } catch (error) {
+                alert(`✗ ${error.message}`);
+            }
+        }
+
+        // Delete secret
+        async function deleteSecret(key) {
+            if (!confirm(`Delete secret '${key}'?`)) return;
+
+            const masterPassword = currentWalletType === 'encrypted' 
+                ? prompt('Master password:') 
+                : null;
+
+            if (currentWalletType === 'encrypted' && !masterPassword) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('key', key);
+                if (masterPassword) {
+                    formData.append('master_password', masterPassword);
+                }
+
+                const response = await fetch(`${API_BASE}/wallet/secret/delete`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`✓ ${data.message}`);
+                    loadSecretsList();
+                    checkWalletStatus();
+                } else {
+                    alert(`✗ ${data.detail}`);
+                }
+            } catch (error) {
+                alert(`✗ ${error.message}`);
+            }
+        }
+
+        // Unload wallet
+        async function unloadWallet() {
+            if (!confirm('Unload wallet from memory?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/wallet/unload`, { method: 'POST' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`✓ ${data.message}`);
+                    checkWalletStatus();
+                } else {
+                    alert(`✗ ${data.detail}`);
+                }
+            } catch (error) {
+                alert(`✗ ${error.message}`);
+            }
+        }
+
+        // ============= WORKFLOW MANAGEMENT =============
 
         // File upload handler
         document.getElementById('workflowFile').addEventListener('change', async (e) => {

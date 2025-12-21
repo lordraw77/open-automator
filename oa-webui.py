@@ -1,6 +1,7 @@
 """
 Open-Automator Web UI Module
 Espone API REST per gestione workflow via interfaccia web
+CON GESTIONE WALLET INTEGRATA
 """
 
 import oacommon
@@ -29,11 +30,11 @@ gdict = {}
 
 app = FastAPI(
     title="Open-Automator Web UI",
-    description="API per gestione workflow automation",
-    version="1.0.0"
+    description="API per gestione workflow automation con Wallet",
+    version="1.1.0"
 )
 
-# CORS per sviluppo (rimuovi in produzione)
+# CORS per sviluppo
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -53,7 +54,6 @@ class WorkflowState:
         self._active_engines: Dict[str, WorkflowEngine] = {}
 
     def register_workflow(self, workflow_id: str, yaml_content: dict):
-        """Registra un nuovo workflow"""
         with self._lock:
             self._workflows[workflow_id] = {
                 'id': workflow_id,
@@ -64,48 +64,30 @@ class WorkflowState:
             }
 
     def get_workflow(self, workflow_id: str) -> Optional[Dict]:
-        """Recupera un workflow"""
         with self._lock:
             return self._workflows.get(workflow_id)
 
     def list_workflows(self):
-        """Lista tutti i workflow"""
         with self._lock:
             return list(self._workflows.values())
 
     def set_engine(self, workflow_id: str, engine: WorkflowEngine):
-        """Registra engine in esecuzione"""
         with self._lock:
             self._active_engines[workflow_id] = engine
 
     def get_engine(self, workflow_id: str) -> Optional[WorkflowEngine]:
-        """Recupera engine attivo"""
         with self._lock:
             return self._active_engines.get(workflow_id)
 
 workflow_state = WorkflowState()
 
-# ============= PYDANTIC MODELS =============
-
-class WorkflowExecuteRequest(BaseModel):
-    workflow_yaml: str
-    debug: bool = False
-    debug2: bool = False
-    variables: Optional[Dict[str, Any]] = None
-
-class TaskStatusResponse(BaseModel):
-    task_name: str
-    status: str
-    output: Any = None
-    error: str = ""
-    duration: float = 0.0
-    timestamp: str
+# Wallet state
+active_wallet = None
+wallet_lock = threading.Lock()
 
 # ============= WEBSOCKET MANAGER =============
 
 class ConnectionManager:
-    """Gestisce connessioni WebSocket per aggiornamenti real-time"""
-
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
 
@@ -120,7 +102,6 @@ class ConnectionManager:
             logger.info(f"WebSocket disconnected for workflow: {workflow_id}")
 
     async def send_update(self, workflow_id: str, message: dict):
-        """Invia aggiornamento al client"""
         if workflow_id in self.active_connections:
             try:
                 await self.active_connections[workflow_id].send_json(message)
@@ -129,26 +110,23 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# ============= STATIC FILES & ROOT =============
+# ============= ROOT & HEALTH =============
 
-# Servi dashboard.html come root
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
-    """Serve la dashboard HTML"""
     dashboard_path = os.path.join(os.getcwd(), "dashboard.html")
 
     if not os.path.exists(dashboard_path):
         return HTMLResponse(
-            content="""
+            content=f"""
             <html>
                 <head><title>Dashboard Not Found</title></head>
                 <body style="font-family: Arial; padding: 50px; text-align: center;">
                     <h1>⚠️ Dashboard file not found</h1>
-                    <p>Please ensure <code>dashboard.html</code> is in the current directory.</p>
-                    <p>Current directory: {}</p>
+                    <p>Please ensure <code>dashboard.html</code> is in: {os.getcwd()}</p>
                 </body>
             </html>
-            """.format(os.getcwd()),
+            """,
             status_code=404
         )
 
@@ -157,122 +135,300 @@ async def serve_dashboard():
 
     return HTMLResponse(content=content)
 
-# Health check endpoint
 @app.get("/health")
 async def health_check():
-    """Health check"""
+    wallet_status = "loaded" if active_wallet and active_wallet.loaded else "not_loaded"
+
     return {
         "status": "running",
         "service": "Open-Automator Web UI",
-        "version": "1.0.0",
-        "workflows_loaded": len(workflow_state.list_workflows())
+        "version": "1.1.0",
+        "workflows_loaded": len(workflow_state.list_workflows()),
+        "wallet_status": wallet_status
     }
 
-# ============= API ENDPOINTS =============
+# ============= WALLET MANAGEMENT ENDPOINTS =============
+
+@app.get("/api/wallet/status")
+async def get_wallet_status():
+    """Ottiene lo stato del wallet corrente"""
+    with wallet_lock:
+        if active_wallet is None:
+            return {
+                "loaded": False,
+                "message": "No wallet loaded"
+            }
+
+        return {
+            "loaded": active_wallet.loaded,
+            "wallet_type": "encrypted" if isinstance(active_wallet, Wallet) else "plain",
+            "secrets_count": len(active_wallet.secrets) if active_wallet.loaded else 0,
+            "wallet_file": active_wallet.wallet_file
+        }
+
+@app.post("/api/wallet/load")
+async def load_wallet(
+    wallet_file: str = Form(...),
+    master_password: str = Form(None),
+    wallet_type: str = Form("encrypted")
+):
+    """Carica un wallet esistente"""
+    global active_wallet
+
+    try:
+        if not os.path.exists(wallet_file):
+            raise HTTPException(404, f"Wallet file not found: {wallet_file}")
+
+        with wallet_lock:
+            if wallet_type == "encrypted":
+                if not master_password:
+                    raise HTTPException(400, "Master password required for encrypted wallet")
+
+                active_wallet = Wallet(wallet_file, master_password)
+                active_wallet.load_wallet(master_password)
+            else:
+                active_wallet = PlainWallet(wallet_file)
+                active_wallet.load_wallet()
+
+            gdict['_wallet'] = active_wallet
+
+            logger.info(f"Wallet loaded: {wallet_file} ({len(active_wallet.secrets)} secrets)")
+
+            return {
+                "success": True,
+                "message": "Wallet loaded successfully",
+                "secrets_count": len(active_wallet.secrets),
+                "wallet_type": wallet_type,
+                "wallet_file": wallet_file
+            }
+
+    except ValueError:
+        raise HTTPException(401, "Invalid master password or corrupted wallet")
+    except Exception as e:
+        logger.error(f"Failed to load wallet: {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to load wallet: {str(e)}")
+
+@app.post("/api/wallet/create")
+async def create_wallet(
+    wallet_file: str = Form(...),
+    master_password: str = Form(None),
+    wallet_type: str = Form("encrypted"),
+    secrets: str = Form("{}")
+):
+    """Crea un nuovo wallet"""
+    global active_wallet
+
+    try:
+        secrets_dict = json.loads(secrets)
+
+        if os.path.exists(wallet_file):
+            raise HTTPException(400, f"Wallet file already exists: {wallet_file}")
+
+        with wallet_lock:
+            if wallet_type == "encrypted":
+                if not master_password:
+                    raise HTTPException(400, "Master password required")
+
+                active_wallet = Wallet(wallet_file, master_password)
+                active_wallet.create_wallet(secrets_dict, master_password)
+                active_wallet.load_wallet(master_password)
+            else:
+                with open(wallet_file, 'w') as f:
+                    json.dump(secrets_dict, f, indent=2)
+
+                active_wallet = PlainWallet(wallet_file)
+                active_wallet.load_wallet()
+
+            gdict['_wallet'] = active_wallet
+
+            logger.info(f"Wallet created: {wallet_file} ({len(secrets_dict)} secrets)")
+
+            return {
+                "success": True,
+                "message": "Wallet created and loaded successfully",
+                "secrets_count": len(secrets_dict),
+                "wallet_type": wallet_type,
+                "wallet_file": wallet_file
+            }
+
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Invalid JSON format for secrets")
+    except Exception as e:
+        logger.error(f"Failed to create wallet: {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to create wallet: {str(e)}")
+
+@app.get("/api/wallet/secrets")
+async def list_wallet_secrets():
+    """Lista le chiavi dei segreti (senza valori)"""
+    with wallet_lock:
+        if active_wallet is None or not active_wallet.loaded:
+            raise HTTPException(400, "No wallet loaded")
+
+        return {
+            "secrets": list(active_wallet.secrets.keys()),
+            "count": len(active_wallet.secrets)
+        }
+
+@app.post("/api/wallet/secret/add")
+async def add_wallet_secret(
+    key: str = Form(...),
+    value: str = Form(...),
+    master_password: str = Form(None)
+):
+    """Aggiunge un nuovo secret al wallet"""
+    with wallet_lock:
+        if active_wallet is None or not active_wallet.loaded:
+            raise HTTPException(400, "No wallet loaded")
+
+        try:
+            active_wallet.secrets[key] = value
+
+            if isinstance(active_wallet, Wallet):
+                if not master_password:
+                    raise HTTPException(400, "Master password required")
+                active_wallet.create_wallet(active_wallet.secrets, master_password)
+            else:
+                with open(active_wallet.wallet_file, 'w') as f:
+                    json.dump(active_wallet.secrets, f, indent=2)
+
+            logger.info(f"Secret added: {key}")
+
+            return {
+                "success": True,
+                "message": f"Secret '{key}' added successfully",
+                "secrets_count": len(active_wallet.secrets)
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to add secret: {e}", exc_info=True)
+            raise HTTPException(500, f"Failed to add secret: {str(e)}")
+
+@app.post("/api/wallet/secret/delete")
+async def delete_wallet_secret(
+    key: str = Form(...),
+    master_password: str = Form(None)
+):
+    """Rimuove un secret dal wallet"""
+    with wallet_lock:
+        if active_wallet is None or not active_wallet.loaded:
+            raise HTTPException(400, "No wallet loaded")
+
+        if key not in active_wallet.secrets:
+            raise HTTPException(404, f"Secret '{key}' not found")
+
+        try:
+            del active_wallet.secrets[key]
+
+            if isinstance(active_wallet, Wallet):
+                if not master_password:
+                    raise HTTPException(400, "Master password required")
+                active_wallet.create_wallet(active_wallet.secrets, master_password)
+            else:
+                with open(active_wallet.wallet_file, 'w') as f:
+                    json.dump(active_wallet.secrets, f, indent=2)
+
+            logger.info(f"Secret removed: {key}")
+
+            return {
+                "success": True,
+                "message": f"Secret '{key}' removed successfully",
+                "secrets_count": len(active_wallet.secrets)
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to remove secret: {e}", exc_info=True)
+            raise HTTPException(500, f"Failed to remove secret: {str(e)}")
+
+@app.post("/api/wallet/unload")
+async def unload_wallet():
+    """Scarica il wallet corrente dalla memoria"""
+    global active_wallet
+
+    with wallet_lock:
+        if active_wallet is None:
+            return {"success": True, "message": "No wallet was loaded"}
+
+        active_wallet = None
+        gdict['_wallet'] = None
+
+        logger.info("Wallet unloaded")
+
+        return {
+            "success": True,
+            "message": "Wallet unloaded successfully"
+        }
+
+# ============= WORKFLOW ENDPOINTS =============
 
 @app.post("/api/workflows/upload")
 async def upload_workflow(file: UploadFile = File(...)):
-    """
-    Upload di un file YAML workflow
-    """
     try:
         content = await file.read()
         yaml_content = yaml.safe_load(content.decode('utf-8'))
 
-        # Valida struttura base
         if not yaml_content or not isinstance(yaml_content, list) or 'tasks' not in yaml_content[0]:
-            raise HTTPException(400, "Invalid YAML structure - expected 'tasks' key")
+            raise HTTPException(400, "Invalid YAML structure")
 
-        # Genera workflow ID
         workflow_id = f"wf_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-        # Registra workflow
         workflow_state.register_workflow(workflow_id, yaml_content)
 
         tasks = yaml_content[0]['tasks']
-        task_count = len(tasks)
-
-        logger.info(f"Workflow uploaded: {workflow_id} ({task_count} tasks)")
+        logger.info(f"Workflow uploaded: {workflow_id} ({len(tasks)} tasks)")
 
         return {
             "workflow_id": workflow_id,
-            "task_count": task_count,
+            "task_count": len(tasks),
             "status": "loaded",
-            "message": f"Workflow loaded successfully with {task_count} tasks"
+            "message": f"Workflow loaded with {len(tasks)} tasks"
         }
 
     except yaml.YAMLError as e:
-        raise HTTPException(400, f"Invalid YAML syntax: {str(e)}")
+        raise HTTPException(400, f"Invalid YAML: {str(e)}")
     except Exception as e:
         logger.error(f"Upload failed: {e}", exc_info=True)
         raise HTTPException(500, f"Upload failed: {str(e)}")
 
 @app.get("/api/workflows")
 async def list_workflows():
-    """
-    Lista tutti i workflow caricati
-    """
     workflows = workflow_state.list_workflows()
     return {"workflows": workflows, "count": len(workflows)}
 
 @app.get("/api/workflows/{workflow_id}")
 async def get_workflow_details(workflow_id: str):
-    """
-    Dettagli di un workflow specifico
-    """
     workflow = workflow_state.get_workflow(workflow_id)
     if not workflow:
         raise HTTPException(404, f"Workflow not found: {workflow_id}")
-
     return workflow
 
 @app.post("/api/workflows/{workflow_id}/execute")
 async def execute_workflow(workflow_id: str):
-    """
-    Esegue un workflow in background thread
-    """
     workflow = workflow_state.get_workflow(workflow_id)
     if not workflow:
         raise HTTPException(404, f"Workflow not found: {workflow_id}")
 
     try:
-        # Prepara configurazione
         yaml_content = workflow['content']
         tasks = yaml_content[0]['tasks']
         workflow_vars = {k: v for k, v in yaml_content[0].items() if k != 'tasks'}
 
-        # Prepara gdict
         exec_gdict = dict(gdict)
         exec_gdict.update(workflow_vars)
 
-        # Carica wallet se disponibile
-        wallet_file = os.environ.get('OA_WALLET_FILE', 'wallet.enc')
-        wallet_password = os.environ.get('OA_WALLET_PASSWORD')
-        if os.path.exists(wallet_file):
-            try:
-                if wallet_file.endswith('.enc'):
-                    wallet_instance = Wallet(wallet_file, wallet_password)
-                elif wallet_file.endswith('.json'):
-                    wallet_instance = PlainWallet(wallet_file)
-                wallet_instance.load_wallet()
-                exec_gdict['_wallet'] = wallet_instance
-            except Exception as e:
-                logger.warning(f"Wallet load failed: {e}")
+        # Usa wallet attivo se caricato
+        if active_wallet and active_wallet.loaded:
+            exec_gdict['_wallet'] = active_wallet
+            logger.info(f"Using active wallet for workflow execution")
 
-        # Crea TaskStore e Engine
         task_store = TaskResultStore()
         engine = WorkflowEngine(tasks, exec_gdict, task_store, debug=False, debug2=False)
 
-        # Registra engine
         workflow_state.set_engine(workflow_id, engine)
 
-        # Esegui in thread separato
         def run_workflow():
             try:
-                logger.info(f"Starting workflow execution: {workflow_id}")
+                logger.info(f"Starting workflow: {workflow_id}")
                 success, context = engine.execute()
 
-                # Aggiorna stato
                 workflow['status'] = 'completed' if success else 'failed'
                 workflow['last_execution'] = {
                     'timestamp': datetime.now().isoformat(),
@@ -280,10 +436,10 @@ async def execute_workflow(workflow_id: str):
                     'results': _serialize_results(context)
                 }
 
-                logger.info(f"Workflow {workflow_id} completed: {'SUCCESS' if success else 'FAILED'}")
+                logger.info(f"Workflow {workflow_id}: {'SUCCESS' if success else 'FAILED'}")
 
             except Exception as e:
-                logger.error(f"Workflow execution failed: {e}", exc_info=True)
+                logger.error(f"Workflow failed: {e}", exc_info=True)
                 workflow['status'] = 'error'
                 workflow['last_execution'] = {
                     'timestamp': datetime.now().isoformat(),
@@ -306,9 +462,6 @@ async def execute_workflow(workflow_id: str):
 
 @app.get("/api/workflows/{workflow_id}/status")
 async def get_workflow_status(workflow_id: str):
-    """
-    Ottiene lo stato corrente di un workflow
-    """
     workflow = workflow_state.get_workflow(workflow_id)
     if not workflow:
         raise HTTPException(404, f"Workflow not found: {workflow_id}")
@@ -321,7 +474,6 @@ async def get_workflow_status(workflow_id: str):
         "last_execution": workflow.get('last_execution')
     }
 
-    # Se engine attivo, aggiungi context real-time
     if engine:
         results = _serialize_results(engine.context)
         response['current_results'] = results
@@ -330,21 +482,16 @@ async def get_workflow_status(workflow_id: str):
 
 @app.get("/api/workflows/{workflow_id}/results")
 async def get_workflow_results(workflow_id: str):
-    """
-    Recupera i risultati completi di un workflow
-    """
     workflow = workflow_state.get_workflow(workflow_id)
     if not workflow:
         raise HTTPException(404, f"Workflow not found: {workflow_id}")
 
     engine = workflow_state.get_engine(workflow_id)
     if not engine:
-        # Usa last_execution se disponibile
         if workflow.get('last_execution'):
             return workflow['last_execution']
         raise HTTPException(404, "No execution results available")
 
-    # Serializza risultati da context
     results = _serialize_results(engine.context)
 
     return {
@@ -355,16 +502,11 @@ async def get_workflow_results(workflow_id: str):
 
 @app.websocket("/ws/{workflow_id}")
 async def websocket_endpoint(websocket: WebSocket, workflow_id: str):
-    """
-    WebSocket per aggiornamenti real-time durante l'esecuzione
-    """
     await manager.connect(workflow_id, websocket)
     try:
         while True:
-            # Mantieni connessione aperta
             data = await websocket.receive_text()
 
-            # Client può richiedere status update
             if data == "get_status":
                 engine = workflow_state.get_engine(workflow_id)
                 if engine:
@@ -377,24 +519,9 @@ async def websocket_endpoint(websocket: WebSocket, workflow_id: str):
     except WebSocketDisconnect:
         manager.disconnect(workflow_id)
 
-@app.get("/api/logs/{workflow_id}")
-async def get_workflow_logs(workflow_id: str):
-    """
-    Recupera i log di un workflow
-    """
-    # Implementa lettura log file se necessario
-    log_dir = "./logs"
-    log_file = os.path.join(log_dir, f"{workflow_id}.log")
-
-    if os.path.exists(log_file):
-        return FileResponse(log_file)
-    else:
-        raise HTTPException(404, "Log file not found")
-
 # ============= HELPER FUNCTIONS =============
 
 def _serialize_results(context: WorkflowContext) -> dict:
-    """Serializza WorkflowContext per JSON response"""
     results = {}
 
     for name, task_result in context.get_all_results().items():
@@ -410,7 +537,6 @@ def _serialize_results(context: WorkflowContext) -> dict:
     return results
 
 def _make_serializable(obj):
-    """Converte oggetti complessi in formato JSON-serializable"""
     if obj is None:
         return None
     if isinstance(obj, (str, int, float, bool)):
@@ -421,54 +547,24 @@ def _make_serializable(obj):
         return [_make_serializable(item) for item in obj]
     if isinstance(obj, datetime):
         return obj.isoformat()
-    # Fallback: converti in stringa
     return str(obj)
 
 # ============= MODULE INTEGRATION =============
 
 def setgdict(self, gdict_param):
-    """Imposta global dict (compatibilità con altri moduli)"""
     global gdict
     gdict = gdict_param
-
-@oacommon.trace
-def start_server(self, param):
-    """
-    Avvia il server web UI
-
-    Args:
-        param: dict con:
-            - host: indirizzo IP (default: 0.0.0.0)
-            - port: porta (default: 8000)
-            - reload: hot reload per sviluppo (default: False)
-
-    Returns:
-        tuple: (success, server_info)
-    """
-    import uvicorn
-
-    host = param.get('host', '0.0.0.0')
-    port = param.get('port', 8000)
-    reload = param.get('reload', False)
-
-    logger.info(f"Starting Web UI server on {host}:{port}")
-
-    try:
-        uvicorn.run(app, host=host, port=port, reload=reload)
-        return True, {"host": host, "port": port}
-    except Exception as e:
-        logger.error(f"Failed to start server: {e}")
-        return False, {"error": str(e)}
 
 # ============= STARTUP =============
 
 if __name__ == "__main__":
     import uvicorn
     print("=" * 70)
-    print("🚀 Open-Automator Web UI Server")
+    print("🚀 Open-Automator Web UI Server (with Wallet Management)")
     print("=" * 70)
-    print(f"📍 Dashboard URL: http://localhost:8000")
+    print(f"📍 Dashboard: http://localhost:8000")
     print(f"📍 API Docs: http://localhost:8000/docs")
-    print(f"📍 Health Check: http://localhost:8000/health")
+    print(f"📍 Health: http://localhost:8000/health")
+    print(f"🔐 Wallet API: http://localhost:8000/api/wallet/status")
     print("=" * 70)
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
