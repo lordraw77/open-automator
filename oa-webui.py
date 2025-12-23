@@ -405,60 +405,222 @@ async def execute_workflow(workflow_id: str):
     workflow = workflow_state.get_workflow(workflow_id)
     if not workflow:
         raise HTTPException(404, f"Workflow not found: {workflow_id}")
-
+    
     try:
-        yaml_content = workflow['content']
-        tasks = yaml_content[0]['tasks']
-        workflow_vars = {k: v for k, v in yaml_content[0].items() if k != 'tasks'}
-
-        exec_gdict = dict(gdict)
-        exec_gdict.update(workflow_vars)
-
-        # Usa wallet attivo se caricato
+        yamlcontent = workflow["content"]
+        
+        # ✅ STEP 1: Risolvi placeholder WALLET/ENV/VAULT come fa automator.py
         if active_wallet and active_wallet.loaded:
-            exec_gdict['_wallet'] = active_wallet
-            logger.info(f"Using active wallet for workflow execution")
-
-        task_store = TaskResultStore()
-        engine = WorkflowEngine(tasks, exec_gdict, task_store, debug=False, debug2=False)
-
+            from wallet import resolve_dict_placeholders
+            logger.info(f"Resolving WALLET/ENV/VAULT placeholders for workflow {workflow_id}")
+            yamlcontent = resolve_dict_placeholders(yamlcontent, active_wallet)
+            logger.debug("Placeholders resolved")
+        
+        tasks = yamlcontent[0]["tasks"]
+        workflowvars = {k: v for k, v in yamlcontent[0].items() if k != "tasks"}
+        
+        # ✅ STEP 2: Prepara gdict con variabili header
+        exec_gdict = dict(gdict)
+        exec_gdict.update(workflowvars)
+        
+        # ✅ STEP 3: Aggiungi wallet per get_param nei moduli
+        if active_wallet and active_wallet.loaded:
+            exec_gdict["_wallet"] = active_wallet
+            exec_gdict["wallet"] = active_wallet
+            logger.info(f"Wallet attached ({len(active_wallet.secrets)} secrets)")
+        
+        # ✅ STEP 4: Sincronizza gdict di oacommon
+        import oacommon
+        oacommon.gdict = exec_gdict
+        
+        taskstore = TaskResultStore()
+        engine = WorkflowEngine(tasks, exec_gdict, taskstore, debug=False, debug2=False)
         workflow_state.set_engine(workflow_id, engine)
-
+        
         def run_workflow():
             try:
                 logger.info(f"Starting workflow: {workflow_id}")
                 success, context = engine.execute()
-
-                workflow['status'] = 'completed' if success else 'failed'
-                workflow['last_execution'] = {
-                    'timestamp': datetime.now().isoformat(),
-                    'success': success,
-                    'results': _serialize_results(context)
+                workflow["status"] = "completed" if success else "failed"
+                
+                # ✅ Usa _serialize_results (con underscore)
+                workflow["last_execution"] = {
+                    "timestamp": datetime.now().isoformat(),
+                    "success": success,
+                    "results": _serialize_results(context)
                 }
-
                 logger.info(f"Workflow {workflow_id}: {'SUCCESS' if success else 'FAILED'}")
-
             except Exception as e:
                 logger.error(f"Workflow failed: {e}", exc_info=True)
-                workflow['status'] = 'error'
-                workflow['last_execution'] = {
-                    'timestamp': datetime.now().isoformat(),
-                    'success': False,
-                    'error': str(e)
+                workflow["status"] = "error"
+                workflow["last_execution"] = {
+                    "timestamp": datetime.now().isoformat(),
+                    "success": False,
+                    "error": str(e)
                 }
-
+        
         thread = threading.Thread(target=run_workflow, daemon=True)
         thread.start()
-
+        
         return {
             "workflow_id": workflow_id,
             "status": "running",
             "message": "Workflow execution started"
         }
-
+    
     except Exception as e:
         logger.error(f"Failed to start workflow: {e}", exc_info=True)
         raise HTTPException(500, f"Execution failed: {str(e)}")
+
+@app.get("/api/workflows/{workflow_id}/graph")
+async def get_workflow_graph(workflow_id: str):
+    """Genera la struttura del workflow per visualizzazione grafica"""
+    workflow = workflow_state.get_workflow(workflow_id)
+    if not workflow:
+        raise HTTPException(404, f"Workflow not found: {workflow_id}")
+    
+    try:
+        yamlcontent = workflow["content"]
+        tasks = yamlcontent[0]["tasks"]
+        
+        # Trova entry point
+        referenced = set()
+        for task in tasks:
+            if task.get('on_success'):
+                referenced.add(task['on_success'])
+            if task.get('on_failure'):
+                referenced.add(task['on_failure'])
+        
+        entry_point = None
+        for task in tasks:
+            name = task.get('name')
+            if name and name not in referenced:
+                entry_point = name
+                break
+        
+        if not entry_point and tasks:
+            entry_point = tasks[0].get('name')
+        
+        # Parole riservate Mermaid che devono essere evitate
+        MERMAID_KEYWORDS = {'end', 'start', 'graph', 'subgraph', 'class', 'classDef', 
+                            'click', 'style', 'linkStyle', 'direction', 'TB', 'TD', 
+                            'BT', 'RL', 'LR'}
+        
+        def sanitize_id(name):
+            """Converti nome in ID valido per Mermaid, evitando parole riservate"""
+            import re
+            # Rimuovi caratteri speciali
+            safe_id = re.sub(r'[^a-zA-Z0-9_]', '_', str(name))
+            # Aggiungi prefisso se è parola riservata o inizia con numero
+            if safe_id.lower() in MERMAID_KEYWORDS or (safe_id and safe_id[0].isdigit()):
+                safe_id = f'node_{safe_id}'
+            return safe_id
+        
+        def sanitize_label(text):
+            """Escapa label per Mermaid"""
+            if not text:
+                return ""
+            # Sostituisci caratteri problematici
+            text = str(text).replace('"', "'").replace('\n', ' ').replace('\r', '')
+            return text
+        
+        # Costruisci nodi ed edge
+        nodes = []
+        edges = []
+        
+        for task in tasks:
+            name = task.get('name', 'unnamed')
+            module = task.get('module', '')
+            function = task.get('function', '')
+            
+            # Recupera lo stato del task
+            status = None
+            engine = workflow_state.get_engine(workflow_id)
+            if engine:
+                task_result = engine.context.get_task_result(name)
+                if task_result:
+                    status = task_result.status.value
+            
+            nodes.append({
+                'id': sanitize_id(name),
+                'name': name,
+                'label': sanitize_label(name),
+                'module': sanitize_label(module),
+                'function': sanitize_label(function),
+                'status': status,
+                'is_entry': name == entry_point
+            })
+            
+            if task.get('on_success'):
+                edges.append({
+                    'from': sanitize_id(name),
+                    'to': sanitize_id(task['on_success']),
+                    'type': 'success'
+                })
+            if task.get('on_failure'):
+                edges.append({
+                    'from': sanitize_id(name),
+                    'to': sanitize_id(task['on_failure']),
+                    'type': 'failure'
+                })
+        
+        # Genera Mermaid syntax
+        mermaid_lines = ["flowchart TD"]
+        
+        # Aggiungi nodi con info modulo/funzione nel tooltip
+        for node in nodes:
+            label = f"{node['label']}"
+            # Info aggiuntiva come tooltip (opzionale)
+            if node['module'] and node['function']:
+                info = f"{node['module']}.{node['function']}"
+                mermaid_lines.append(f'    {node["id"]}["{label}"]')
+                mermaid_lines.append(f'    click {node["id"]} callback "{info}"')
+            else:
+                mermaid_lines.append(f'    {node["id"]}["{label}"]')
+        
+        # Aggiungi edge
+        for edge in edges:
+            if edge['type'] == 'success':
+                mermaid_lines.append(f'    {edge["from"]} -->|✓| {edge["to"]}')
+            else:
+                mermaid_lines.append(f'    {edge["from"]} -.->|✗| {edge["to"]}')
+        
+        # Applica stili
+        mermaid_lines.append("")
+        mermaid_lines.append("    classDef successNode fill:#d4edda,stroke:#28a745,stroke-width:3px")
+        mermaid_lines.append("    classDef failedNode fill:#f8d7da,stroke:#dc3545,stroke-width:3px")
+        mermaid_lines.append("    classDef runningNode fill:#fff3cd,stroke:#ffc107,stroke-width:3px")
+        mermaid_lines.append("    classDef entryNode fill:#cfe2ff,stroke:#0d6efd,stroke-width:3px")
+        
+        # Assegna classi
+        for node in nodes:
+            if node['status'] == 'success':
+                mermaid_lines.append(f'    class {node["id"]} successNode')
+            elif node['status'] == 'failed':
+                mermaid_lines.append(f'    class {node["id"]} failedNode')
+            elif node['status'] == 'running':
+                mermaid_lines.append(f'    class {node["id"]} runningNode')
+            elif node['is_entry']:
+                mermaid_lines.append(f'    class {node["id"]} entryNode')
+        
+        mermaid_code = "\n".join(mermaid_lines)
+        
+        logger.debug(f"Generated Mermaid code:\n{mermaid_code}")
+        
+        return {
+            "workflow_id": workflow_id,
+            "nodes": nodes,
+            "edges": edges,
+            "mermaid": mermaid_code,
+            "entry_point": entry_point
+        }
+    
+    except Exception as e:
+        logger.error(f"Failed to generate workflow graph: {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to generate graph: {str(e)}")
+
+
+
 
 @app.get("/api/workflows/{workflow_id}/status")
 async def get_workflow_status(workflow_id: str):

@@ -626,6 +626,14 @@
                         </div>
                     </div>
 
+                    <!-- Workflow Visualization -->
+                    <div class="section" style="margin-bottom: 30px;">
+                        <h3>📊 Workflow Visualization</h3>
+                        <div id="workflowGraph" style="background: white; padding: 20px; border-radius: 8px; min-height: 400px; text-align: center; overflow-x: auto;">
+                            <p style="color: #999;">Load a workflow to see its structure</p>
+                        </div>
+                    </div>
+
                     <div class="results-section">
                         <h3>📈 Task Results</h3>
                         <div id="taskResults">
@@ -678,6 +686,7 @@
         let currentWalletType = 'encrypted';
         let ws = null;
         let statusInterval = null;
+        let isWorkflowFinished = false;  // Flag per fermare polling quando workflow termina
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -1026,9 +1035,17 @@
             }
         }
 
-        // Select workflow
+                // Select workflow
         function selectWorkflow(workflowId) {
             currentWorkflowId = workflowId;
+            isWorkflowFinished = false;  // Reset flag
+
+            // Ferma polling precedente
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+
             loadWorkflows();
 
             document.getElementById('noWorkflowSelected').style.display = 'none';
@@ -1036,6 +1053,7 @@
             document.getElementById('currentWorkflowTitle').textContent = `Workflow: ${workflowId}`;
 
             refreshStatus();
+            loadWorkflowGraph(workflowId);  // Load workflow visualization
             connectWebSocket(workflowId);
         }
 
@@ -1069,7 +1087,7 @@
             }
         }
 
-        // Refresh status
+                // Refresh status
         async function refreshStatus() {
             if (!currentWorkflowId) return;
 
@@ -1079,10 +1097,28 @@
 
                 displayStatus(data);
 
-                // Load results if available
-                if (data.status === 'completed' || data.status === 'failed') {
+                // Verifica se il workflow è terminato
+                if (data.status === 'completed' || data.status === 'failed' || data.status === 'error') {
+                    isWorkflowFinished = true;
+
+                    // Ferma il polling
+                    if (statusInterval) {
+                        clearInterval(statusInterval);
+                        statusInterval = null;
+                        console.log('✓ Workflow finished - polling stopped');
+                    }
+
+                    // Load results if available
                     await loadResults();
+
+                    // Ultimo refresh del grafo
+                    await refreshWorkflowGraph();
+
+                } else {
+                    // Workflow ancora in esecuzione - aggiorna il grafo
+                    await refreshWorkflowGraph();
                 }
+
             } catch (error) {
                 console.error('Failed to refresh status:', error);
             }
@@ -1195,21 +1231,32 @@
             }
         }
 
-        // Status polling
+                // Status polling
         function startStatusPolling() {
-            if (statusInterval) clearInterval(statusInterval);
+            // Reset flag
+            isWorkflowFinished = false;
 
+            // Ferma eventuale polling precedente
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+
+            // Avvia nuovo polling
             statusInterval = setInterval(() => {
-                refreshStatus();
+                if (!isWorkflowFinished) {
+                    refreshStatus();
+                }
             }, 2000);
 
-            // Stop dopo 5 minuti
+            // Stop automatico dopo 10 minuti (sicurezza)
             setTimeout(() => {
-                if (statusInterval) {
+                if (statusInterval && !isWorkflowFinished) {
                     clearInterval(statusInterval);
                     statusInterval = null;
+                    console.log('⚠ Polling stopped after timeout (10 minutes)');
                 }
-            }, 300000);
+            }, 600000); // 10 minuti
         }
 
         // Request status via WebSocket every 3 seconds
@@ -1218,6 +1265,70 @@
                 ws.send('get_status');
             }
         }, 3000);
+    
+        // ============= WORKFLOW VISUALIZATION =============
+
+        // Load Mermaid.js dynamically
+        const mermaidScript = document.createElement('script');
+        mermaidScript.type = 'module';
+        mermaidScript.textContent = `
+            import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+            mermaid.initialize({ 
+                startOnLoad: false,
+                theme: 'default',
+                flowchart: { 
+                    useMaxWidth: true,
+                    htmlLabels: true,
+                    curve: 'basis'
+                }
+            });
+            window.mermaidAPI = mermaid;
+        `;
+        document.head.appendChild(mermaidScript);
+
+        // Load and display workflow graph
+        async function loadWorkflowGraph(workflowId) {
+            try {
+                const response = await fetch(`${API_BASE}/workflows/${workflowId}/graph`);
+                if (!response.ok) throw new Error('Failed to load workflow graph');
+
+                const data = await response.json();
+                const graphDiv = document.getElementById('workflowGraph');
+
+                // Create mermaid diagram
+                graphDiv.innerHTML = `<div class="mermaid">${data.mermaid}</div>`;
+
+                // Render with Mermaid (wait for script to load)
+                const waitForMermaid = setInterval(async () => {
+                    if (window.mermaidAPI) {
+                        clearInterval(waitForMermaid);
+                        try {
+                            await window.mermaidAPI.run({
+                                querySelector: '#workflowGraph .mermaid'
+                            });
+                        } catch (e) {
+                            console.error('Mermaid render error:', e);
+                        }
+                    }
+                }, 100);
+
+                // Timeout after 5 seconds
+                setTimeout(() => clearInterval(waitForMermaid), 5000);
+
+            } catch (error) {
+                console.error('Error loading workflow graph:', error);
+                document.getElementById('workflowGraph').innerHTML = 
+                    '<p style="color: #dc3545;">Failed to load workflow visualization</p>';
+            }
+        }
+
+        // Refresh workflow graph during execution
+        async function refreshWorkflowGraph() {
+            if (currentWorkflowId) {
+                await loadWorkflowGraph(currentWorkflowId);
+            }
+        }
+    
     </script>
 </body>
 </html>
