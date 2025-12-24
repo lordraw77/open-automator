@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Script per build Docker image Open-Automator wellet
+# Script per build Docker image Open-Automator wallet
 
 set -e  # Exit on error
 
 # Configurazione
-tag=open-automator-wellet
+tag=open-automator-wallet
 minver=0
 maxver=1
-dockerfilename=Dockerfile.wellet
+dockerfilename=Dockerfile.wallet
  
 
 VERSION="$maxver.$minver"
