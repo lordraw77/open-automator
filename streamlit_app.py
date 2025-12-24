@@ -1,6 +1,6 @@
 """
 Open-Automator Streamlit Web UI
-v1.2.1 - Large Graph Edition
+v1.2.2 - Secret Viewer Edition
 """
 
 import streamlit as st
@@ -51,6 +51,10 @@ st.markdown("""
     .selected-indicator, .wallet-info {
         color: #dc3545; font-size: 0.85em; margin: 0.5rem 0;
     }
+    .secret-value {
+        background: #2b2b3d; padding: 0.5rem; border-radius: 5px;
+        font-family: monospace; color: #a0a0b0; margin: 0.5rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,6 +69,10 @@ def init_session_state():
         st.session_state.current_page = 'workflow'
     if 'last_uploaded_file' not in st.session_state:
         st.session_state.last_uploaded_file = None
+    if 'show_secrets' not in st.session_state:
+        st.session_state.show_secrets = {}
+    if 'edit_secrets' not in st.session_state:
+        st.session_state.edit_secrets = {}
 
 init_session_state()
 
@@ -146,7 +154,6 @@ def sanitize_mermaid_label(label: str) -> str:
     return clean_label[:60] if clean_label else "unnamed"
 
 def generate_mermaid_code(workflow: dict) -> str:
-    """Genera Mermaid con grafico LARGO e nodi GRANDI"""
     try:
         yaml_content = workflow['content']
         if not yaml_content or not isinstance(yaml_content, list):
@@ -178,7 +185,6 @@ def generate_mermaid_code(workflow: dict) -> str:
             node_id = f'node{idx}_{sanitize_node_id(name)}'
             node_map[name] = node_id
 
-        # FIX: Configurazione Mermaid per grafico più grande
         lines = ["%%{init: {'theme':'dark', 'flowchart':{'nodeSpacing': 100, 'rankSpacing': 120, 'padding': 20}}}%%"]
         lines.append("graph TD")
 
@@ -322,6 +328,31 @@ def add_secret(key: str, value: str, master_password: str = None):
     except Exception as e:
         st.error(f"❌ Failed: {e}")
 
+def update_secret(key: str, new_value: str, master_password: str = None):
+    """Aggiorna il valore di un secret esistente"""
+    wallet = st.session_state.active_wallet
+    if not wallet or key not in wallet.secrets:
+        return
+
+    try:
+        wallet.secrets[key] = new_value
+
+        if isinstance(wallet, Wallet):
+            if not master_password:
+                st.error("❌ Master password required")
+                return
+            wallet.create_wallet(wallet.secrets, master_password)
+        else:
+            with open(wallet.wallet_file, 'w') as f:
+                json.dump(wallet.secrets, f, indent=2)
+
+        st.success(f"✅ Secret '{key}' updated")
+        st.session_state.edit_secrets[key] = False
+        time.sleep(0.3)
+        st.rerun()
+    except Exception as e:
+        st.error(f"❌ Failed: {e}")
+
 def delete_secret(key: str, master_password: str = None):
     wallet = st.session_state.active_wallet
     if not wallet or key not in wallet.secrets:
@@ -347,6 +378,8 @@ def delete_secret(key: str, master_password: str = None):
 
 def unload_wallet():
     st.session_state.active_wallet = None
+    st.session_state.show_secrets = {}
+    st.session_state.edit_secrets = {}
     st.success("✅ Wallet unloaded")
     time.sleep(0.3)
     st.rerun()
@@ -455,7 +488,7 @@ def render_sidebar():
             st.markdown(f'<p class="wallet-info">Secrets: {len(wallet.secrets)}</p>', unsafe_allow_html=True)
 
         st.divider()
-        st.caption("v1.2.1 - Large Graph")
+        st.caption("v1.2.2 - Secret Viewer")
 
 def render_workflow_page():
     st.markdown("""
@@ -564,7 +597,6 @@ def render_workflow_page():
 
             try:
                 from streamlit_mermaid import st_mermaid
-                # FIX: Altezza aumentata da 400 a 700px
                 st_mermaid(mermaid_code, height=700)
             except ImportError:
                 st.info("💡 Install: pip install streamlit-mermaid")
@@ -658,27 +690,83 @@ def render_wallet_page():
 
         if len(wallet.secrets) > 0:
             for idx, key in enumerate(list(wallet.secrets.keys())):
-                col1, col2 = st.columns([5, 1])
+                # Row principale con chiave e bottoni
+                col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
                 col1.code(key)
-                if col2.button("🗑️", key=f"d{idx}"):
-                    st.session_state[f'del_{key}'] = True
+
+                # Bottone visualizza/nascondi
+                show_key = f'show_{key}'
+                if show_key not in st.session_state.show_secrets:
+                    st.session_state.show_secrets[show_key] = False
+
+                if col2.button("👁️" if not st.session_state.show_secrets[show_key] else "🙈", 
+                             key=f"view_{idx}", help="Show/Hide value"):
+                    st.session_state.show_secrets[show_key] = not st.session_state.show_secrets[show_key]
                     st.rerun()
 
-                if st.session_state.get(f'del_{key}'):
-                    st.warning(f"Delete '{key}'?")
+                # Bottone modifica
+                edit_key = f'edit_{key}'
+                if edit_key not in st.session_state.edit_secrets:
+                    st.session_state.edit_secrets[edit_key] = False
+
+                if col3.button("✏️", key=f"edit_{idx}", help="Edit value"):
+                    st.session_state.edit_secrets[edit_key] = True
+                    st.rerun()
+
+                # Bottone elimina
+                if col4.button("🗑️", key=f"del_{idx}", help="Delete"):
+                    st.session_state[f'confirm_del_{key}'] = True
+                    st.rerun()
+
+                # Mostra valore se richiesto
+                if st.session_state.show_secrets.get(show_key, False):
+                    value = wallet.secrets[key]
+                    st.markdown(f'<div class="secret-value">{value}</div>', unsafe_allow_html=True)
+
+                # Modalità modifica
+                if st.session_state.edit_secrets.get(edit_key, False):
+                    with st.container():
+                        st.caption(f"✏️ Editing: **{key}**")
+
+                        new_value = st.text_input("New Value", 
+                                                 value=wallet.secrets[key],
+                                                 type="password",
+                                                 key=f"newval_{idx}")
+
+                        col_save, col_cancel = st.columns(2)
+
+                        if isinstance(wallet, Wallet):
+                            pwd = st.text_input("Master Password", type="password", key=f"pwd_edit_{idx}")
+                            if col_save.button("💾 Save", key=f"save_{idx}") and pwd and new_value:
+                                update_secret(key, new_value, pwd)
+                        else:
+                            if col_save.button("💾 Save", key=f"save_{idx}") and new_value:
+                                update_secret(key, new_value)
+
+                        if col_cancel.button("❌ Cancel", key=f"cancel_{idx}"):
+                            st.session_state.edit_secrets[edit_key] = False
+                            st.rerun()
+
+                # Conferma eliminazione
+                if st.session_state.get(f'confirm_del_{key}'):
+                    st.warning(f"⚠️ Delete '{key}'?")
                     c1, c2 = st.columns(2)
+
                     if isinstance(wallet, Wallet):
-                        pwd = st.text_input("Password", type="password", key=f"p{idx}")
-                        if c1.button("✅", key=f"c{idx}") and pwd:
+                        pwd = st.text_input("Master Password", type="password", key=f"pwd_del_{idx}")
+                        if c1.button("✅ Confirm", key=f"conf_{idx}") and pwd:
                             delete_secret(key, pwd)
-                            st.session_state[f'del_{key}'] = False
+                            st.session_state[f'confirm_del_{key}'] = False
                     else:
-                        if c1.button("✅", key=f"c{idx}"):
+                        if c1.button("✅ Confirm", key=f"conf_{idx}"):
                             delete_secret(key)
-                            st.session_state[f'del_{key}'] = False
-                    if c2.button("❌", key=f"x{idx}"):
-                        st.session_state[f'del_{key}'] = False
+                            st.session_state[f'confirm_del_{key}'] = False
+
+                    if c2.button("❌ Cancel", key=f"canc_{idx}"):
+                        st.session_state[f'confirm_del_{key}'] = False
                         st.rerun()
+
+                st.divider()
         else:
             st.info("No secrets")
 
@@ -708,6 +796,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
     
 #streamlit run streamlit_app.py --server.port 8502
