@@ -11,3 +11,6 @@ requests
 PBKDF2
 streamlit 
 streamlit-mermaid 
+psycopg2-binary
+cryptography
+chardet

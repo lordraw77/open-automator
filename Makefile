@@ -17,6 +17,20 @@ help:
 	@echo "  make coverage     - Genera report coverage"
 	@echo "  make lint         - Esegue linting del codice"
 	@echo "  make clean        - Pulisce file temporanei"
+	@echo "  make build-shell      - Build Docker image per Shell"
+	@echo "  make build-fastapi    - Build Docker image per FastAPI"
+	@echo "  make build-streamlit  - Build Docker image per Streamlit"
+	@echo "  make build-all        - Build tutte le Docker image"
+
+build-shell:
+	bash buildShell.sh
+build-fastapi:
+	bash buildFastapi.sh
+build-streamlit:
+	bash buildStreamlit.sh
+b7uild-wellet:
+	bash buildWellet.sh
+build-all: build-shell build-fastapi build-streamlit build-wellet
 
 install:
 	$(PIP) install -r requirements.txt

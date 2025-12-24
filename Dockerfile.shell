@@ -1,0 +1,44 @@
+# Immagine base Debian per automazioni
+FROM python:3.12-slim-bookworm
+
+LABEL maintainer="Open-Automator"
+LABEL description="Open-Automator shell"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Installa dipendenze di sistema per automazioni
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    openssh-client \
+    postgresql-client \
+    ca-certificates \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crea utente e directory
+RUN useradd -m -u 1000 automator && \
+    mkdir -p /app /app/modules /data /workflows  && \
+    chown -R automator:automator /app /data /workflows
+
+WORKDIR /app
+
+# Copia requirements e installa
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia TUTTI i moduli dell'applicazione
+COPY --chown=automator:automator *.py ./
+COPY --chown=automator:automator ./modules/*.py ./modules/
+COPY --chown=automator:automator dashboard.html ./
+
+USER automator
+ENV OA_WALLET_FILE="/data/wallet.enc"  
+ENV OA_WALLET_PASSWORD="changeme"
+
+
+ENTRYPOINT ["python3.12", "automator.py"]
+CMD ["--help"]

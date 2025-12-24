@@ -1,0 +1,48 @@
+# Immagine base per Streamlit
+FROM python:3.12-slim-bookworm
+
+LABEL maintainer="Open-Automator"
+LABEL description="Open-Automator Streamlit UI"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Installa dipendenze di sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crea utente
+RUN useradd -m -u 1000 automator && \
+    mkdir -p /app /app/modules /data /workflows && \
+    chown -R automator:automator /app /data /workflows
+
+WORKDIR /app
+
+# Copia requirements per Streamlit
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia TUTTI i moduli Python (oa-*.py e altri)
+COPY --chown=automator:automator *.py ./
+COPY --chown=automator:automator ./modules/*.py ./modules/
+
+# Copia Streamlit app
+COPY --chown=automator:automator streamlit_app.py ./
+
+# Configurazione Streamlit
+RUN mkdir -p /home/automator/.streamlit
+COPY --chown=automator:automator .streamlit/config.toml /home/automator/.streamlit/
+
+USER automator
+
+EXPOSE 8502
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8502/_stcore/health || exit 1
+
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port", "8502", "--server.address", "0.0.0.0"]

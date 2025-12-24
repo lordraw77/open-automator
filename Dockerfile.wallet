@@ -1,0 +1,37 @@
+# Immagine base per Wallet Tool
+FROM python:3.12-slim-bookworm
+
+LABEL maintainer="Open-Automator"
+LABEL description="Open-Automator Wallet Management Tool"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Installa dipendenze minime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crea utente
+RUN useradd -m -u 1000 automator && \
+    mkdir -p /app /data && \
+    chown -R automator:automator /app /data
+
+WORKDIR /app
+
+# Copia requirements
+COPY requirements-wallet.txt .
+RUN pip install --no-cache-dir -r requirements-wallet.txt
+
+# Copia SOLO i moduli necessari per wallet
+COPY --chown=automator:automator wallet.py ./
+COPY --chown=automator:automator wallet-tool.py ./
+COPY --chown=automator:automator logger_config.py ./
+
+USER automator
+
+# Default: modalità interattiva
+ENTRYPOINT ["python3.12", "wallet-tool.py"]
+CMD ["--help"]
