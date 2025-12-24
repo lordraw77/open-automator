@@ -9,3 +9,5 @@ paramiko
 scp
 requests
 PBKDF2
+streamlit 
+streamlit-mermaid 
