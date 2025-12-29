@@ -1,6 +1,6 @@
 """
 Open-Automator Streamlit Web UI
-v1.3.0 - Auto-Load Workflows Edition
+v1.4.1 - Auto-Execute with Plain Wallet Support
 """
 
 import streamlit as st
@@ -99,12 +99,12 @@ def init_session_state():
         st.session_state.show_secrets = {}
     if 'edit_secrets' not in st.session_state:
         st.session_state.edit_secrets = {}
-    # NUOVO: Parametro per il path dei workflow
     if 'workflow_path' not in st.session_state:
         st.session_state.workflow_path = os.getenv('WORKFLOW_PATH', './workflows')
-    # NUOVO: Auto-carica workflow all'avvio
     if 'workflows_loaded' not in st.session_state:
         st.session_state.workflows_loaded = False
+    if 'auto_executed' not in st.session_state:
+        st.session_state.auto_executed = False
 
 init_session_state()
 
@@ -361,7 +361,6 @@ def add_secret(key: str, value: str, master_password: str = None):
         st.error(f"❌ Failed: {e}")
 
 def update_secret(key: str, new_value: str, master_password: str = None):
-    """Aggiorna il valore di un secret esistente"""
     wallet = st.session_state.active_wallet
     if not wallet or key not in wallet.secrets:
         return
@@ -419,7 +418,6 @@ def unload_wallet():
     st.rerun()
 
 def load_workflows_from_directory(workflow_path: str = "./workflows"):
-    """Carica tutti i workflow YAML dalla directory specificata"""
     if not os.path.exists(workflow_path):
         st.warning(f"📁 Directory non trovata: {workflow_path}")
         return 0
@@ -427,7 +425,6 @@ def load_workflows_from_directory(workflow_path: str = "./workflows"):
     loaded_count = 0
     workflow_files = []
 
-    # Cerca file .yaml e .yml
     for ext in ['*.yaml', '*.yml']:
         workflow_files.extend(glob.glob(os.path.join(workflow_path, ext)))
 
@@ -435,7 +432,6 @@ def load_workflows_from_directory(workflow_path: str = "./workflows"):
         try:
             filename = os.path.basename(filepath)
 
-            # Controlla se già caricato
             existing_ids = [wf['filepath'] for wf in st.session_state.workflows.values() 
                           if 'filepath' in wf]
             if filepath in existing_ids:
@@ -450,7 +446,6 @@ def load_workflows_from_directory(workflow_path: str = "./workflows"):
                 continue
 
             workflow_id = f"wf_{filename.replace('.yaml', '').replace('.yml', '')}"
-            tasks = yaml_content[0]['tasks']
 
             st.session_state.workflows[workflow_id] = {
                 'id': workflow_id,
@@ -545,6 +540,162 @@ def execute_workflow(workflow_id: str):
         st.session_state.workflows[workflow_id]['status'] = 'error'
         st.error(f"❌ Execution failed: {e}")
 
+def get_query_params():
+    """Estrae i parametri dalla query string"""
+    try:
+        if hasattr(st, 'query_params'):
+            return dict(st.query_params)
+        else:
+            params = st.experimental_get_query_params()
+            return {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in params.items()}
+    except Exception as e:
+        st.error(f"⚠️ Error reading query params: {e}")
+        return {}
+
+def auto_execute_from_params():
+    """Esegue automaticamente workflow se specificato via query params"""
+    params = get_query_params()
+
+    wallet_password = params.get('OA_WALLET_PASSWORD')
+    wallet_file = params.get('OA_WALLET_FILE')
+    workflow_name = params.get('WORKFLOW')
+    wallet_type = params.get('OA_WALLET_TYPE', 'plain')
+
+    if not workflow_name:
+        return None
+
+    if st.session_state.auto_executed:
+        return st.session_state.get('auto_execution_result')
+
+    result = {
+        'success': False,
+        'workflow': workflow_name,
+        'message': '',
+        'execution_data': None,
+        'timestamp': datetime.now().isoformat()
+    }
+
+    try:
+        # 1. Carica wallet se specificato
+        if wallet_file:
+            with st.spinner(f'🔐 Caricamento wallet: {wallet_file}...'):
+                if not os.path.exists(wallet_file):
+                    result['message'] = f"Wallet file not found: {wallet_file}"
+                    st.session_state.auto_executed = True
+                    st.session_state.auto_execution_result = result
+                    return result
+
+                # Determina il tipo di wallet
+                # Auto-detect: .enc → encrypted, altrimenti plain
+                # Può essere forzato con OA_WALLET_TYPE
+                is_encrypted = (
+                    wallet_file.endswith('.enc') or 
+                    wallet_type == 'encrypted' or 
+                    wallet_password is not None
+                )
+
+                if is_encrypted:
+                    if not wallet_password:
+                        result['message'] = "Encrypted wallet requires OA_WALLET_PASSWORD"
+                        st.session_state.auto_executed = True
+                        st.session_state.auto_execution_result = result
+                        return result
+
+                    wallet = Wallet(wallet_file, wallet_password)
+                    wallet.load_wallet(wallet_password)
+                    st.success(f"✅ Encrypted wallet caricato: {len(wallet.secrets)} secrets")
+                else:
+                    # Wallet in chiaro (JSON)
+                    wallet = PlainWallet(wallet_file)
+                    wallet.load_wallet()
+                    st.success(f"✅ Plain wallet caricato: {len(wallet.secrets)} secrets")
+
+                st.session_state.active_wallet = wallet
+
+        # 2. Cerca il workflow
+        with st.spinner(f'🔍 Ricerca workflow: {workflow_name}...'):
+            workflow_id = None
+            for wf_id, wf in st.session_state.workflows.items():
+                if wf.get('name') == workflow_name or wf.get('filepath', '').endswith(workflow_name):
+                    workflow_id = wf_id
+                    break
+
+            if not workflow_id:
+                workflow_path = st.session_state.workflow_path
+                potential_paths = [
+                    os.path.join(workflow_path, workflow_name),
+                    workflow_name
+                ]
+
+                for filepath in potential_paths:
+                    if os.path.exists(filepath):
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            yaml_content = yaml.safe_load(f.read())
+
+                        if yaml_content and isinstance(yaml_content, list) and 'tasks' in yaml_content[0]:
+                            workflow_id = f"wf_autoload_{os.path.basename(workflow_name).replace('.yaml', '').replace('.yml', '')}"
+                            st.session_state.workflows[workflow_id] = {
+                                'id': workflow_id,
+                                'name': os.path.basename(workflow_name),
+                                'filepath': filepath,
+                                'content': yaml_content,
+                                'status': 'loaded',
+                                'created_at': datetime.now().isoformat(),
+                                'last_execution': None
+                            }
+                            break
+
+            if not workflow_id:
+                result['message'] = f"Workflow not found: {workflow_name}"
+                st.session_state.auto_executed = True
+                st.session_state.auto_execution_result = result
+                return result
+
+        # 3. Esegui il workflow
+        st.session_state.current_workflow_id = workflow_id
+        with st.spinner(f'⚙️ Esecuzione workflow: {workflow_name}...'):
+            execute_workflow(workflow_id)
+
+        # 4. Raccogli i risultati
+        workflow = st.session_state.workflows[workflow_id]
+        if workflow.get('last_execution'):
+            result['success'] = workflow['last_execution'].get('success', False)
+            result['execution_data'] = workflow['last_execution']
+            result['message'] = 'Workflow executed successfully' if result['success'] else 'Workflow execution failed'
+        else:
+            result['message'] = 'Workflow executed but no results available'
+
+        st.session_state.auto_executed = True
+        st.session_state.auto_execution_result = result
+        return result
+
+    except Exception as e:
+        result['message'] = f"Error during auto-execution: {str(e)}"
+        result['error_details'] = str(e)
+        st.session_state.auto_executed = True
+        st.session_state.auto_execution_result = result
+        return result
+
+def render_json_result(result):
+    """Mostra i risultati in formato JSON"""
+    st.markdown('<div class="section-header">📊 Execution Result (JSON)</div>', unsafe_allow_html=True)
+
+    if result['success']:
+        st.success(f"✅ {result['message']}")
+    else:
+        st.error(f"❌ {result['message']}")
+
+    st.json(result)
+
+    json_str = json.dumps(result, indent=2)
+    st.download_button(
+        label="📥 Download JSON Result",
+        data=json_str,
+        file_name=f"workflow_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+        mime="application/json",
+        use_container_width=True
+    )
+
 def render_sidebar():
     with st.sidebar:
         st.title("🔄 Open-Automator")
@@ -579,9 +730,28 @@ def render_sidebar():
                        unsafe_allow_html=True)
 
         st.divider()
-        st.caption("v1.3.0 - Auto-Load")
+        st.caption("v1.4.1 - Plain Wallet")
 
 def render_workflow_page():
+    # Controlla se c'è un'esecuzione automatica da query params
+    auto_result = auto_execute_from_params()
+
+    if auto_result:
+        # Modalità auto-execute: mostra solo i risultati
+        st.markdown('''
+        <div class="main-header">
+            <h1>🤖 Auto-Execute Mode</h1>
+            <p>Workflow executed via query parameters</p>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        render_json_result(auto_result)
+
+        st.divider()
+        st.info("💡 Query params detected: showing results only. Remove WORKFLOW param to access normal UI.")
+        return
+
+    # Modalità normale
     st.markdown('''
     <div class="main-header">
         <h1>🔄 Workflow Management</h1>
@@ -589,7 +759,6 @@ def render_workflow_page():
     </div>
     ''', unsafe_allow_html=True)
 
-    # NUOVA SEZIONE: Caricamento automatico
     if not st.session_state.workflows_loaded:
         with st.spinner('🔍 Caricamento workflow dalla directory...'):
             count = load_workflows_from_directory(st.session_state.workflow_path)
@@ -599,7 +768,6 @@ def render_workflow_page():
             time.sleep(1)
             st.rerun()
 
-    # Sezione configurazione path
     st.markdown('<div class="section-header">⚙️ Configurazione</div>', unsafe_allow_html=True)
     col_path, col_reload = st.columns([3, 1])
 
@@ -619,7 +787,6 @@ def render_workflow_page():
             st.session_state.workflows_loaded = False
             st.rerun()
 
-    # Sezione upload manuale (opzionale)
     with st.expander("📤 Upload Manuale"):
         uploaded_file = st.file_uploader(
             "Choose YAML file", 
@@ -659,7 +826,6 @@ def render_workflow_page():
                     'error': '⚠️'
                 }.get(status, '📋')
 
-                # Mostra il nome del file se disponibile
                 display_name = wf.get('name', wf_id)
 
                 if st.button(
