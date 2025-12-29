@@ -1,6 +1,6 @@
 """
 Open-Automator Streamlit Web UI
-v1.2.2 - Secret Viewer Edition
+v1.3.0 - Auto-Load Workflows Edition
 """
 
 import streamlit as st
@@ -9,6 +9,7 @@ import json
 import os
 import time
 import re
+import glob
 from datetime import datetime
 from typing import Dict, Any, Optional
 
@@ -30,32 +31,57 @@ st.set_page_config(
 )
 
 st.markdown("""
-<style>
-    .stApp { background-color: #1e1e2e; }
-    [data-testid="stSidebar"] { background-color: #2b2b3d; }
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-        color: #a0a0b0; font-size: 0.85em;
-    }
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem; border-radius: 10px; color: white;
-        text-align: center; margin-bottom: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-    .main-header h1 { margin: 0; font-size: 2.2em; font-weight: 600; }
-    .main-header p { margin: 0.5rem 0 0 0; opacity: 0.9; }
-    .section-header {
-        background: #3a3a4d; padding: 0.8rem 1rem; border-radius: 8px;
-        color: #e0e0e0; margin-bottom: 1rem; font-weight: 600;
-    }
-    .selected-indicator, .wallet-info {
-        color: #dc3545; font-size: 0.85em; margin: 0.5rem 0;
-    }
-    .secret-value {
-        background: #2b2b3d; padding: 0.5rem; border-radius: 5px;
-        font-family: monospace; color: #a0a0b0; margin: 0.5rem 0;
-    }
-</style>
+    <style>
+        .stApp {
+            background-color: #1e1e2e;
+        }
+        [data-testid="stSidebar"] {
+            background-color: #2b2b3d;
+        }
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+            color: #a0a0b0;
+            font-size: 0.85em;
+        }
+        .main-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .main-header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 600;
+        }
+        .main-header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+        .section-header {
+            background: #3a3a4d;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            color: #e0e0e0;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .selected-indicator, .wallet-info {
+            color: #dc3545;
+            font-size: 0.85em;
+            margin: 0.5rem 0;
+        }
+        .secret-value {
+            background: #2b2b3d;
+            padding: 0.5rem;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #a0a0b0;
+            margin: 0.5rem 0;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
 def init_session_state():
@@ -73,6 +99,12 @@ def init_session_state():
         st.session_state.show_secrets = {}
     if 'edit_secrets' not in st.session_state:
         st.session_state.edit_secrets = {}
+    # NUOVO: Parametro per il path dei workflow
+    if 'workflow_path' not in st.session_state:
+        st.session_state.workflow_path = os.getenv('WORKFLOW_PATH', './workflows')
+    # NUOVO: Auto-carica workflow all'avvio
+    if 'workflows_loaded' not in st.session_state:
+        st.session_state.workflows_loaded = False
 
 init_session_state()
 
@@ -176,6 +208,7 @@ def generate_mermaid_code(workflow: dict) -> str:
             if name and name not in referenced:
                 entry_point = name
                 break
+
         if not entry_point and tasks:
             entry_point = tasks[0].get('name', 'start')
 
@@ -191,17 +224,14 @@ def generate_mermaid_code(workflow: dict) -> str:
         for task in tasks:
             name = task.get('name', 'unnamed')
             node_id = node_map.get(name)
-
             if not node_id:
                 continue
-
             label = sanitize_mermaid_label(name)
             lines.append(f'    {node_id}["{label}"]')
 
         for task in tasks:
             name = task.get('name', 'unnamed')
             node_id = node_map.get(name)
-
             if not node_id:
                 continue
 
@@ -226,7 +256,6 @@ def generate_mermaid_code(workflow: dict) -> str:
         for task in tasks:
             name = task.get('name', 'unnamed')
             node_id = node_map.get(name)
-
             if not node_id:
                 continue
 
@@ -270,6 +299,7 @@ def load_wallet(wallet_file: str, wallet_type: str, master_password: str = None)
         st.success(f"✅ Wallet loaded: {len(wallet.secrets)} secrets")
         time.sleep(0.5)
         st.rerun()
+
     except ValueError:
         st.error("❌ Invalid master password")
     except Exception as e:
@@ -300,6 +330,7 @@ def create_wallet(wallet_file: str, wallet_type: str, master_password: str, secr
         st.success(f"✅ Wallet created: {len(secrets_dict)} secrets")
         time.sleep(0.5)
         st.rerun()
+
     except json.JSONDecodeError:
         st.error("❌ Invalid JSON format")
     except Exception as e:
@@ -325,6 +356,7 @@ def add_secret(key: str, value: str, master_password: str = None):
         st.success(f"✅ Secret '{key}' added")
         time.sleep(0.3)
         st.rerun()
+
     except Exception as e:
         st.error(f"❌ Failed: {e}")
 
@@ -350,6 +382,7 @@ def update_secret(key: str, new_value: str, master_password: str = None):
         st.session_state.edit_secrets[key] = False
         time.sleep(0.3)
         st.rerun()
+
     except Exception as e:
         st.error(f"❌ Failed: {e}")
 
@@ -373,6 +406,7 @@ def delete_secret(key: str, master_password: str = None):
         st.success(f"✅ Secret '{key}' removed")
         time.sleep(0.3)
         st.rerun()
+
     except Exception as e:
         st.error(f"❌ Failed: {e}")
 
@@ -383,6 +417,56 @@ def unload_wallet():
     st.success("✅ Wallet unloaded")
     time.sleep(0.3)
     st.rerun()
+
+def load_workflows_from_directory(workflow_path: str = "./workflows"):
+    """Carica tutti i workflow YAML dalla directory specificata"""
+    if not os.path.exists(workflow_path):
+        st.warning(f"📁 Directory non trovata: {workflow_path}")
+        return 0
+
+    loaded_count = 0
+    workflow_files = []
+
+    # Cerca file .yaml e .yml
+    for ext in ['*.yaml', '*.yml']:
+        workflow_files.extend(glob.glob(os.path.join(workflow_path, ext)))
+
+    for filepath in workflow_files:
+        try:
+            filename = os.path.basename(filepath)
+
+            # Controlla se già caricato
+            existing_ids = [wf['filepath'] for wf in st.session_state.workflows.values() 
+                          if 'filepath' in wf]
+            if filepath in existing_ids:
+                continue
+
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+                yaml_content = yaml.safe_load(content)
+
+            if not yaml_content or not isinstance(yaml_content, list) or 'tasks' not in yaml_content[0]:
+                st.warning(f"⚠️ File non valido: {filename}")
+                continue
+
+            workflow_id = f"wf_{filename.replace('.yaml', '').replace('.yml', '')}"
+            tasks = yaml_content[0]['tasks']
+
+            st.session_state.workflows[workflow_id] = {
+                'id': workflow_id,
+                'name': filename,
+                'filepath': filepath,
+                'content': yaml_content,
+                'status': 'loaded',
+                'created_at': datetime.now().isoformat(),
+                'last_execution': None
+            }
+            loaded_count += 1
+
+        except Exception as e:
+            st.warning(f"⚠️ Errore caricando {filename}: {e}")
+
+    return loaded_count
 
 def handle_workflow_upload(uploaded_file):
     try:
@@ -403,6 +487,7 @@ def handle_workflow_upload(uploaded_file):
 
         st.session_state.workflows[workflow_id] = {
             'id': workflow_id,
+            'name': uploaded_file.name,
             'content': yaml_content,
             'status': 'loaded',
             'created_at': datetime.now().isoformat(),
@@ -431,8 +516,8 @@ def execute_workflow(workflow_id: str):
 
         tasks = yaml_content[0]['tasks']
         workflow_vars = {k: v for k, v in yaml_content[0].items() if k != 'tasks'}
-
         exec_gdict = dict(workflow_vars)
+
         if st.session_state.active_wallet:
             exec_gdict['wallet'] = st.session_state.active_wallet
 
@@ -455,6 +540,7 @@ def execute_workflow(workflow_id: str):
             st.success("✅ Workflow completed!")
         else:
             st.error("❌ Workflow failed")
+
     except Exception as e:
         st.session_state.workflows[workflow_id]['status'] = 'error'
         st.error(f"❌ Execution failed: {e}")
@@ -465,18 +551,21 @@ def render_sidebar():
         st.divider()
 
         if st.button("📋 Workflows", use_container_width=True, 
-                     type="primary" if st.session_state.current_page == 'workflow' else "secondary"):
+                    type="primary" if st.session_state.current_page == 'workflow' else "secondary"):
             st.session_state.current_page = 'workflow'
             st.rerun()
 
         if st.session_state.current_workflow_id:
             wf = st.session_state.workflows[st.session_state.current_workflow_id]
-            st.markdown(f'<p class="selected-indicator">📌 Selected: {wf["id"]}</p>', unsafe_allow_html=True)
-            st.markdown(f'<p class="selected-indicator">Status: {wf["status"].upper()}</p>', unsafe_allow_html=True)
+            display_name = wf.get('name', wf['id'])
+            st.markdown(f'<p class="selected-indicator">📌 Selected: {display_name}</p>', 
+                       unsafe_allow_html=True)
+            st.markdown(f'<p class="selected-indicator">Status: {wf["status"].upper()}</p>', 
+                       unsafe_allow_html=True)
 
         st.divider()
 
-        if st.button("🔐 Wallet", use_container_width=True,
+        if st.button("🔐 Wallet", use_container_width=True, 
                     type="primary" if st.session_state.current_page == 'wallet' else "secondary"):
             st.session_state.current_page = 'wallet'
             st.rerun()
@@ -484,29 +573,63 @@ def render_sidebar():
         if st.session_state.active_wallet:
             wallet = st.session_state.active_wallet
             wallet_type = "🔒 Encrypted" if isinstance(wallet, Wallet) else "📄 Plain"
-            st.markdown(f'<p class="wallet-info">📌 Loaded: {wallet_type}</p>', unsafe_allow_html=True)
-            st.markdown(f'<p class="wallet-info">Secrets: {len(wallet.secrets)}</p>', unsafe_allow_html=True)
+            st.markdown(f'<p class="wallet-info">📌 Loaded: {wallet_type}</p>', 
+                       unsafe_allow_html=True)
+            st.markdown(f'<p class="wallet-info">Secrets: {len(wallet.secrets)}</p>', 
+                       unsafe_allow_html=True)
 
         st.divider()
-        st.caption("v1.2.2 - Secret Viewer")
+        st.caption("v1.3.0 - Auto-Load")
 
 def render_workflow_page():
-    st.markdown("""
+    st.markdown('''
     <div class="main-header">
-        <h1>📋 Workflow Management</h1>
+        <h1>🔄 Workflow Management</h1>
         <p>Upload, execute and monitor your automation workflows</p>
     </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
-    st.markdown('<div class="section-header">📤 Upload Workflow</div>', unsafe_allow_html=True)
+    # NUOVA SEZIONE: Caricamento automatico
+    if not st.session_state.workflows_loaded:
+        with st.spinner('🔍 Caricamento workflow dalla directory...'):
+            count = load_workflows_from_directory(st.session_state.workflow_path)
+            if count > 0:
+                st.success(f"✅ Caricati {count} workflow da {st.session_state.workflow_path}")
+            st.session_state.workflows_loaded = True
+            time.sleep(1)
+            st.rerun()
 
-    uploaded_file = st.file_uploader("Choose YAML file", type=['yaml', 'yml'], 
-                                     label_visibility="collapsed",
-                                     key="workflow_uploader")
+    # Sezione configurazione path
+    st.markdown('<div class="section-header">⚙️ Configurazione</div>', unsafe_allow_html=True)
+    col_path, col_reload = st.columns([3, 1])
 
-    if uploaded_file:
-        st.caption(f"📄 {uploaded_file.name}")
-        handle_workflow_upload(uploaded_file)
+    with col_path:
+        new_path = st.text_input(
+            "Directory Workflow", 
+            value=st.session_state.workflow_path,
+            help="Path della directory contenente i file YAML dei workflow"
+        )
+        if new_path != st.session_state.workflow_path:
+            st.session_state.workflow_path = new_path
+
+    with col_reload:
+        st.write("")
+        st.write("")
+        if st.button("🔄 Ricarica", use_container_width=True):
+            st.session_state.workflows_loaded = False
+            st.rerun()
+
+    # Sezione upload manuale (opzionale)
+    with st.expander("📤 Upload Manuale"):
+        uploaded_file = st.file_uploader(
+            "Choose YAML file", 
+            type=['yaml', 'yml'],
+            label_visibility='collapsed',
+            key='workflow_uploader'
+        )
+        if uploaded_file:
+            st.caption(f"📄 {uploaded_file.name}")
+            handle_workflow_upload(uploaded_file)
 
     st.divider()
 
@@ -528,43 +651,62 @@ def render_workflow_page():
                 is_selected = wf_id == st.session_state.current_workflow_id
                 task_count = len(wf['content'][0]['tasks'])
                 status = wf['status']
+                status_emoji = {
+                    'loaded': '📋',
+                    'running': '⚙️',
+                    'completed': '✅',
+                    'failed': '❌',
+                    'error': '⚠️'
+                }.get(status, '📋')
 
-                status_emoji = {'loaded': '📄', 'running': '⏳', 'completed': '✅', 
-                               'failed': '❌', 'error': '❌'}.get(status, '📄')
+                # Mostra il nome del file se disponibile
+                display_name = wf.get('name', wf_id)
 
-                if st.button(f"{status_emoji} {wf_id}\n{task_count} tasks", 
-                           key=f"sel_{wf_id}", use_container_width=True,
-                           type="primary" if is_selected else "secondary"):
+                if st.button(
+                    f"{status_emoji} {display_name} ({task_count} tasks)",
+                    key=f"sel_{wf_id}",
+                    use_container_width=True,
+                    type="primary" if is_selected else "secondary"
+                ):
                     st.session_state.current_workflow_id = wf_id
                     st.rerun()
 
     with col2:
         if not st.session_state.current_workflow_id:
-            st.info("👈 Select a workflow from the list")
+            st.info("📌 Select a workflow from the list")
         else:
             workflow = st.session_state.workflows[st.session_state.current_workflow_id]
+            display_name = workflow.get('name', workflow['id'])
 
-            st.markdown(f'<div class="section-header">📊 {workflow["id"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="section-header">📋 {display_name}</div>', unsafe_allow_html=True)
 
-            col_a, col_b, col_c = st.columns(3)
-            col_a.metric("Tasks", len(workflow['content'][0]['tasks']))
+            cola, colb, colc = st.columns(3)
+
+            cola.metric("Tasks", len(workflow['content'][0]['tasks']))
 
             status = workflow['status']
-            status_emoji = {'loaded': '🔵', 'running': '🟡', 'completed': '🟢', 
-                           'failed': '🔴', 'error': '🔴'}.get(status, '⚪')
-            col_b.metric("Status", f"{status_emoji} {status.upper()}")
+            status_emoji = {
+                'loaded': '📋',
+                'running': '⚙️',
+                'completed': '✅',
+                'failed': '❌',
+                'error': '⚠️'
+            }.get(status, '📋')
+            colb.metric("Status", f"{status_emoji} {status.upper()}")
 
             if workflow.get('last_execution'):
-                result = "✅" if workflow['last_execution'].get('success') else "❌"
-                col_c.metric("Last Run", result)
+                result = "✅ Success" if workflow['last_execution'].get('success') else "❌ Failed"
+                colc.metric("Last Run", result)
 
-            col_x, col_y = st.columns(2)
-            with col_x:
+            colx, coly = st.columns(2)
+
+            with colx:
                 if st.button("▶️ Execute Workflow", use_container_width=True, type="primary"):
                     with st.spinner("Executing..."):
                         execute_workflow(st.session_state.current_workflow_id)
-                        st.rerun()
-            with col_y:
+                    st.rerun()
+
+            with coly:
                 if st.button("🔄 Refresh", use_container_width=True):
                     st.rerun()
 
@@ -573,10 +715,11 @@ def render_workflow_page():
 
         workflow = st.session_state.workflows[st.session_state.current_workflow_id]
 
-        st.markdown('<div class="section-header">📈 Execution Status</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📊 Execution Status</div>', unsafe_allow_html=True)
 
         if workflow.get('last_execution'):
             exec_data = workflow['last_execution']
+
             if exec_data.get('success'):
                 st.success("✅ Execution successful")
             else:
@@ -586,7 +729,7 @@ def render_workflow_page():
                 ts = datetime.fromisoformat(exec_data['timestamp'])
                 st.caption(f"🕒 {ts.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
-            st.info("No execution data")
+            st.info("ℹ️ No execution data")
 
         st.divider()
 
@@ -599,62 +742,69 @@ def render_workflow_page():
                 from streamlit_mermaid import st_mermaid
                 st_mermaid(mermaid_code, height=700)
             except ImportError:
-                st.info("💡 Install: pip install streamlit-mermaid")
+                st.info("💡 Install `pip install streamlit-mermaid` for visualization")
 
                 tasks = workflow['content'][0]['tasks']
                 for task in tasks:
                     name = task.get('name', 'unnamed')
                     module = task.get('module', 'N/A')
                     function = task.get('function', 'N/A')
-                    st.markdown(f"- **{name}** → `{module}.{function}`")
+                    st.markdown(f"- **{name}**: `{module}.{function}`")
+
         except Exception as e:
-            st.error(f"Graph error: {e}")
-            with st.expander("🔍 Debug"):
+            st.error(f"❌ Graph error: {e}")
+
+            with st.expander("🐛 Debug"):
                 st.code(mermaid_code if 'mermaid_code' in locals() else str(e))
 
         st.divider()
 
-        st.markdown('<div class="section-header">📋 Task Results</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📝 Task Results</div>', unsafe_allow_html=True)
 
         if workflow.get('last_execution') and 'results' in workflow['last_execution']:
             results = workflow['last_execution']['results']
 
             if not results:
-                st.info("No task results")
+                st.info("ℹ️ No task results")
             else:
                 for name, result in results.items():
                     status = result['status']
-                    icon = {'success': '✅', 'failed': '❌'}.get(status, '⏳')
+                    icon = {'success': '✅', 'failed': '❌'}.get(status, '⚙️')
 
                     st.markdown(f"### {icon} {result['task_name']}")
+
                     col1, col2 = st.columns([3, 1])
                     col2.metric("Duration", f"{result['duration']:.3f}s")
 
                     if result.get('error'):
                         st.error(result['error'])
+
                     if result.get('output'):
-                        with st.expander("📄 Output"):
+                        with st.expander("📤 Output"):
                             st.json(result['output'])
+
                     st.divider()
         else:
-            st.info("Execute workflow to see results")
+            st.info("ℹ️ Execute workflow to see results")
 
 def render_wallet_page():
-    st.markdown("""
+    st.markdown('''
     <div class="main-header">
         <h1>🔐 Wallet Management</h1>
         <p>Manage secure credentials for your workflows</p>
     </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
-    st.markdown('<div class="section-header">📊 Wallet Status</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">🔐 Wallet Status</div>', unsafe_allow_html=True)
 
     if st.session_state.active_wallet:
         wallet = st.session_state.active_wallet
+
         col1, col2, col3 = st.columns(3)
         col1.success("✅ Loaded")
         col2.metric("Type", "🔒 Encrypted" if isinstance(wallet, Wallet) else "📄 Plain")
         col3.metric("Secrets", len(wallet.secrets))
+
         st.caption(f"📁 {wallet.wallet_file}")
     else:
         st.warning("⚠️ No Wallet Loaded")
@@ -674,28 +824,30 @@ def render_wallet_page():
 
     with tab2:
         with st.form("create_form"):
-            new_file = st.text_input("Wallet File", "mywallet.enc")
+            new_file = st.text_input("Wallet File", "my_wallet.enc")
             new_type = st.selectbox("Type", ["encrypted", "plain"], key="ct")
             new_pwd = st.text_input("Master Password", type="password", key="cp") if new_type == "encrypted" else None
             secrets = st.text_area("Secrets (JSON)", '{"key": "value"}', height=100)
 
-            if st.form_submit_button("✨ Create", use_container_width=True):
+            if st.form_submit_button("➕ Create", use_container_width=True):
                 create_wallet(new_file, new_type, new_pwd, secrets)
 
     if st.session_state.active_wallet:
         st.divider()
+
         st.markdown('<div class="section-header">🔑 Secrets</div>', unsafe_allow_html=True)
 
         wallet = st.session_state.active_wallet
 
-        if len(wallet.secrets) > 0:
+        if len(wallet.secrets) == 0:
+            st.info("ℹ️ No secrets")
+        else:
             for idx, key in enumerate(list(wallet.secrets.keys())):
-                # Row principale con chiave e bottoni
                 col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
+
                 col1.code(key)
 
-                # Bottone visualizza/nascondi
-                show_key = f'show_{key}'
+                show_key = f"show_{key}"
                 if show_key not in st.session_state.show_secrets:
                     st.session_state.show_secrets[show_key] = False
 
@@ -704,8 +856,7 @@ def render_wallet_page():
                     st.session_state.show_secrets[show_key] = not st.session_state.show_secrets[show_key]
                     st.rerun()
 
-                # Bottone modifica
-                edit_key = f'edit_{key}'
+                edit_key = f"edit_{key}"
                 if edit_key not in st.session_state.edit_secrets:
                     st.session_state.edit_secrets[edit_key] = False
 
@@ -713,25 +864,19 @@ def render_wallet_page():
                     st.session_state.edit_secrets[edit_key] = True
                     st.rerun()
 
-                # Bottone elimina
                 if col4.button("🗑️", key=f"del_{idx}", help="Delete"):
-                    st.session_state[f'confirm_del_{key}'] = True
+                    st.session_state[f"confirm_del_{key}"] = True
                     st.rerun()
 
-                # Mostra valore se richiesto
                 if st.session_state.show_secrets.get(show_key, False):
                     value = wallet.secrets[key]
                     st.markdown(f'<div class="secret-value">{value}</div>', unsafe_allow_html=True)
 
-                # Modalità modifica
                 if st.session_state.edit_secrets.get(edit_key, False):
                     with st.container():
-                        st.caption(f"✏️ Editing: **{key}**")
-
-                        new_value = st.text_input("New Value", 
-                                                 value=wallet.secrets[key],
-                                                 type="password",
-                                                 key=f"newval_{idx}")
+                        st.caption(f"✏️ Editing: {key}")
+                        new_value = st.text_input("New Value", value=wallet.secrets[key], 
+                                                 type="password", key=f"new_val_{idx}")
 
                         col_save, col_cancel = st.columns(2)
 
@@ -747,28 +892,25 @@ def render_wallet_page():
                             st.session_state.edit_secrets[edit_key] = False
                             st.rerun()
 
-                # Conferma eliminazione
-                if st.session_state.get(f'confirm_del_{key}'):
-                    st.warning(f"⚠️ Delete '{key}'?")
+                if st.session_state.get(f"confirm_del_{key}"):
+                    st.warning(f"🗑️ Delete '{key}'?")
                     c1, c2 = st.columns(2)
 
                     if isinstance(wallet, Wallet):
                         pwd = st.text_input("Master Password", type="password", key=f"pwd_del_{idx}")
                         if c1.button("✅ Confirm", key=f"conf_{idx}") and pwd:
                             delete_secret(key, pwd)
-                            st.session_state[f'confirm_del_{key}'] = False
+                            st.session_state[f"confirm_del_{key}"] = False
                     else:
                         if c1.button("✅ Confirm", key=f"conf_{idx}"):
                             delete_secret(key)
-                            st.session_state[f'confirm_del_{key}'] = False
+                            st.session_state[f"confirm_del_{key}"] = False
 
                     if c2.button("❌ Cancel", key=f"canc_{idx}"):
-                        st.session_state[f'confirm_del_{key}'] = False
+                        st.session_state[f"confirm_del_{key}"] = False
                         st.rerun()
 
                 st.divider()
-        else:
-            st.info("No secrets")
 
         st.divider()
 
@@ -777,13 +919,14 @@ def render_wallet_page():
             col1, col2 = st.columns(2)
             new_key = col1.text_input("Key")
             new_val = col2.text_input("Value", type="password")
+
             add_pwd = st.text_input("Master Password", type="password") if isinstance(wallet, Wallet) else None
 
-            if st.form_submit_button("💾 Add"):
+            if st.form_submit_button("➕ Add"):
                 if new_key and new_val:
                     add_secret(new_key, new_val, add_pwd)
 
-        if st.button("🚪 Unload Wallet", type="secondary"):
+        if st.button("🔓 Unload Wallet", type="secondary"):
             unload_wallet()
 
 def main():
@@ -796,5 +939,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-#streamlit run streamlit_app.py --server.port 8502
+
+# Run with: streamlit run streamlit_app.py --server.port 8502
