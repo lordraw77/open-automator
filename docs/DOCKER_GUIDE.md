@@ -143,7 +143,7 @@ docker run -it --rm \
   -v $(pwd)/workflows:/workflows \
   -e OA_WALLET_FILE=/data/wallet.enc \
   -e OA_WALLET_PASSWORD=miapwd \
-  open-automator-shell:latest --debug run myworkflow
+  open-automator-shell:latest --debug /workflows/mywf.yaml
 ```
 
 ### Caratteristiche Tecniche

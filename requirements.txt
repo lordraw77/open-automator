@@ -14,3 +14,10 @@ streamlit-mermaid
 psycopg2-binary
 cryptography
 chardet
+uvicorn
+flask
+fastapi
+python-multipart
+websockets
+pydantic
+tabulate 
