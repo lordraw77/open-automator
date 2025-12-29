@@ -1,73 +1,285 @@
 #!/bin/bash
+#
+# Open-Automator Wallet - Multi-platform Docker Build & Push Script
+# Supports: linux/amd64, linux/arm64
+#
 
-# Script per build Docker image Open-Automator wallet
+set -e
 
-set -e  # Exit on error
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Configurazione
-tag=open-automator-wallet
-minver=0
-maxver=1
-dockerfilename=Dockerfile.wallet
- 
+# Configuration
+DOCKERFILE="${DOCKERFILE:-Dockerfile.wallet}"
+IMAGE_NAME="${IMAGE_NAME:-open-automator-wallet}"
+DOCKER_USERNAME="${DOCKER_USERNAME:-}"
+VERSION="${VERSION:-1.0.0}"
+PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
+BUILDER_NAME="multiarch-builder"
 
-VERSION="$maxver.$minver"
-DOCKERFILE="$dockerfilename"
-TAG="$tag"
-echo "=========================================="
-echo "Building Docker image"
-echo "=========================================="
-echo "Dockerfile: $dockerfilename"
-echo "Tag: $tag:$maxver.$minver"
-echo "=========================================="
+# Parse version
+IFS='.' read -r VERSION_MAJOR VERSION_MINOR VERSION_PATCH <<< "$VERSION"
 
-# Verifica che il Dockerfile esista
-if [ ! -f "$dockerfilename" ]; then
-    echo "ERROR: Dockerfile not found: $dockerfilename"
+# Functions
+print_header() {
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}========================================${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+print_info() {
+    echo -e "${YELLOW}ℹ️  $1${NC}"
+}
+
+show_help() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+Build and optionally push Open-Automator Wallet Docker image for multiple platforms.
+
+OPTIONS:
+    --help                  Show this help message
+    --push                  Push to Docker Hub after build
+    --version VERSION       Set version (default: 1.0.0)
+    --username USERNAME     Docker Hub username (or set DOCKER_USERNAME env var)
+    --platforms PLATFORMS   Target platforms (default: linux/amd64,linux/arm64)
+    --single-platform       Build only for current platform (faster for testing)
+    --no-cache              Build without cache
+
+ENVIRONMENT VARIABLES:
+    DOCKER_USERNAME         Docker Hub username
+    VERSION                 Image version (default: 1.0.0)
+    IMAGE_NAME              Base image name (default: open-automator-wallet)
+    PLATFORMS               Target platforms
+    DOCKERFILE              Dockerfile path (default: Dockerfile.wallet)
+
+EXAMPLES:
+    # Build multi-platform (no push)
+    $0
+
+    # Build and push
+    DOCKER_USERNAME=myuser $0 --push
+
+    # Build specific version and push
+    $0 --version 1.2.3 --username myuser --push
+
+    # Quick test build (current platform only)
+    $0 --single-platform
+
+    # Build without cache
+    $0 --no-cache
+
+TAGS CREATED:
+    - USERNAME/open-automator-wallet:1.0.0      (full version)
+    - USERNAME/open-automator-wallet:1.0        (major.minor)
+    - USERNAME/open-automator-wallet:1          (major)
+    - USERNAME/open-automator-wallet:latest     (latest)
+
+EOF
+}
+
+# Parse arguments
+PUSH=false
+NO_CACHE=""
+SINGLE_PLATFORM=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --help)
+            show_help
+            exit 0
+            ;;
+        --push)
+            PUSH=true
+            shift
+            ;;
+        --version)
+            VERSION="$2"
+            IFS='.' read -r VERSION_MAJOR VERSION_MINOR VERSION_PATCH <<< "$VERSION"
+            shift 2
+            ;;
+        --username)
+            DOCKER_USERNAME="$2"
+            shift 2
+            ;;
+        --platforms)
+            PLATFORMS="$2"
+            shift 2
+            ;;
+        --single-platform)
+            SINGLE_PLATFORM=true
+            shift
+            ;;
+        --no-cache)
+            NO_CACHE="--no-cache"
+            shift
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Validation
+if [ ! -f "$DOCKERFILE" ]; then
+    print_error "Dockerfile not found: $DOCKERFILE"
     exit 1
 fi
 
-# Build con parametri corretti (tutto su una riga o con backslash)
-if docker buildx version &> /dev/null; then
-    echo "Using Docker Buildx"
-    BUILD_CMD="docker buildx build"
-else
-    echo "Using standard Docker build"
-    BUILD_CMD="docker build"
+if [ "$PUSH" = true ] && [ -z "$DOCKER_USERNAME" ]; then
+    print_error "Docker username required for push. Set DOCKER_USERNAME or use --username"
+    exit 1
 fi
 
-echo "Starting build..."
-$BUILD_CMD \
-    -f "$DOCKERFILE" \
-    -t "$TAG:$VERSION" \
-    --no-cache \
-    --compress \
-    --force-rm \
-    --load \
-    .
+# Set full image name
+if [ -n "$DOCKER_USERNAME" ]; then
+    FULL_IMAGE="$DOCKER_USERNAME/$IMAGE_NAME"
+else
+    FULL_IMAGE="$IMAGE_NAME"
+fi
 
-# Verifica che il build sia riuscito
-if [ $? -eq 0 ]; then
+# Single platform mode
+if [ "$SINGLE_PLATFORM" = true ]; then
+    PLATFORMS=$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')
+    print_info "Single-platform mode: $PLATFORMS"
+fi
+
+# Print configuration
+print_header "Open-Automator Wallet Build"
+echo "Dockerfile:    $DOCKERFILE"
+echo "Image:         $FULL_IMAGE"
+echo "Version:       $VERSION"
+echo "Platforms:     $PLATFORMS"
+echo "Push:          $PUSH"
+echo ""
+
+# Check Docker
+if ! command -v docker &> /dev/null; then
+    print_error "Docker not found"
+    exit 1
+fi
+
+print_success "Docker found"
+
+# Check buildx
+if ! docker buildx version &> /dev/null; then
+    print_error "Docker buildx not available"
+    exit 1
+fi
+
+print_success "Docker buildx available"
+
+# Create/use builder
+print_info "Setting up buildx builder..."
+if ! docker buildx inspect "$BUILDER_NAME" &> /dev/null; then
+    docker buildx create --name "$BUILDER_NAME" --driver docker-container --use
+    print_success "Builder created: $BUILDER_NAME"
+else
+    docker buildx use "$BUILDER_NAME"
+    print_success "Using existing builder: $BUILDER_NAME"
+fi
+
+# Docker login if pushing
+if [ "$PUSH" = true ]; then
+    print_info "Logging in to Docker Hub..."
+    if ! docker login; then
+        print_error "Docker login failed"
+        exit 1
+    fi
+    print_success "Logged in to Docker Hub"
+fi
+
+# Build
+print_header "Building Image"
+
+BUILD_ARGS=(
+    "build"
+    "-f" "$DOCKERFILE"
+    "--platform" "$PLATFORMS"
+    "--tag" "${FULL_IMAGE}:${VERSION}"
+    "--tag" "${FULL_IMAGE}:${VERSION_MAJOR}.${VERSION_MINOR}"
+    "--tag" "${FULL_IMAGE}:${VERSION_MAJOR}"
+    "--tag" "${FULL_IMAGE}:latest"
+    "--label" "org.opencontainers.image.title=Open-Automator Wallet"
+    "--label" "org.opencontainers.image.description=Secure credential management tool for Open-Automator"
+    "--label" "org.opencontainers.image.version=${VERSION}"
+    "--label" "org.opencontainers.image.vendor=Open-Automator"
+    "--label" "org.opencontainers.image.url=https://hub.docker.com/r/${FULL_IMAGE}"
+)
+
+if [ -n "$NO_CACHE" ]; then
+    BUILD_ARGS+=("$NO_CACHE")
+fi
+
+if [ "$PUSH" = true ]; then
+    BUILD_ARGS+=("--push")
+else
+    BUILD_ARGS+=("--load")
+fi
+
+BUILD_ARGS+=(".")
+
+echo "Command: docker buildx ${BUILD_ARGS[*]}"
+echo ""
+
+if docker buildx "${BUILD_ARGS[@]}"; then
     echo ""
-    echo "✅ Build successful!"
+    print_success "Build completed successfully!"
+
     echo ""
-
-    # Tag come latest
-    docker tag "$tag:$maxver.$minver" "$tag:latest"
-
-    echo "=========================================="
-    echo "Images created:"
-    echo "  - $tag:$maxver.$minver"
-    echo "  - $tag:latest"
-    echo "=========================================="
-
-    # Mostra info immagine
+    print_header "Image Details"
+    echo "Tags created:"
+    echo "  • ${FULL_IMAGE}:${VERSION}"
+    echo "  • ${FULL_IMAGE}:${VERSION_MAJOR}.${VERSION_MINOR}"
+    echo "  • ${FULL_IMAGE}:${VERSION_MAJOR}"
+    echo "  • ${FULL_IMAGE}:latest"
     echo ""
-    echo "Image details:"
-    docker images | grep "$tag" | head -2
+    echo "Platforms: $PLATFORMS"
+
+    if [ "$PUSH" = true ]; then
+        echo ""
+        print_success "Images pushed to Docker Hub!"
+        echo ""
+        print_info "Verify with:"
+        echo "  docker pull ${FULL_IMAGE}:latest"
+        echo "  docker buildx imagetools inspect ${FULL_IMAGE}:latest"
+        echo ""
+        print_info "View on Docker Hub:"
+        echo "  https://hub.docker.com/r/${FULL_IMAGE}"
+    else
+        echo ""
+        print_info "Images built locally (not pushed)"
+        echo ""
+        print_info "To push, run:"
+        echo "  $0 --push"
+    fi
+
+    echo ""
+    print_header "Quick Start"
+    echo "Create wallet:"
+    echo "  docker run --rm -it ${FULL_IMAGE}:latest create"
+    echo ""
+    echo "Add credential:"
+    echo "  docker run --rm -it \\"
+    echo "    -v \$(pwd)/data:/data \\"
+    echo "    ${FULL_IMAGE}:latest add mykey"
 
 else
     echo ""
-    echo "❌ Build failed!"
+    print_error "Build failed!"
     exit 1
 fi
