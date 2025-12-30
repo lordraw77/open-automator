@@ -1,48 +1,55 @@
-# Immagine base per Streamlit
+# Immagine base per Streamlit + API
 FROM python:3.12-slim-bookworm
 
 LABEL maintainer="Open-Automator"
-LABEL description="Open-Automator Streamlit UI"
+LABEL description="Open-Automator Streamlit UI + REST API"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Installa dipendenze di sistema
+# Installa dipendenze di sistema (aggiungo supervisor)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     build-essential \
+    supervisor \
     && rm -rf /var/lib/apt/lists/*
 
 # Crea utente
 RUN useradd -m -u 1000 automator && \
-    mkdir -p /app /app/modules /data /workflows && \
+    mkdir -p /app /app/modules /data /workflows /app/.logs && \
     chown -R automator:automator /app /data /workflows
 
 WORKDIR /app
 
-# Copia requirements per Streamlit
+# Copia requirements per Streamlit + API
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir flask gunicorn
 
 # Copia TUTTI i moduli Python (oa-*.py e altri)
 COPY --chown=automator:automator *.py ./
 COPY --chown=automator:automator ./modules/*.py ./modules/
 
-# Copia Streamlit app
+# Copia Streamlit app e API server
 COPY --chown=automator:automator streamlit_app.py ./
+COPY --chown=automator:automator api_server.py ./
 
 # Configurazione Streamlit
 RUN mkdir -p /home/automator/.streamlit
 COPY --chown=automator:automator .streamlit/config.toml /home/automator/.streamlit/
 
-USER automator
+# Configurazione Supervisor
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-EXPOSE 8502
+# Espone entrambe le porte
+EXPOSE 8502 8503
 
+# Health check per entrambi i servizi
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8502/_stcore/health || exit 1
+    CMD curl -f http://localhost:8502/_stcore/health && curl -f http://localhost:8503/health || exit 1
 
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port", "8502", "--server.address", "0.0.0.0"]
+# Avvia supervisor che gestisce sia Streamlit che API
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

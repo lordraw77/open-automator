@@ -13,15 +13,16 @@ import glob
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-try:
-    from automator import WorkflowEngine, WorkflowContext, TaskResult, TaskStatus
-    from taskstore import TaskResultStore
-    from wallet import Wallet, PlainWallet, resolve_dict_placeholders
-    from logger_config import AutomatorLogger
-    import oacommon
-except ImportError as e:
-    st.error(f"⚠️ Import error: {e}")
-    st.stop()
+from automator import WorkflowEngine, WorkflowContext, TaskResult, TaskStatus
+from taskstore import TaskResultStore
+from wallet import Wallet, PlainWallet, resolve_dict_placeholders
+from logger_config import AutomatorLogger
+import oacommon
+
+import io
+import logging
+from contextlib import redirect_stdout, redirect_stderr
+ 
 
 st.set_page_config(
     page_title="Open-Automator",
@@ -505,6 +506,17 @@ def execute_workflow(workflow_id: str):
     workflow = st.session_state.workflows[workflow_id]
     yaml_content = workflow['content']
 
+    # Prepara il buffer per catturare i log
+    log_buffer = io.StringIO()
+    log_handler = logging.StreamHandler(log_buffer)
+    log_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    log_handler.setFormatter(formatter)
+
+    # Ottieni il logger automator
+    automator_logger = logging.getLogger('automator')
+    automator_logger.addHandler(log_handler)
+
     try:
         if st.session_state.active_wallet:
             yaml_content = resolve_dict_placeholders(yaml_content, st.session_state.active_wallet)
@@ -522,13 +534,35 @@ def execute_workflow(workflow_id: str):
         engine = WorkflowEngine(tasks, exec_gdict, taskstore, debug=False, debug2=False)
 
         st.session_state.workflows[workflow_id]['status'] = 'running'
-        success, context = engine.execute()
+
+        # Cattura stdout/stderr durante l'esecuzione
+        stdout_buffer = io.StringIO()
+        stderr_buffer = io.StringIO()
+
+        with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
+            success, context = engine.execute()
+
+        # Raccogli tutti i log
+        logs = log_buffer.getvalue()
+        stdout_logs = stdout_buffer.getvalue()
+        stderr_logs = stderr_buffer.getvalue()
+
+        all_logs = []
+        if logs:
+            all_logs.append("=== LOGGER OUTPUT ===\n" + logs)
+        if stdout_logs:
+            all_logs.append("=== STDOUT ===\n" + stdout_logs)
+        if stderr_logs:
+            all_logs.append("=== STDERR ===\n" + stderr_logs)
+
+        combined_logs = "\n\n".join(all_logs) if all_logs else "No logs captured"
 
         st.session_state.workflows[workflow_id]['status'] = 'completed' if success else 'failed'
         st.session_state.workflows[workflow_id]['last_execution'] = {
             'timestamp': datetime.now().isoformat(),
             'success': success,
-            'results': serialize_results(context)
+            'results': serialize_results(context),
+            'logs': combined_logs  # NUOVO: salva i log
         }
 
         if success:
@@ -537,8 +571,21 @@ def execute_workflow(workflow_id: str):
             st.error("❌ Workflow failed")
 
     except Exception as e:
+        # Cattura anche i log in caso di errore
+        logs = log_buffer.getvalue()
         st.session_state.workflows[workflow_id]['status'] = 'error'
+        st.session_state.workflows[workflow_id]['last_execution'] = {
+            'timestamp': datetime.now().isoformat(),
+            'success': False,
+            'results': {},
+            'logs': logs if logs else str(e),
+            'error': str(e)
+        }
         st.error(f"❌ Execution failed: {e}")
+    finally:
+        # Rimuovi il handler per evitare duplicazioni
+        automator_logger.removeHandler(log_handler)
+        log_handler.close()
 
 def get_query_params():
     """Estrae i parametri dalla query string"""
@@ -952,6 +999,49 @@ def render_workflow_page():
                     st.divider()
         else:
             st.info("ℹ️ Execute workflow to see results")
+
+        # NUOVO: Visualizzazione Logs
+        st.markdown('<div class="section-header">📋 Execution Logs</div>', unsafe_allow_html=True)
+
+        if workflow.get('last_execution') and 'logs' in workflow['last_execution']:
+            logs = workflow['last_execution']['logs']
+
+            with st.expander("📜 View Console Logs", expanded=False):
+                st.code(logs, language='log')
+
+                # Opzione per scaricare i log
+                st.download_button(
+                    label="💾 Download Logs",
+                    data=logs,
+                    file_name=f"workflow_{workflow['name']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+        else:
+            st.info("ℹ️ No logs available")
+
+        st.divider()
+
+        # NUOVO: Visualizzazione Sorgente Workflow
+        st.markdown('<div class="section-header">📄 Workflow Source</div>', unsafe_allow_html=True)
+
+        with st.expander("📝 View YAML Source", expanded=False):
+            # Converti il workflow in YAML string
+            yaml_content = workflow['content']
+            yaml_string = yaml.dump(yaml_content, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+            st.code(yaml_string, language='yaml')
+
+            # Opzione per scaricare il YAML
+            st.download_button(
+                label="💾 Download YAML",
+                data=yaml_string,
+                file_name=f"{workflow['name']}",
+                mime="text/yaml",
+                use_container_width=True
+            )
+
+        st.divider()
 
 def render_wallet_page():
     st.markdown('''
