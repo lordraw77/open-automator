@@ -1,7 +1,8 @@
 """
 Open-Automator Docker Module
-Gestisce operazioni Docker con data propagation
-Supporto per wallet, placeholder WALLET{key}, ENV{var} e VAULT{key}
+
+Manages Docker operations with data propagation
+Support for wallet, placeholder {WALLET:key}, {ENV:var} and {VAULT:key}
 """
 
 import oacommon
@@ -12,40 +13,59 @@ import logging
 from logger_config import AutomatorLogger
 
 logger = AutomatorLogger.getlogger("oa-docker")
-
 gdict = {}
-
 myself = lambda: inspect.stack()[1][3]
 
 def setgdict(self, gdictparam):
-    """Imposta il dizionario globale"""
+    """Sets the global dictionary"""
     global gdict
     gdict = gdictparam
     self.gdict = gdictparam
 
-
 @oacommon.trace
 def container_run(self, param):
     """
-    Avvia un container Docker con data propagation
+    Starts a Docker container with data propagation
 
     Args:
-        param (dict) con:
-            - image: nome immagine Docker - supporta WALLET{key}, ENV{var}
-            - name: (opzionale) nome del container - supporta ENV{var}
-            - ports: (opzionale) dict port mapping es. {"8080": "80"}
-            - volumes: (opzionale) dict volume mapping
-            - env: (opzionale) dict variabili ambiente
-            - detach: (opzionale) run in background (default: True)
-            - remove: (opzionale) auto-remove al termine (default: False)
-            - command: (opzionale) comando da eseguire
-            - input: (opzionale) dati dal task precedente
-            - workflowcontext: (opzionale) contesto workflow
-            - taskid: (opzionale) id univoco del task
-            - taskstore: (opzionale) istanza di TaskResultStore
+        param (dict) with:
+            - image: Docker image name - supports {WALLET:key}, {ENV:var}
+            - name: (optional) container name - supports {ENV:var}
+            - ports: (optional) dict port mapping e.g. {"8080": "80"}
+            - volumes: (optional) dict volume mapping
+            - env: (optional) dict environment variables
+            - detach: (optional) run in background (default: True)
+            - remove: (optional) auto-remove on exit (default: False)
+            - command: (optional) command to execute
+            - input: (optional) data from previous task
+            - workflowcontext: (optional) workflow context
+            - taskid: (optional) unique task id
+            - taskstore: (optional) TaskResultStore instance
 
     Returns:
-        tuple (success, outputdict) con info sul container
+        tuple (success, outputdict) with container info
+
+    Example YAML:
+        # Run simple container
+        - name: run_nginx
+          module: oa-docker
+          function: container_run
+          image: nginx:latest
+          name: my_nginx
+          ports:
+            "8080": "80"
+          detach: true
+
+        # Run with environment variables from wallet
+        - name: run_app
+          module: oa-docker
+          function: container_run
+          image: myapp:v1
+          env:
+            API_KEY: "{WALLET:api_key}"
+            DB_HOST: "{ENV:DATABASE_HOST}"
+          volumes:
+            "/host/data": "/container/data"
     """
     funcname = myself()
     logger.info(f"Running Docker container")
@@ -59,14 +79,10 @@ def container_run(self, param):
     requiredparams = ["image"]
 
     try:
-        # Validazione parametri
         if not oacommon.checkandloadparam(self, myself, requiredparams, param=param):
             raise ValueError(f"Missing required parameters for {funcname}")
 
-        # Recupera wallet
         wallet = gdict.get("wallet")
-
-        # Estrai parametri
         image = oacommon.getparam(param, "image", wallet) or gdict.get("image")
         name = oacommon.getparam(param, "name", wallet) or param.get("name")
         ports = param.get("ports", {})
@@ -80,38 +96,28 @@ def container_run(self, param):
         if name:
             logger.debug(f"Container name: {name}")
 
-        # Costruisci comando docker run
         cmd = ["docker", "run"]
-
         if detach:
             cmd.append("-d")
-
         if remove:
             cmd.append("--rm")
-
         if name:
             cmd.extend(["--name", name])
 
-        # Aggiungi port mapping
         for host_port, container_port in ports.items():
             cmd.extend(["-p", f"{host_port}:{container_port}"])
             logger.debug(f"Port mapping: {host_port}->{container_port}")
 
-        # Aggiungi volume mapping
         for host_path, container_path in volumes.items():
             cmd.extend(["-v", f"{host_path}:{container_path}"])
             logger.debug(f"Volume mapping: {host_path}->{container_path}")
 
-        # Aggiungi variabili ambiente
         for key, value in envvars.items():
-            # Supporta placeholder nelle variabili ambiente
             resolved_value = oacommon.getparam(f"{key}={value}", key, wallet) if isinstance(value, str) else value
             cmd.extend(["-e", f"{key}={resolved_value}"])
 
-        # Aggiungi immagine
         cmd.append(image)
 
-        # Aggiungi comando opzionale
         if command:
             if isinstance(command, str):
                 cmd.extend(command.split())
@@ -120,7 +126,6 @@ def container_run(self, param):
 
         logger.debug(f"Docker command: {' '.join(cmd)}")
 
-        # Esegui comando
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -138,51 +143,61 @@ def container_run(self, param):
         else:
             logger.info(f"Container started successfully: {container_id[:12]}")
 
-        # Output data per propagation
-        outputdata = {
-            "container_id": container_id,
-            "container_name": name,
-            "image": image,
-            "detached": detach,
-            "ports": ports,
-            "volumes": volumes,
-            "returncode": result.returncode,
-            "stderr": result.stderr
-        }
+            outputdata = {
+                "container_id": container_id,
+                "container_name": name,
+                "image": image,
+                "detached": detach,
+                "ports": ports,
+                "volumes": volumes,
+                "returncode": result.returncode,
+                "stderr": result.stderr
+            }
 
     except subprocess.TimeoutExpired:
         tasksuccess = False
         errormsg = "Docker run timeout after 300s"
         logger.error(errormsg)
-
     except Exception as e:
         tasksuccess = False
         errormsg = str(e)
         logger.error(f"Docker container_run failed: {e}", exc_info=True)
-
     finally:
         if taskstore and taskid:
             taskstore.setresult(taskid, tasksuccess, errormsg)
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def container_stop(self, param):
     """
-    Ferma un container Docker con data propagation
+    Stops a Docker container with data propagation
 
     Args:
-        param (dict) con:
-            - container: nome o ID del container (può usare input da task precedente)
-            - timeout: (opzionale) timeout in secondi (default: 10)
-            - input: (opzionale) dati dal task precedente
-            - workflowcontext: (opzionale) contesto workflow
-            - taskid: (opzionale) id univoco del task
-            - taskstore: (opzionale) istanza di TaskResultStore
+        param (dict) with:
+            - container: container name or ID (can use input from previous task)
+            - timeout: (optional) timeout in seconds (default: 10)
+            - input: (optional) data from previous task
+            - workflowcontext: (optional) workflow context
+            - taskid: (optional) unique task id
+            - taskstore: (optional) TaskResultStore instance
 
     Returns:
-        tuple (success, outputdict) con info sul container fermato
+        tuple (success, outputdict) with stopped container info
+
+    Example YAML:
+        # Stop specific container
+        - name: stop_nginx
+          module: oa-docker
+          function: container_stop
+          container: my_nginx
+          timeout: 15
+
+        # Stop container from previous task
+        - name: stop_container
+          module: oa-docker
+          function: container_stop
+          # Uses container_id from previous task output
     """
     funcname = myself()
     logger.info("Stopping Docker container")
@@ -194,7 +209,6 @@ def container_stop(self, param):
     outputdata = None
 
     try:
-        # Data propagation: usa input se container non specificato
         if "container" not in param and "input" in param:
             previnput = param.get("input")
             if isinstance(previnput, dict):
@@ -202,7 +216,7 @@ def container_stop(self, param):
                     param["container"] = previnput["container_id"]
                 elif "container_name" in previnput:
                     param["container"] = previnput["container_name"]
-            logger.info("Using container from previous task")
+                logger.info("Using container from previous task")
 
         if not oacommon.checkandloadparam(self, myself, ["container"], param=param):
             raise ValueError(f"Missing required parameter 'container' for {funcname}")
@@ -213,7 +227,6 @@ def container_stop(self, param):
 
         logger.info(f"Stopping container: {container}")
 
-        # Esegui docker stop
         cmd = ["docker", "stop", "-t", str(timeout), container]
         result = subprocess.run(
             cmd,
@@ -229,43 +242,56 @@ def container_stop(self, param):
             logger.error(errormsg)
         else:
             logger.info(f"Container stopped successfully: {container}")
-
-        outputdata = {
-            "container": container,
-            "stopped": result.returncode == 0,
-            "timeout": timeout,
-            "stderr": result.stderr
-        }
+            outputdata = {
+                "container": container,
+                "stopped": result.returncode == 0,
+                "timeout": timeout,
+                "stderr": result.stderr
+            }
 
     except Exception as e:
         tasksuccess = False
         errormsg = str(e)
         logger.error(f"Docker container_stop failed: {e}", exc_info=True)
-
     finally:
         if taskstore and taskid:
             taskstore.setresult(taskid, tasksuccess, errormsg)
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def container_logs(self, param):
     """
-    Recupera i log di un container Docker
+    Retrieves logs from a Docker container
 
     Args:
-        param (dict) con:
-            - container: nome o ID (può usare input da task precedente)
-            - tail: (opzionale) numero righe (default: all)
-            - follow: (opzionale) segui log in real-time (default: False)
-            - timestamps: (opzionale) mostra timestamps (default: False)
-            - saveonvar: (opzionale) salva log in variabile
-            - input: (opzionale) dati dal task precedente
+        param (dict) with:
+            - container: container name or ID (can use input from previous task)
+            - tail: (optional) number of lines (default: all)
+            - follow: (optional) follow logs in real-time (default: False)
+            - timestamps: (optional) show timestamps (default: False)
+            - saveonvar: (optional) save logs to variable
+            - input: (optional) data from previous task
             - taskid, taskstore, workflowcontext
 
     Returns:
-        tuple (success, logs) - propaga i log
+        tuple (success, logs) - propagates the logs
+
+    Example YAML:
+        # Get last 100 lines of logs
+        - name: get_logs
+          module: oa-docker
+          function: container_logs
+          container: my_nginx
+          tail: 100
+          timestamps: true
+
+        # Get logs from previous task container
+        - name: check_logs
+          module: oa-docker
+          function: container_logs
+          # Uses container_id from previous task
+          saveonvar: container_output
     """
     funcname = myself()
     logger.info("Retrieving Docker container logs")
@@ -277,12 +303,11 @@ def container_logs(self, param):
     outputdata = None
 
     try:
-        # Data propagation
         if "container" not in param and "input" in param:
             previnput = param.get("input")
             if isinstance(previnput, dict) and "container_id" in previnput:
                 param["container"] = previnput["container_id"]
-            logger.info("Using container from previous task")
+                logger.info("Using container from previous task")
 
         if not oacommon.checkandloadparam(self, myself, ["container"], param=param):
             raise ValueError(f"Missing required parameter 'container'")
@@ -295,13 +320,10 @@ def container_logs(self, param):
         logger.info(f"Container: {container}")
 
         cmd = ["docker", "logs"]
-
         if tail:
             cmd.extend(["--tail", str(tail)])
-
         if timestamps:
             cmd.append("--timestamps")
-
         cmd.append(container)
 
         result = subprocess.run(
@@ -321,7 +343,6 @@ def container_logs(self, param):
 
         logger.info(f"Retrieved {len(logs)} bytes of logs")
 
-        # Salva in variabile se richiesto
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = logs
@@ -337,7 +358,6 @@ def container_logs(self, param):
         tasksuccess = False
         errormsg = str(e)
         logger.error(f"Docker container_logs failed: {e}", exc_info=True)
-
     finally:
         if taskstore and taskid:
             taskstore.setresult(taskid, tasksuccess, errormsg)

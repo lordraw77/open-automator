@@ -1,7 +1,8 @@
 """
 Open-Automator Git Module
-Gestisce operazioni Git (clone, pull, push, tag, branch) con data propagation
-Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
+
+Manages Git operations (clone, pull, push, tag, branch, status) with data propagation
+Support for wallet, placeholder {WALLET:key}, {ENV:var} and {VAULT:key}
 """
 
 import oacommon
@@ -11,26 +12,26 @@ import os
 import logging
 from logger_config import AutomatorLogger
 
-# Logger per questo modulo
+# Logger for this module
 logger = AutomatorLogger.get_logger('oa-git')
 
 gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
 def setgdict(self, gdict_param):
-    """Imposta il dizionario globale"""
+    """Sets the global dictionary"""
     global gdict
     gdict = gdict_param
     self.gdict = gdict_param
 
 def run_git_command(command, cwd=None, timeout=300):
     """
-    Helper per eseguire comandi git
+    Helper to execute git commands
 
     Args:
-        command: lista con comando git e argomenti
-        cwd: directory di lavoro
-        timeout: timeout in secondi
+        command: list with git command and arguments
+        cwd: working directory
+        timeout: timeout in seconds
 
     Returns:
         tuple: (success, stdout, stderr, return_code)
@@ -60,24 +61,58 @@ def run_git_command(command, cwd=None, timeout=300):
 @oacommon.trace
 def clone(self, param):
     """
-    Clona un repository Git con data propagation
+    Clones a Git repository with data propagation
 
     Args:
-        param: dict con:
-            - repo_url: URL del repository (https o ssh) - supporta {WALLET:key}, {ENV:var}
-            - dest_path: path di destinazione locale
-            - branch: (opzionale) branch specifico da clonare
-            - depth: (opzionale) clone shallow con depth specificato
-            - recursive: (opzionale) clone ricorsivo dei submodules, default False
-            - username: (opzionale) username per HTTPS auth - supporta {WALLET:key}, {ENV:var}
-            - password: (opzionale) password/token per HTTPS auth - supporta {WALLET:key}, {ENV:var}
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - repo_url: repository URL (https or ssh) - supports {WALLET:key}, {ENV:var}
+            - dest_path: local destination path
+            - branch: (optional) specific branch to clone
+            - depth: (optional) shallow clone with specified depth
+            - recursive: (optional) recursive submodule clone, default False
+            - username: (optional) username for HTTPS auth - supports {WALLET:key}, {ENV:var}
+            - password: (optional) password/token for HTTPS auth - supports {WALLET:key}, {ENV:var}
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sul clone
+        tuple: (success, output_dict) with clone info
+
+    Example YAML:
+        # Clone public repository
+        - name: clone_public_repo
+          module: oa-git
+          function: clone
+          repo_url: "https://github.com/user/project.git"
+          dest_path: "/workspace/project"
+
+        # Clone specific branch with shallow depth
+        - name: clone_develop_branch
+          module: oa-git
+          function: clone
+          repo_url: "https://github.com/company/app.git"
+          dest_path: "/tmp/app"
+          branch: "develop"
+          depth: 1
+
+        # Clone private repo with authentication from wallet
+        - name: clone_private
+          module: oa-git
+          function: clone
+          repo_url: "https://github.com/company/private.git"
+          dest_path: "/secure/repo"
+          username: "{WALLET:git_username}"
+          password: "{VAULT:git_token}"
+
+        # Clone with recursive submodules
+        - name: clone_with_submodules
+          module: oa-git
+          function: clone
+          repo_url: "{ENV:REPO_URL}"
+          dest_path: "/workspace/main"
+          recursive: true
     """
     func_name = myself()
     logger.info("Git clone operation")
@@ -91,7 +126,7 @@ def clone(self, param):
     required_params = ['repo_url', 'dest_path']
 
     try:
-        # Se repo_url non è specificato, usa input
+        # If repo_url not specified, use input
         if 'repo_url' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'repo_url' in prev_input:
@@ -101,10 +136,10 @@ def clone(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder WALLET/ENV
+        # Use get_param to support WALLET/ENV placeholders
         repo_url = oacommon.get_param(param, 'repo_url', wallet) or gdict.get('repo_url')
         dest_path = oacommon.get_param(param, 'dest_path', wallet) or gdict.get('dest_path')
         branch = oacommon.get_param(param, 'branch', wallet)
@@ -116,18 +151,18 @@ def clone(self, param):
         logger.info(f"Cloning repository: {repo_url}")
         logger.info(f"Destination: {dest_path}")
 
-        # Verifica che la destinazione non esista già
+        # Verify destination doesn't already exist
         if os.path.exists(dest_path):
             raise ValueError(f"Destination path already exists: {dest_path}")
 
-        # Costruisci URL con autenticazione se fornita
+        # Build URL with authentication if provided
         clone_url = repo_url
         if username and password and repo_url.startswith('https://'):
-            # Inserisci credenziali nell'URL
+            # Insert credentials in URL
             clone_url = repo_url.replace('https://', f'https://{username}:{password}@')
             logger.debug("Using HTTPS authentication (credentials from wallet/env)")
 
-        # Costruisci comando git clone
+        # Build git clone command
         command = ['git', 'clone']
 
         if branch:
@@ -144,7 +179,7 @@ def clone(self, param):
 
         command.extend([clone_url, dest_path])
 
-        # Esegui clone
+        # Execute clone
         success, stdout, stderr, return_code = run_git_command(
             command, 
             timeout=param.get('timeout', 600)
@@ -159,7 +194,7 @@ def clone(self, param):
             if stdout:
                 logger.debug(f"Git output: {stdout}")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'repo_url': repo_url,
             'dest_path': os.path.abspath(dest_path),
@@ -184,20 +219,41 @@ def clone(self, param):
 @oacommon.trace
 def pull(self, param):
     """
-    Esegue git pull su un repository esistente con data propagation
+    Executes git pull on an existing repository with data propagation
 
     Args:
-        param: dict con:
-            - repo_path: path del repository locale - supporta {ENV:var}
-            - branch: (opzionale) branch da pullare
-            - rebase: (opzionale) usa rebase invece di merge, default False
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - repo_path: local repository path - supports {ENV:var}
+            - branch: (optional) branch to pull
+            - rebase: (optional) use rebase instead of merge, default False
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sul pull
+        tuple: (success, output_dict) with pull info
+
+    Example YAML:
+        # Simple pull
+        - name: update_repo
+          module: oa-git
+          function: pull
+          repo_path: "/workspace/myproject"
+
+        # Pull specific branch with rebase
+        - name: pull_main_rebase
+          module: oa-git
+          function: pull
+          repo_path: "{ENV:PROJECT_DIR}"
+          branch: "main"
+          rebase: true
+
+        # Pull from previous clone task
+        - name: pull_updates
+          module: oa-git
+          function: pull
+          # repo_path comes from previous clone task
     """
     func_name = myself()
     logger.info("Git pull operation")
@@ -209,7 +265,7 @@ def pull(self, param):
     output_data = None
 
     try:
-        # Se repo_path non è specificato, usa input
+        # If repo_path not specified, use input
         if 'repo_path' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -222,21 +278,21 @@ def pull(self, param):
         if not oacommon.checkandloadparam(self, myself, 'repo_path', param=param):
             raise ValueError(f"Missing required parameter 'repo_path' for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
         branch = oacommon.get_param(param, 'branch', wallet)
         rebase = param.get('rebase', False)
 
         logger.info(f"Pulling repository: {repo_path}")
 
-        # Verifica che sia un repository git
+        # Verify it's a git repository
         if not os.path.exists(os.path.join(repo_path, '.git')):
             raise ValueError(f"Not a git repository: {repo_path}")
 
-        # Costruisci comando git pull
+        # Build git pull command
         command = ['git', 'pull']
 
         if rebase:
@@ -247,7 +303,7 @@ def pull(self, param):
             command.extend(['origin', branch])
             logger.debug(f"Branch: {branch}")
 
-        # Esegui pull
+        # Execute pull
         success, stdout, stderr, return_code = run_git_command(
             command, 
             cwd=repo_path,
@@ -262,13 +318,13 @@ def pull(self, param):
             logger.info("Git pull completed successfully")
             logger.info(f"Pull output: {stdout.strip()}")
 
-        # Ottieni info sul commit corrente
+        # Get current commit info
         commit_success, commit_hash, _, _ = run_git_command(
             ['git', 'rev-parse', 'HEAD'],
             cwd=repo_path
         )
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'repo_path': os.path.abspath(repo_path),
             'branch': branch,
@@ -293,22 +349,53 @@ def pull(self, param):
 @oacommon.trace
 def push(self, param):
     """
-    Esegue git push con data propagation
+    Executes git push with data propagation
 
     Args:
-        param: dict con:
-            - repo_path: path del repository locale - supporta {ENV:var}
-            - branch: (opzionale) branch da pushare
-            - remote: (opzionale) remote name, default 'origin'
-            - force: (opzionale) force push, default False
-            - tags: (opzionale) push tags, default False
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - repo_path: local repository path - supports {ENV:var}
+            - branch: (optional) branch to push
+            - remote: (optional) remote name, default 'origin'
+            - force: (optional) force push, default False
+            - tags: (optional) push tags, default False
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sul push
+        tuple: (success, output_dict) with push info
+
+    Example YAML:
+        # Simple push to origin
+        - name: push_changes
+          module: oa-git
+          function: push
+          repo_path: "/workspace/myproject"
+          branch: "main"
+
+        # Force push (use with caution!)
+        - name: force_push
+          module: oa-git
+          function: push
+          repo_path: "{ENV:REPO_PATH}"
+          branch: "feature-branch"
+          force: true
+
+        # Push with tags
+        - name: push_with_tags
+          module: oa-git
+          function: push
+          repo_path: "/workspace/app"
+          tags: true
+
+        # Push to specific remote
+        - name: push_to_backup
+          module: oa-git
+          function: push
+          repo_path: "/workspace/repo"
+          remote: "backup"
+          branch: "main"
     """
     func_name = myself()
     logger.info("Git push operation")
@@ -320,7 +407,7 @@ def push(self, param):
     output_data = None
 
     try:
-        # Se repo_path non è specificato, usa input
+        # If repo_path not specified, use input
         if 'repo_path' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -333,10 +420,10 @@ def push(self, param):
         if not oacommon.checkandloadparam(self, myself, 'repo_path', param=param):
             raise ValueError(f"Missing required parameter 'repo_path' for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
         branch = oacommon.get_param(param, 'branch', wallet)
         remote = oacommon.get_param(param, 'remote', wallet) or param.get('remote', 'origin')
@@ -345,11 +432,11 @@ def push(self, param):
 
         logger.info(f"Pushing repository: {repo_path}")
 
-        # Verifica che sia un repository git
+        # Verify it's a git repository
         if not os.path.exists(os.path.join(repo_path, '.git')):
             raise ValueError(f"Not a git repository: {repo_path}")
 
-        # Costruisci comando git push
+        # Build git push command
         command = ['git', 'push']
 
         if force:
@@ -366,7 +453,7 @@ def push(self, param):
             command.append(branch)
             logger.debug(f"Branch: {branch}")
 
-        # Esegui push
+        # Execute push
         success, stdout, stderr, return_code = run_git_command(
             command, 
             cwd=repo_path,
@@ -379,11 +466,11 @@ def push(self, param):
             logger.error(error_msg)
         else:
             logger.info("Git push completed successfully")
-            # Git push output va su stderr anche in caso di successo
+            # Git push output goes to stderr even on success
             if stderr:
                 logger.info(f"Push output: {stderr.strip()}")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'repo_path': os.path.abspath(repo_path),
             'branch': branch,
@@ -408,23 +495,58 @@ def push(self, param):
 @oacommon.trace
 def tag(self, param):
     """
-    Crea, lista o elimina tag Git con data propagation
+    Creates, lists, or deletes Git tags with data propagation
 
     Args:
-        param: dict con:
-            - repo_path: path del repository locale - supporta {ENV:var}
+        param: dict with:
+            - repo_path: local repository path - supports {ENV:var}
             - operation: 'create'|'list'|'delete'
-            - tag_name: (opzionale) nome del tag (per create/delete) - supporta {ENV:var}
-            - message: (opzionale) messaggio del tag annotato
-            - commit: (opzionale) commit su cui creare il tag
-            - push: (opzionale) push del tag dopo creazione, default False
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+            - tag_name: (optional) tag name (for create/delete) - supports {ENV:var}
+            - message: (optional) message for annotated tag
+            - commit: (optional) commit to tag
+            - push: (optional) push tag after creation, default False
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sui tag
+        tuple: (success, output_dict) with tag info
+
+    Example YAML:
+        # Create lightweight tag
+        - name: create_tag
+          module: oa-git
+          function: tag
+          repo_path: "/workspace/project"
+          operation: create
+          tag_name: "v1.0.0"
+
+        # Create annotated tag with message
+        - name: create_release_tag
+          module: oa-git
+          function: tag
+          repo_path: "{ENV:REPO_PATH}"
+          operation: create
+          tag_name: "v2.0.0"
+          message: "Release version 2.0.0"
+          push: true
+
+        # List all tags
+        - name: list_tags
+          module: oa-git
+          function: tag
+          repo_path: "/workspace/project"
+          operation: list
+
+        # Delete tag locally and remotely
+        - name: delete_tag
+          module: oa-git
+          function: tag
+          repo_path: "/workspace/project"
+          operation: delete
+          tag_name: "old-tag"
+          push: true
     """
     func_name = myself()
     logger.info("Git tag operation")
@@ -436,7 +558,7 @@ def tag(self, param):
     output_data = None
 
     try:
-        # Se repo_path non è specificato, usa input
+        # If repo_path not specified, use input
         if 'repo_path' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'repo_path' in prev_input:
@@ -447,10 +569,10 @@ def tag(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
         operation = oacommon.get_param(param, 'operation', wallet) or gdict.get('operation')
         tag_name = oacommon.get_param(param, 'tag_name', wallet)
@@ -460,7 +582,7 @@ def tag(self, param):
 
         logger.info(f"Git tag operation: {operation}")
 
-        # Verifica che sia un repository git
+        # Verify it's a git repository
         if not os.path.exists(os.path.join(repo_path, '.git')):
             raise ValueError(f"Not a git repository: {repo_path}")
 
@@ -468,7 +590,7 @@ def tag(self, param):
             if not tag_name:
                 raise ValueError("tag_name required for create operation")
 
-            # Costruisci comando git tag
+            # Build git tag command
             command = ['git', 'tag']
 
             if message:
@@ -482,7 +604,7 @@ def tag(self, param):
                 command.append(commit)
                 logger.debug(f"On commit: {commit}")
 
-            # Crea tag
+            # Create tag
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
@@ -495,7 +617,7 @@ def tag(self, param):
             else:
                 logger.info(f"Tag '{tag_name}' created successfully")
 
-                # Push del tag se richiesto
+                # Push tag if requested
                 if push_tag:
                     push_success, push_stdout, push_stderr, _ = run_git_command(
                         ['git', 'push', 'origin', tag_name],
@@ -516,7 +638,7 @@ def tag(self, param):
             }
 
         elif operation == 'list':
-            # Lista tutti i tag
+            # List all tags
             command = ['git', 'tag', '-l']
 
             success, stdout, stderr, return_code = run_git_command(
@@ -546,7 +668,7 @@ def tag(self, param):
             if not tag_name:
                 raise ValueError("tag_name required for delete operation")
 
-            # Elimina tag locale
+            # Delete local tag
             command = ['git', 'tag', '-d', tag_name]
 
             success, stdout, stderr, return_code = run_git_command(
@@ -561,7 +683,7 @@ def tag(self, param):
             else:
                 logger.info(f"Tag '{tag_name}' deleted locally")
 
-                # Elimina tag remoto se richiesto
+                # Delete remote tag if requested
                 if push_tag:
                     push_success, push_stdout, push_stderr, _ = run_git_command(
                         ['git', 'push', 'origin', f':refs/tags/{tag_name}'],
@@ -595,22 +717,64 @@ def tag(self, param):
 @oacommon.trace
 def branch(self, param):
     """
-    Gestisce branch Git (crea, lista, elimina, checkout) con data propagation
+    Manages Git branches (create, list, delete, checkout) with data propagation
 
     Args:
-        param: dict con:
-            - repo_path: path del repository locale - supporta {ENV:var}
+        param: dict with:
+            - repo_path: local repository path - supports {ENV:var}
             - operation: 'create'|'list'|'delete'|'checkout'
-            - branch_name: (opzionale) nome del branch (per create/delete/checkout) - supporta {ENV:var}
-            - from_branch: (opzionale) branch/commit sorgente per create
-            - force: (opzionale) force delete, default False
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+            - branch_name: (optional) branch name (for create/delete/checkout) - supports {ENV:var}
+            - from_branch: (optional) source branch/commit for create
+            - force: (optional) force delete, default False
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sui branch
+        tuple: (success, output_dict) with branch info
+
+    Example YAML:
+        # Create new branch
+        - name: create_feature_branch
+          module: oa-git
+          function: branch
+          repo_path: "/workspace/project"
+          operation: create
+          branch_name: "feature/new-feature"
+
+        # Create branch from specific commit
+        - name: create_from_commit
+          module: oa-git
+          function: branch
+          repo_path: "{ENV:REPO_PATH}"
+          operation: create
+          branch_name: "hotfix/bug-123"
+          from_branch: "main"
+
+        # List all branches
+        - name: list_branches
+          module: oa-git
+          function: branch
+          repo_path: "/workspace/project"
+          operation: list
+
+        # Checkout branch
+        - name: switch_to_develop
+          module: oa-git
+          function: branch
+          repo_path: "/workspace/project"
+          operation: checkout
+          branch_name: "develop"
+
+        # Delete branch (force)
+        - name: delete_old_branch
+          module: oa-git
+          function: branch
+          repo_path: "/workspace/project"
+          operation: delete
+          branch_name: "old-feature"
+          force: true
     """
     func_name = myself()
     logger.info("Git branch operation")
@@ -622,7 +786,7 @@ def branch(self, param):
     output_data = None
 
     try:
-        # Se repo_path non è specificato, usa input
+        # If repo_path not specified, use input
         if 'repo_path' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'repo_path' in prev_input:
@@ -633,10 +797,10 @@ def branch(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
         operation = oacommon.get_param(param, 'operation', wallet) or gdict.get('operation')
         branch_name = oacommon.get_param(param, 'branch_name', wallet)
@@ -645,7 +809,7 @@ def branch(self, param):
 
         logger.info(f"Git branch operation: {operation}")
 
-        # Verifica che sia un repository git
+        # Verify it's a git repository
         if not os.path.exists(os.path.join(repo_path, '.git')):
             raise ValueError(f"Not a git repository: {repo_path}")
 
@@ -653,7 +817,7 @@ def branch(self, param):
             if not branch_name:
                 raise ValueError("branch_name required for create operation")
 
-            # Costruisci comando git branch
+            # Build git branch command
             command = ['git', 'branch', branch_name]
 
             if from_branch:
@@ -662,7 +826,7 @@ def branch(self, param):
             else:
                 logger.debug(f"Creating branch '{branch_name}' from current HEAD")
 
-            # Crea branch
+            # Create branch
             success, stdout, stderr, return_code = run_git_command(
                 command, 
                 cwd=repo_path
@@ -683,7 +847,7 @@ def branch(self, param):
             }
 
         elif operation == 'list':
-            # Lista tutti i branch
+            # List all branches
             command = ['git', 'branch', '-a']
 
             success, stdout, stderr, return_code = run_git_command(
@@ -717,7 +881,7 @@ def branch(self, param):
             if not branch_name:
                 raise ValueError("branch_name required for delete operation")
 
-            # Elimina branch
+            # Delete branch
             command = ['git', 'branch']
             if force:
                 command.append('-D')
@@ -791,19 +955,39 @@ def branch(self, param):
 @oacommon.trace
 def status(self, param):
     """
-    Ottiene lo status del repository Git con data propagation
+    Gets the Git repository status with data propagation
 
     Args:
-        param: dict con:
-            - repo_path: path del repository locale - supporta {ENV:var}
-            - short: (opzionale) formato short, default False
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - repo_path: local repository path - supports {ENV:var}
+            - short: (optional) short format, default False
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con status info
+        tuple: (success, output_dict) with status info
+
+    Example YAML:
+        # Get full status
+        - name: check_status
+          module: oa-git
+          function: status
+          repo_path: "/workspace/project"
+
+        # Get short status
+        - name: quick_status
+          module: oa-git
+          function: status
+          repo_path: "{ENV:REPO_PATH}"
+          short: true
+
+        # Check status from previous task
+        - name: verify_clean
+          module: oa-git
+          function: status
+          # repo_path from previous clone/pull task
     """
     func_name = myself()
     logger.info("Git status operation")
@@ -823,10 +1007,10 @@ def status(self, param):
         if not oacommon.checkandloadparam(self, myself, 'repo_path', param=param):
             raise ValueError(f"Missing required parameter 'repo_path' for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         repo_path = oacommon.get_param(param, 'repo_path', wallet) or gdict.get('repo_path')
         short_format = param.get('short', False)
 
@@ -847,7 +1031,7 @@ def status(self, param):
             logger.info("Git status retrieved successfully")
             logger.info(f"Status:\n{stdout}")
 
-            # Verifica se ci sono modifiche
+            # Check if there are changes
             has_changes = bool(stdout.strip()) and 'nothing to commit' not in stdout
 
         output_data = {

@@ -1,3 +1,10 @@
+"""
+Open-Automator IO Module
+
+Manages file and directory operations (copy, zip, read, write) with data propagation
+Support for wallet, placeholder {WALLET:key}, {ENV:var} and {VAULT:key}
+"""
+
 import oacommon
 import os
 import shutil
@@ -10,14 +17,14 @@ import inspect
 import logging
 from logger_config import AutomatorLogger
 
-# Logger per questo modulo
+# Logger for this module
 logger = AutomatorLogger.get_logger('oa-io')
 
 gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
 def setgdict(self, gdict_param):
-    """Imposta il dizionario globale"""
+    """Sets the global dictionary"""
     global gdict
     gdict = gdict_param
     self.gdict = gdict_param
@@ -25,20 +32,45 @@ def setgdict(self, gdict_param):
 @oacommon.trace
 def copy(self, param):
     """
-    Copia file o directory con data propagation
+    Copies files or directories with data propagation
 
     Args:
-        param: dict con:
-            - srcpath: path sorgente - supporta {WALLET:key}, {ENV:var}
-            - dstpath: path destinazione - supporta {WALLET:key}, {ENV:var}
-            - recursive: True per directory, False per file singolo
-            - input (opzionale, da task precedente)
-            - workflow_context (opzionale)
-            - task_id (opzionale)
-            - task_store (opzionale)
+        param: dict with:
+            - srcpath: source path - supports {WALLET:key}, {ENV:var}
+            - dstpath: destination path - supports {WALLET:key}, {ENV:var}
+            - recursive: True for directories, False for single file
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con informazioni sulla copia
+        tuple: (success, output_dict) with copy information
+
+    Example YAML:
+        # Copy single file
+        - name: backup_config
+          module: oa-io
+          function: copy
+          srcpath: "/etc/app/config.yaml"
+          dstpath: "/backup/config.yaml"
+          recursive: false
+
+        # Copy entire directory recursively
+        - name: backup_data_folder
+          module: oa-io
+          function: copy
+          srcpath: "{ENV:DATA_DIR}"
+          dstpath: "/backup/data"
+          recursive: true
+
+        # Copy from previous task output
+        - name: copy_generated_file
+          module: oa-io
+          function: copy
+          # srcpath from previous task 'filepath' field
+          dstpath: "/output/result.txt"
+          recursive: false
     """
     func_name = myself()
     logger.info("Copying file/directory")
@@ -55,10 +87,10 @@ def copy(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         srcpath = oacommon.get_param(param, 'srcpath', wallet) or gdict.get('srcpath')
         dstpath = oacommon.get_param(param, 'dstpath', wallet) or gdict.get('dstpath')
         recursive = gdict['recursive']
@@ -71,7 +103,7 @@ def copy(self, param):
         if recursive:
             logger.debug("Recursive directory copy")
             shutil.copytree(srcpath, dstpath, dirs_exist_ok=True)
-            # Conta file copiati
+            # Count copied files
             file_count = sum(len(files) for _, _, files in os.walk(dstpath))
         else:
             logger.debug("Single file copy")
@@ -80,7 +112,7 @@ def copy(self, param):
 
         logger.info("Copy completed successfully")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'srcpath': srcpath,
             'dstpath': dstpath,
@@ -96,24 +128,24 @@ def copy(self, param):
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
 
-    # Ritorna tupla (success, output)
+    # Return tuple (success, output)
     return task_success, output_data
 
 def zipdir(paths, zipfilter, ziph, wallet=None):
     """
-    Helper function per comprimere directory con supporto placeholder.
+    Helper function to compress directories with placeholder support.
 
     Args:
-        paths: lista di path da comprimere
-        zipfilter: filtro per i file
-        ziph: handle del file ZIP
-        wallet: wallet instance per risolvere placeholder
+        paths: list of paths to compress
+        zipfilter: file filter
+        ziph: ZIP file handle
+        wallet: wallet instance to resolve placeholders
 
-    Nota: funzione di supporto interna, non è un task
-    e non gestisce task_id / task_store.
+    Note: Internal helper function, not a task
+    and doesn't handle task_id / task_store.
     """
     for path in paths:
-        # Risolvi placeholder nel path se presente wallet
+        # Resolve placeholder in path if wallet present
         if wallet and isinstance(path, str) and ('{WALLET:' in path or '{ENV:' in path or '{VAULT:' in path):
             from wallet import resolve_placeholders
             path = resolve_placeholders(path, wallet)
@@ -133,20 +165,58 @@ def zipdir(paths, zipfilter, ziph, wallet=None):
 @oacommon.trace
 def zip(self, param):
     """
-    Crea un archivio ZIP con data propagation
+    Creates a ZIP archive with data propagation
 
     Args:
-        param: dict con:
-            - zipfilename: nome file ZIP - supporta {WALLET:key}, {ENV:var}
-            - pathtozip: path da comprimere (può usare input da task precedente) - supporta {ENV:var}
-            - zipfilter: filtro file (es. "*.txt" o "*")
-            - input (opzionale, da task precedente)
-            - workflow_context (opzionale)
-            - task_id (opzionale)
-            - task_store (opzionale)
+        param: dict with:
+            - zipfilename: ZIP file name - supports {WALLET:key}, {ENV:var}
+            - pathtozip: path to compress (can use input from previous task) - supports {ENV:var}
+            - zipfilter: file filter (e.g., "*.txt" or "*")
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sul ZIP creato
+        tuple: (success, output_dict) with ZIP info
+
+    Example YAML:
+        # Create ZIP of directory with all files
+        - name: create_backup_zip
+          module: oa-io
+          function: zip
+          zipfilename: "/backup/data.zip"
+          pathtozip:
+            - "/workspace/project"
+          zipfilter: "*"
+
+        # Create ZIP with filter (only .txt files)
+        - name: zip_text_files
+          module: oa-io
+          function: zip
+          zipfilename: "{ENV:OUTPUT_DIR}/texts.zip"
+          pathtozip:
+            - "/documents"
+          zipfilter: "*.txt"
+
+        # ZIP from previous copy task output
+        - name: zip_copied_files
+          module: oa-io
+          function: zip
+          zipfilename: "/backup/copied.zip"
+          # pathtozip from previous task 'dstpath'
+          zipfilter: "*"
+
+        # ZIP multiple directories
+        - name: zip_multiple_dirs
+          module: oa-io
+          function: zip
+          zipfilename: "/backup/combined.zip"
+          pathtozip:
+            - "/data/folder1"
+            - "/data/folder2"
+            - "{WALLET:custom_path}"
+          zipfilter: "*"
     """
     func_name = myself()
     logger.info("Creating ZIP archive")
@@ -160,7 +230,7 @@ def zip(self, param):
     required_params = ['zipfilename', 'pathtozip', 'zipfilter']
 
     try:
-        # Se pathtozip non è specificato, usa l'input dal task precedente
+        # If pathtozip not specified, use input from previous task
         if 'pathtozip' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'dstpath' in prev_input:
@@ -170,10 +240,10 @@ def zip(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         zipfilename = oacommon.get_param(param, 'zipfilename', wallet) or gdict.get('zipfilename')
         pathtozip = gdict['pathtozip']
         zipfilter = oacommon.get_param(param, 'zipfilter', wallet) or gdict.get('zipfilter')
@@ -188,7 +258,7 @@ def zip(self, param):
         zip_size = os.path.getsize(zipfilename)
         logger.info(f"ZIP archive created successfully: {zipfilename} ({zip_size} bytes)")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'zipfilename': zipfilename,
             'zip_size': zip_size,
@@ -209,19 +279,41 @@ def zip(self, param):
 @oacommon.trace
 def unzip(self, param):
     """
-    Estrae un archivio ZIP con data propagation
+    Extracts a ZIP archive with data propagation
 
     Args:
-        param: dict con:
-            - zipfilename: file ZIP da estrarre (può usare input da task precedente) - supporta {ENV:var}
-            - pathwhereunzip: directory destinazione - supporta {ENV:var}
-            - input (opzionale, da task precedente)
-            - workflow_context (opzionale)
-            - task_id (opzionale)
-            - task_store (opzionale)
+        param: dict with:
+            - zipfilename: ZIP file to extract (can use input from previous task) - supports {ENV:var}
+            - pathwhereunzip: destination directory - supports {ENV:var}
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sull'estrazione
+        tuple: (success, output_dict) with extraction info
+
+    Example YAML:
+        # Extract ZIP archive
+        - name: extract_backup
+          module: oa-io
+          function: unzip
+          zipfilename: "/backup/data.zip"
+          pathwhereunzip: "/restore/data"
+
+        # Extract from environment path
+        - name: extract_download
+          module: oa-io
+          function: unzip
+          zipfilename: "{ENV:DOWNLOAD_DIR}/archive.zip"
+          pathwhereunzip: "{ENV:EXTRACT_DIR}"
+
+        # Extract ZIP from previous zip task
+        - name: extract_created_zip
+          module: oa-io
+          function: unzip
+          # zipfilename from previous task
+          pathwhereunzip: "/tmp/extracted"
     """
     func_name = myself()
     logger.info("Extracting ZIP archive")
@@ -235,7 +327,7 @@ def unzip(self, param):
     required_params = ['zipfilename', 'pathwhereunzip']
 
     try:
-        # Se zipfilename non è specificato, usa l'input dal task precedente
+        # If zipfilename not specified, use input from previous task
         if 'zipfilename' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'zipfilename' in prev_input:
@@ -245,10 +337,10 @@ def unzip(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         zipfilename = oacommon.get_param(param, 'zipfilename', wallet) or gdict.get('zipfilename')
         pathwhereunzip = oacommon.get_param(param, 'pathwhereunzip', wallet) or gdict.get('pathwhereunzip')
 
@@ -266,7 +358,7 @@ def unzip(self, param):
 
         logger.info(f"ZIP extraction completed: {file_count} files extracted")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'zipfilename': zipfilename,
             'extract_path': pathwhereunzip,
@@ -286,19 +378,45 @@ def unzip(self, param):
 @oacommon.trace
 def readfile(self, param):
     """
-    Legge il contenuto di un file con data propagation
+    Reads file content with data propagation
 
     Args:
-        param: dict con:
-            - filename: file da leggere (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
-            - varname (opzionale se si vuole solo ritornare il contenuto)
-            - input (opzionale, da task precedente)
-            - workflow_context (opzionale)
-            - task_id (opzionale)
-            - task_store (opzionale)
+        param: dict with:
+            - filename: file to read (can use input from previous task) - supports {WALLET:key}, {ENV:var}
+            - varname: (optional) if you only want to return content
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, file_content) - il contenuto del file viene propagato
+        tuple: (success, file_content) - file content is propagated
+
+    Example YAML:
+        # Read config file
+        - name: read_config
+          module: oa-io
+          function: readfile
+          filename: "/etc/app/config.yaml"
+
+        # Read from environment path
+        - name: read_log
+          module: oa-io
+          function: readfile
+          filename: "{ENV:LOG_FILE}"
+
+        # Read file from previous task
+        - name: read_generated_file
+          module: oa-io
+          function: readfile
+          # filename from previous writefile task
+
+        # Read and save to variable (legacy)
+        - name: read_template
+          module: oa-io
+          function: readfile
+          filename: "/templates/email.html"
+          varname: email_template
     """
     func_name = myself()
     logger.info("Reading file")
@@ -310,39 +428,41 @@ def readfile(self, param):
     output_data = None
 
     try:
-        # Se filename non è specificato, usa l'input dal task precedente
+        # If filename not specified, use input from previous task
         if 'filename' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
-                # Cerca vari campi possibili
+                # Look for various possible fields
                 if 'dstpath' in prev_input:
                     param['filename'] = prev_input['dstpath']
                 elif 'filepath' in prev_input:
                     param['filename'] = prev_input['filepath']
+                elif 'filename' in prev_input:
+                    param['filename'] = prev_input['filename']
                 logger.info(f"Using filename from previous task: {param.get('filename')}")
 
         if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         filename = oacommon.get_param(param, 'filename', wallet) or gdict.get('filename')
-        varname = gdict.get('varname')  # Opzionale
+        varname = gdict.get('varname')  # Optional
 
         logger.info(f"Reading file: {filename}")
 
         content = oacommon.readfile(filename)
 
-        # Salva in gdict se varname è specificato (retrocompatibilità)
+        # Save in gdict if varname is specified (backward compatibility)
         if varname:
             gdict[varname] = content
             logger.debug(f"Content saved to variable: {varname}")
 
         logger.info(f"File read successfully: {len(content)} characters")
 
-        # Output data per propagation - ritorna il contenuto
+        # Output data for propagation - returns content
         output_data = {
             'filename': filename,
             'content': content,
@@ -362,20 +482,49 @@ def readfile(self, param):
 @oacommon.trace
 def writefile(self, param):
     """
-    Scrive contenuto in un file con data propagation
+    Writes content to a file with data propagation
 
     Args:
-        param: dict con:
-            - filename: file da scrivere - supporta {WALLET:key}, {ENV:var}
-            - varname (opzionale se c'è input dal task precedente)
-            - content (opzionale, alternativa a varname) - supporta {WALLET:key}, {ENV:var}
-            - input (opzionale, da task precedente)
-            - workflow_context (opzionale)
-            - task_id (opzionale)
-            - task_store (opzionale)
+        param: dict with:
+            - filename: file to write - supports {WALLET:key}, {ENV:var}
+            - varname: (optional if there's input from previous task)
+            - content: (optional, alternative to varname) - supports {WALLET:key}, {ENV:var}
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sul file scritto
+        tuple: (success, output_dict) with file info
+
+    Example YAML:
+        # Write static content
+        - name: write_config
+          module: oa-io
+          function: writefile
+          filename: "/tmp/config.txt"
+          content: "server_url=https://api.example.com"
+
+        # Write with placeholder
+        - name: write_dynamic
+          module: oa-io
+          function: writefile
+          filename: "{ENV:OUTPUT_DIR}/result.txt"
+          content: "Result: {WALLET:result_value}"
+
+        # Write content from previous task
+        - name: write_processed_data
+          module: oa-io
+          function: writefile
+          filename: "/output/processed.json"
+          # content from previous task (e.g., from readfile or API call)
+
+        # Write from variable (legacy)
+        - name: write_from_var
+          module: oa-io
+          function: writefile
+          filename: "/output/data.txt"
+          varname: my_data_variable
     """
     func_name = myself()
     logger.info("Writing file")
@@ -387,20 +536,20 @@ def writefile(self, param):
     output_data = None
 
     try:
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Determina il contenuto da scrivere
+        # Determine content to write
         content = None
 
-        # 1. Se c'è 'content' esplicito, usalo (con supporto placeholder)
+        # 1. If there's explicit 'content', use it (with placeholder support)
         if 'content' in param:
             content = oacommon.get_param(param, 'content', wallet)
             if content is None:
                 content = str(param['content'])
             logger.debug("Using explicit 'content' parameter")
 
-        # 2. Se c'è input dal task precedente, usalo
+        # 2. If there's input from previous task, use it
         elif 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'content' in prev_input:
@@ -413,7 +562,7 @@ def writefile(self, param):
                 content = json.dumps(prev_input, indent=2)
                 logger.info("Converting dict/list input to JSON")
 
-        # 3. Altrimenti usa varname da gdict (retrocompatibilità)
+        # 3. Otherwise use varname from gdict (backward compatibility)
         elif 'varname' in param:
             if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
                 raise ValueError("varname not found in gdict")
@@ -429,7 +578,7 @@ def writefile(self, param):
         if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameter 'filename' for {func_name}")
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         filename = oacommon.get_param(param, 'filename', wallet) or gdict.get('filename')
 
         logger.info(f"Writing to file: {filename}")
@@ -438,7 +587,7 @@ def writefile(self, param):
 
         logger.info(f"File written successfully: {len(content)} characters")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'filename': filename,
             'bytes_written': len(content),
@@ -458,20 +607,51 @@ def writefile(self, param):
 @oacommon.trace
 def replace(self, param):
     """
-    Sostituisce testo in una variabile con data propagation
+    Replaces text in a variable with data propagation
 
     Args:
-        param: dict con:
-            - varname (opzionale se c'è input)
-            - leftvalue: testo da cercare
-            - rightvalue: testo sostitutivo
-            - input (opzionale, da task precedente)
-            - workflow_context (opzionale)
-            - task_id (opzionale)
-            - task_store (opzionale)
+        param: dict with:
+            - varname: (optional if there's input)
+            - leftvalue: text to search for
+            - rightvalue: replacement text
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
         tuple: (success, modified_content)
+
+    Example YAML:
+        # Replace in static content
+        - name: replace_placeholder
+          module: oa-io
+          function: replace
+          varname: email_template
+          leftvalue: "{{NAME}}"
+          rightvalue: "John Doe"
+
+        # Replace from previous task content
+        - name: replace_in_content
+          module: oa-io
+          function: replace
+          # content from previous readfile task
+          leftvalue: "localhost"
+          rightvalue: "production.example.com"
+
+        # Chain replacements
+        - name: replace_url
+          module: oa-io
+          function: replace
+          leftvalue: "http://"
+          rightvalue: "https://"
+
+        - name: replace_port
+          module: oa-io
+          function: replace
+          # content from previous replace task
+          leftvalue: ":8080"
+          rightvalue: ":443"
     """
     func_name = myself()
     logger.info("Replacing text in variable")
@@ -488,17 +668,17 @@ def replace(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # leftvalue e rightvalue potrebbero contenere placeholder
+        # leftvalue and rightvalue might contain placeholders
         leftvalue = oacommon.get_param(param, 'leftvalue', wallet) or gdict.get('leftvalue')
         rightvalue = oacommon.get_param(param, 'rightvalue', wallet) or gdict.get('rightvalue')
 
-        # Determina il contenuto su cui operare
+        # Determine content to operate on
         original = None
 
-        # 1. Se c'è input dal task precedente
+        # 1. If there's input from previous task
         if 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'content' in prev_input:
@@ -507,7 +687,7 @@ def replace(self, param):
             elif isinstance(prev_input, str):
                 original = prev_input
 
-        # 2. Altrimenti usa varname (retrocompatibilità)
+        # 2. Otherwise use varname (backward compatibility)
         if original is None:
             if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
                 raise ValueError("No input data and varname not specified")
@@ -520,14 +700,14 @@ def replace(self, param):
 
         modified = str(original).replace(leftvalue, rightvalue)
 
-        # Salva in gdict se varname è specificato (retrocompatibilità)
+        # Save in gdict if varname is specified (backward compatibility)
         if 'varname' in gdict:
             gdict[gdict['varname']] = modified
 
         occurrences = str(original).count(leftvalue)
         logger.info(f"Replaced {occurrences} occurrence(s)")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'content': modified,
             'occurrences': occurrences,
@@ -548,18 +728,41 @@ def replace(self, param):
 @oacommon.trace
 def loadvarfromjson(self, param):
     """
-    Carica variabili da un file JSON nel gdict con data propagation
+    Loads variables from a JSON file into gdict with data propagation
 
     Args:
-        param: dict con:
-            - filename: file JSON (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
-            - input (opzionale, da task precedente)
-            - workflow_context (opzionale)
-            - task_id (opzionale)
-            - task_store (opzionale)
+        param: dict with:
+            - filename: JSON file (can use input from previous task) - supports {WALLET:key}, {ENV:var}
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, json_data) - ritorna i dati JSON parsati
+        tuple: (success, json_data) - returns parsed JSON data
+
+    Example YAML:
+        # Load config from JSON
+        - name: load_config
+          module: oa-io
+          function: loadvarfromjson
+          filename: "/etc/app/config.json"
+
+        # Load from environment path
+        - name: load_settings
+          module: oa-io
+          function: loadvarfromjson
+          filename: "{ENV:CONFIG_DIR}/settings.json"
+
+        # Load JSON from previous task
+        - name: load_generated_json
+          module: oa-io
+          function: loadvarfromjson
+          # filename from previous writefile task
+
+        # All JSON keys are loaded as gdict variables
+        # Example JSON: {"db_host": "localhost", "db_port": 5432}
+        # After loadvarfromjson, you can use {db_host} and {db_port}
     """
     func_name = myself()
     logger.info("Loading variables from JSON file")
@@ -571,7 +774,7 @@ def loadvarfromjson(self, param):
     output_data = None
 
     try:
-        # Se filename non è specificato, usa l'input dal task precedente
+        # If filename not specified, use input from previous task
         if 'filename' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -584,10 +787,10 @@ def loadvarfromjson(self, param):
         if not oacommon.checkandloadparam(self, myself, 'filename', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         filename = oacommon.get_param(param, 'filename', wallet) or gdict.get('filename')
 
         logger.info(f"Loading JSON: {filename}")
@@ -608,7 +811,7 @@ def loadvarfromjson(self, param):
 
         logger.info(f"Loaded {var_count} variables from JSON")
 
-        # Output data per propagation - ritorna i dati JSON
+        # Output data for propagation - returns JSON data
         output_data = jdata
 
     except json.JSONDecodeError as e:

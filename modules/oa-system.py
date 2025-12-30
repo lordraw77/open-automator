@@ -1,7 +1,8 @@
 """
 Open-Automator System Module
-Gestisce operazioni di sistema locale e remoto (SSH, SCP, comandi) con data propagation
-Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
+
+Manages local and remote system operations (SSH, SCP, commands) with data propagation
+Support for wallet, placeholder {WALLET:key}, {ENV:var} and {VAULT:key}
 """
 
 import oacommon
@@ -12,14 +13,14 @@ import subprocess
 import logging
 from logger_config import AutomatorLogger
 
-# Logger per questo modulo
+# Logger for this module
 logger = AutomatorLogger.get_logger('oa-system')
 
 gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
 def setgdict(self, gdict_param):
-    """Imposta il dizionario globale"""
+    """Sets the global dictionary"""
     global gdict
     gdict = gdict_param
     self.gdict = gdict_param
@@ -27,22 +28,71 @@ def setgdict(self, gdict_param):
 @oacommon.trace
 def runcmd(self, param):
     """
-    Esegue un comando shell locale con data propagation
+    Executes a local shell command with data propagation
 
     Args:
-        param: dict con:
-            - command: comando da eseguire (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
-            - printout: (opzionale) stampa output, default False
-            - saveonvar: (opzionale) salva output in variabile
-            - shell: (opzionale) usa shell, default True
-            - timeout: (opzionale) timeout in secondi
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - command: command to execute (can use input from previous task) - supports {WALLET:key}, {ENV:var}
+            - printout: (optional) print output, default False
+            - saveonvar: (optional) save output to variable
+            - shell: (optional) use shell, default True
+            - timeout: (optional) timeout in seconds
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con output del comando
+        tuple: (success, output_dict) with command output
+
+    Example YAML:
+        # Simple command
+        - name: list_files
+          module: oa-system
+          function: runcmd
+          command: "ls -la /var/log"
+          printout: true
+
+        # Command with environment variable
+        - name: backup_database
+          module: oa-system
+          function: runcmd
+          command: "mysqldump -u root -p{ENV:DB_PASSWORD} mydb > /backup/mydb.sql"
+
+        # Command with timeout
+        - name: long_running_process
+          module: oa-system
+          function: runcmd
+          command: "python3 /scripts/process_data.py"
+          timeout: 300
+          printout: true
+
+        # Command with wallet placeholder
+        - name: secure_command
+          module: oa-system
+          function: runcmd
+          command: "curl -H 'Authorization: Bearer {WALLET:api_token}' https://api.example.com/data"
+
+        # Command from previous task
+        - name: execute_generated_command
+          module: oa-system
+          function: runcmd
+          # command taken from previous task output
+
+        # Save output to variable
+        - name: get_system_info
+          module: oa-system
+          function: runcmd
+          command: "uname -a"
+          saveonvar: system_info
+
+        # Complex command with multiple placeholders
+        - name: deploy_service
+          module: oa-system
+          function: runcmd
+          command: "docker run -e API_KEY={VAULT:api_key} -e ENV={ENV:ENVIRONMENT} myapp:latest"
+          shell: true
+          timeout: 60
     """
     func_name = myself()
     logger.info("Executing local shell command")
@@ -54,14 +104,14 @@ def runcmd(self, param):
     output_data = None
 
     try:
-        # Se command non è specificato, prova a costruirlo dall'input
+        # If command not specified, try to build it from input
         if 'command' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
                 if 'command' in prev_input:
                     param['command'] = prev_input['command']
                 elif 'filepath' in prev_input:
-                    # Se l'input ha un filepath, costruisci comando su quel file
+                    # If input has filepath, build command on that file
                     param['command'] = f"cat {prev_input['filepath']}"
                 logger.info("Using command from previous task")
             elif isinstance(prev_input, str):
@@ -70,10 +120,10 @@ def runcmd(self, param):
         if not oacommon.checkandloadparam(self, myself, "command", param=param):
             raise ValueError(f"Missing required parameter 'command' for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         command = oacommon.get_param(param, 'command', wallet) or gdict.get('command')
 
         printout = param.get("printout", False)
@@ -84,7 +134,7 @@ def runcmd(self, param):
         if timeout:
             logger.debug(f"Timeout: {timeout}s")
 
-        # Esegui comando con subprocess
+        # Execute command with subprocess
         try:
             result = subprocess.run(
                 command,
@@ -102,7 +152,7 @@ def runcmd(self, param):
             logger.info(f"Command completed with return code: {return_code}")
             logger.debug(f"Output size: {len(stdout)} chars")
 
-            # Considera return code != 0 come failure
+            # Consider return code != 0 as failure
             if return_code != 0:
                 task_success = False
                 error_msg = f"Command returned non-zero exit code: {return_code}"
@@ -119,13 +169,13 @@ def runcmd(self, param):
                 if stderr:
                     logger.warning(f"Command stderr:\n{stderr}")
 
-            # Salva in variabile (retrocompatibilità)
+            # Save to variable (backward compatibility)
             if oacommon.checkparam("saveonvar", param):
                 saveonvar = param["saveonvar"]
                 gdict[saveonvar] = stdout
                 logger.debug(f"Output saved to variable: {saveonvar}")
 
-            # Output data per propagation
+            # Output data for propagation
             output_data = {
                 'stdout': stdout,
                 'stderr': stderr,
@@ -157,24 +207,92 @@ def runcmd(self, param):
 @oacommon.trace
 def systemd(self, param):
     """
-    Gestisce servizi systemd su server remoto con data propagation
+    Manages systemd services on remote server with data propagation
 
     Args:
-        param: dict con:
-            - remoteserver: host remoto - supporta {WALLET:key}, {ENV:var}
-            - remoteuser: username SSH - supporta {WALLET:key}, {ENV:var}
-            - remotepassword: password SSH - supporta {WALLET:key}, {VAULT:key}
-            - remoteport: porta SSH - supporta {ENV:var}
-            - servicename: nome del servizio - supporta {WALLET:key}, {ENV:var}
+        param: dict with:
+            - remoteserver: remote host - supports {WALLET:key}, {ENV:var}
+            - remoteuser: SSH username - supports {WALLET:key}, {ENV:var}
+            - remotepassword: SSH password - supports {WALLET:key}, {VAULT:key}
+            - remoteport: SSH port - supports {ENV:var}
+            - servicename: service name - supports {WALLET:key}, {ENV:var}
             - servicestate: start|stop|restart|status|daemon-reload
-            - saveonvar: (opzionale) salva output in variabile
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+            - saveonvar: (optional) save output to variable
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con output systemd
+        tuple: (success, output_dict) with systemd output
+
+    Example YAML:
+        # Start a service
+        - name: start_nginx
+          module: oa-system
+          function: systemd
+          remoteserver: "web-server-01"
+          remoteuser: "admin"
+          remotepassword: "{VAULT:ssh_password}"
+          remoteport: 22
+          servicename: "nginx"
+          servicestate: "start"
+
+        # Restart service with credentials from wallet
+        - name: restart_app
+          module: oa-system
+          function: systemd
+          remoteserver: "{ENV:APP_SERVER}"
+          remoteuser: "{WALLET:ssh_user}"
+          remotepassword: "{VAULT:ssh_pass}"
+          remoteport: 22
+          servicename: "myapp"
+          servicestate: "restart"
+
+        # Check service status
+        - name: check_docker_status
+          module: oa-system
+          function: systemd
+          remoteserver: "docker-host"
+          remoteuser: "root"
+          remotepassword: "{VAULT:root_password}"
+          remoteport: 22
+          servicename: "docker"
+          servicestate: "status"
+          saveonvar: docker_status
+
+        # Reload systemd daemon
+        - name: reload_systemd
+          module: oa-system
+          function: systemd
+          remoteserver: "{ENV:TARGET_SERVER}"
+          remoteuser: "admin"
+          remotepassword: "{VAULT:admin_pass}"
+          remoteport: 22
+          servicename: ""
+          servicestate: "daemon-reload"
+
+        # Stop service
+        - name: stop_service
+          module: oa-system
+          function: systemd
+          remoteserver: "app-server"
+          remoteuser: "{WALLET:deploy_user}"
+          remotepassword: "{VAULT:deploy_pass}"
+          remoteport: 22
+          servicename: "old-service"
+          servicestate: "stop"
+
+        # Service name from previous task
+        - name: manage_dynamic_service
+          module: oa-system
+          function: systemd
+          remoteserver: "server-01"
+          remoteuser: "admin"
+          remotepassword: "{VAULT:ssh_pass}"
+          remoteport: 22
+          # servicename from previous task
+          servicestate: "restart"
     """
     func_name = myself()
     logger.info("Managing systemd service")
@@ -191,7 +309,7 @@ def systemd(self, param):
     ]
 
     try:
-        # Se servicename non è specificato, prova dall'input
+        # If servicename not specified, try from input
         if 'servicename' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict) and 'servicename' in prev_input:
@@ -201,10 +319,10 @@ def systemd(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder (CRITICO per password SSH!)
+        # Use get_param to support placeholders (CRITICAL for SSH password!)
         remoteserver = oacommon.get_param(param, 'remoteserver', wallet) or gdict.get('remoteserver')
         remoteuser = oacommon.get_param(param, 'remoteuser', wallet) or gdict.get('remoteuser')
         remotepassword = oacommon.get_param(param, 'remotepassword', wallet) or gdict.get('remotepassword')
@@ -230,13 +348,13 @@ def systemd(self, param):
         logger.info("Systemd operation completed successfully")
         logger.debug(f"Output: {decoded_output}")
 
-        # Salva in variabile (retrocompatibilità)
+        # Save to variable (backward compatibility)
         if oacommon.checkparam('saveonvar', param):
             saveonvar = param['saveonvar']
             gdict[saveonvar] = decoded_output
             logger.debug(f"Systemd output saved to variable: {saveonvar}")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'output': decoded_output,
             'service': servicename,
@@ -258,23 +376,99 @@ def systemd(self, param):
 @oacommon.trace
 def remotecommand(self, param):
     """
-    Esegue un comando remoto via SSH con data propagation
+    Executes a remote command via SSH with data propagation
 
     Args:
-        param: dict con:
-            - remoteserver: host remoto - supporta {WALLET:key}, {ENV:var}
-            - remoteuser: username SSH - supporta {WALLET:key}, {ENV:var}
-            - remotepassword: password SSH - supporta {WALLET:key}, {VAULT:key}
-            - remoteport: porta SSH - supporta {ENV:var}
-            - command: comando da eseguire (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
-            - saveonvar: (opzionale) salva output in variabile
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - remoteserver: remote host - supports {WALLET:key}, {ENV:var}
+            - remoteuser: SSH username - supports {WALLET:key}, {ENV:var}
+            - remotepassword: SSH password - supports {WALLET:key}, {VAULT:key}
+            - remoteport: SSH port - supports {ENV:var}
+            - command: command to execute (can use input from previous task) - supports {WALLET:key}, {ENV:var}
+            - saveonvar: (optional) save output to variable
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con output del comando remoto
+        tuple: (success, output_dict) with remote command output
+
+    Example YAML:
+        # Simple remote command
+        - name: check_disk_space
+          module: oa-system
+          function: remotecommand
+          remoteserver: "web-server-01"
+          remoteuser: "admin"
+          remotepassword: "{VAULT:ssh_password}"
+          remoteport: 22
+          command: "df -h"
+
+        # Remote command with credentials from wallet
+        - name: deploy_app
+          module: oa-system
+          function: remotecommand
+          remoteserver: "{ENV:PROD_SERVER}"
+          remoteuser: "{WALLET:deploy_user}"
+          remotepassword: "{VAULT:deploy_pass}"
+          remoteport: 22
+          command: "cd /opt/app && git pull && systemctl restart myapp"
+
+        # Check Docker containers remotely
+        - name: list_containers
+          module: oa-system
+          function: remotecommand
+          remoteserver: "docker-host"
+          remoteuser: "root"
+          remotepassword: "{VAULT:root_password}"
+          remoteport: 22
+          command: "docker ps -a"
+          saveonvar: container_list
+
+        # Execute script on remote server
+        - name: run_remote_script
+          module: oa-system
+          function: remotecommand
+          remoteserver: "{ENV:APP_SERVER}"
+          remoteuser: "{WALLET:ssh_user}"
+          remotepassword: "{VAULT:ssh_pass}"
+          remoteport: 22
+          command: "/home/admin/scripts/backup.sh"
+
+        # Command with environment variables
+        - name: remote_deploy
+          module: oa-system
+          function: remotecommand
+          remoteserver: "app-server"
+          remoteuser: "deployer"
+          remotepassword: "{VAULT:deployer_pass}"
+          remoteport: 22
+          command: "export ENV=production && /opt/deploy.sh"
+
+        # Command from previous task
+        - name: execute_generated_command
+          module: oa-system
+          function: remotecommand
+          remoteserver: "remote-host"
+          remoteuser: "admin"
+          remotepassword: "{VAULT:ssh_pass}"
+          remoteport: 22
+          # command from previous task output
+
+        # Complex multi-line command
+        - name: setup_environment
+          module: oa-system
+          function: remotecommand
+          remoteserver: "{ENV:TARGET_HOST}"
+          remoteuser: "root"
+          remotepassword: "{VAULT:root_pass}"
+          remoteport: 22
+          command: |
+            cd /opt/app &&
+            git pull origin main &&
+            pip install -r requirements.txt &&
+            systemctl restart myservice
     """
     func_name = myself()
     logger.info("Executing remote SSH command")
@@ -288,7 +482,7 @@ def remotecommand(self, param):
     required_params = ['remoteserver', 'remoteuser', 'remotepassword', 'remoteport', 'command']
 
     try:
-        # Se command non è specificato, prova dall'input
+        # If command not specified, try from input
         if 'command' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -303,10 +497,10 @@ def remotecommand(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder (CRITICO per password SSH!)
+        # Use get_param to support placeholders (CRITICAL for SSH password!)
         remoteserver = oacommon.get_param(param, 'remoteserver', wallet) or gdict.get('remoteserver')
         remoteuser = oacommon.get_param(param, 'remoteuser', wallet) or gdict.get('remoteuser')
         remotepassword = oacommon.get_param(param, 'remotepassword', wallet) or gdict.get('remotepassword')
@@ -322,7 +516,7 @@ def remotecommand(self, param):
 
         decoded_output = output.decode('utf-8', errors='ignore')
 
-        # Salva in variabile (retrocompatibilità)
+        # Save to variable (backward compatibility)
         if oacommon.checkparam('saveonvar', param):
             saveonvar = param['saveonvar']
             gdict[saveonvar] = decoded_output
@@ -334,7 +528,7 @@ def remotecommand(self, param):
         else:
             logger.info(f"Command output: {decoded_output}")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'output': decoded_output,
             'command': command,
@@ -356,25 +550,123 @@ def remotecommand(self, param):
 @oacommon.trace
 def scp(self, param):
     """
-    Trasferisce file/directory via SCP con data propagation
+    Transfers files/directories via SCP with data propagation
 
     Args:
-        param: dict con:
-            - remoteserver: host remoto - supporta {WALLET:key}, {ENV:var}
-            - remoteuser: username SSH - supporta {WALLET:key}, {ENV:var}
-            - remotepassword: password SSH - supporta {WALLET:key}, {VAULT:key}
-            - remoteport: porta SSH - supporta {ENV:var}
-            - localpath: path locale (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
-            - remotepath: path remoto - supporta {WALLET:key}, {ENV:var}
+        param: dict with:
+            - remoteserver: remote host - supports {WALLET:key}, {ENV:var}
+            - remoteuser: SSH username - supports {WALLET:key}, {ENV:var}
+            - remotepassword: SSH password - supports {WALLET:key}, {VAULT:key}
+            - remoteport: SSH port - supports {ENV:var}
+            - localpath: local path (can use input from previous task) - supports {WALLET:key}, {ENV:var}
+            - remotepath: remote path - supports {WALLET:key}, {ENV:var}
             - recursive: True/False
             - direction: localtoremote|remotetolocal
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con info sul trasferimento
+        tuple: (success, output_dict) with transfer info
+
+    Example YAML:
+        # Upload file to remote server
+        - name: upload_config
+          module: oa-system
+          function: scp
+          remoteserver: "web-server-01"
+          remoteuser: "admin"
+          remotepassword: "{VAULT:ssh_password}"
+          remoteport: 22
+          localpath: "/local/config.yml"
+          remotepath: "/etc/myapp/config.yml"
+          recursive: false
+          direction: "localtoremote"
+
+        # Download file from remote server
+        - name: download_logs
+          module: oa-system
+          function: scp
+          remoteserver: "{ENV:PROD_SERVER}"
+          remoteuser: "{WALLET:ssh_user}"
+          remotepassword: "{VAULT:ssh_pass}"
+          remoteport: 22
+          localpath: "/backup/logs"
+          remotepath: "/var/log/myapp/app.log"
+          recursive: false
+          direction: "remotetolocal"
+
+        # Upload directory recursively
+        - name: upload_website
+          module: oa-system
+          function: scp
+          remoteserver: "web-server"
+          remoteuser: "www-data"
+          remotepassword: "{VAULT:web_pass}"
+          remoteport: 22
+          localpath: "/local/website/*"
+          remotepath: "/var/www/html/"
+          recursive: true
+          direction: "localtoremote"
+
+        # Download backup with credentials from wallet
+        - name: download_backup
+          module: oa-system
+          function: scp
+          remoteserver: "{ENV:BACKUP_SERVER}"
+          remoteuser: "{WALLET:backup_user}"
+          remotepassword: "{VAULT:backup_pass}"
+          remoteport: 22
+          localpath: "/local/backups/db-backup.sql.gz"
+          remotepath: "/backups/database/latest.sql.gz"
+          recursive: false
+          direction: "remotetolocal"
+
+        # Multiple file transfer
+        - name: sync_configs
+          module: oa-system
+          function: scp
+          remoteserver: "app-server"
+          remoteuser: "deployer"
+          remotepassword: "{VAULT:deploy_pass}"
+          remoteport: 22
+          localpath:
+            - "/local/config1.yml"
+            - "/local/config2.yml"
+            - "/local/config3.yml"
+          remotepath:
+            - "/etc/app/config1.yml"
+            - "/etc/app/config2.yml"
+            - "/etc/app/config3.yml"
+          recursive: false
+          direction: "localtoremote"
+
+        # Upload from previous task output
+        - name: upload_generated_file
+          module: oa-system
+          function: scp
+          remoteserver: "server-01"
+          remoteuser: "admin"
+          remotepassword: "{VAULT:ssh_pass}"
+          remoteport: 22
+          # localpath from previous task (e.g., writetofile output)
+          remotepath: "/opt/data/uploaded.txt"
+          recursive: false
+          direction: "localtoremote"
+
+        # Backup entire directory
+        - name: backup_directory
+          module: oa-system
+          function: scp
+          remoteserver: "{ENV:BACKUP_HOST}"
+          remoteuser: "backup"
+          remotepassword: "{VAULT:backup_password}"
+          remoteport: 22
+          localpath: "/backup/$(date +%Y%m%d)"
+          remotepath: "/var/backups/myapp/"
+          recursive: true
+          direction: "remotetolocal"
     """
     func_name = myself()
     logger.info("Starting SCP transfer")
@@ -394,7 +686,7 @@ def scp(self, param):
     scp_client = None
 
     try:
-        # Se localpath non è specificato, usa input dal task precedente
+        # If localpath not specified, use input from previous task
         if 'localpath' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -409,10 +701,10 @@ def scp(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder (CRITICO per password SSH!)
+        # Use get_param to support placeholders (CRITICAL for SSH password!)
         remoteserver = oacommon.get_param(param, 'remoteserver', wallet) or gdict.get('remoteserver')
         remoteuser = oacommon.get_param(param, 'remoteuser', wallet) or gdict.get('remoteuser')
         remotepassword = oacommon.get_param(param, 'remotepassword', wallet) or gdict.get('remotepassword')
@@ -420,17 +712,17 @@ def scp(self, param):
         direction = gdict['direction']
         recursive = gdict['recursive']
 
-        # Gestione multi-path con supporto placeholder
+        # Multi-path handling with placeholder support
         localpath_param = gdict['localpath']
         remotepath_param = gdict['remotepath']
 
-        # Risolvi placeholder per localpath
+        # Resolve placeholders for localpath
         if isinstance(localpath_param, list):
             localpath = [oacommon.get_param({'path': p}, 'path', wallet) or p for p in localpath_param]
         else:
             localpath = oacommon.get_param(param, 'localpath', wallet) or localpath_param
 
-        # Risolvi placeholder per remotepath
+        # Resolve placeholders for remotepath
         if isinstance(remotepath_param, list):
             remotepath = [oacommon.get_param({'path': p}, 'path', wallet) or p for p in remotepath_param]
         else:
@@ -443,7 +735,7 @@ def scp(self, param):
         lres = []
         files_transferred = 0
 
-        # Validazione multi-path
+        # Multi-path validation
         if isinstance(localpath, list) and isinstance(remotepath, list):
             if len(localpath) != len(remotepath):
                 raise ValueError("Multipath: local and remote path lists must have same length")
@@ -456,11 +748,11 @@ def scp(self, param):
         elif isinstance(localpath, list) or isinstance(remotepath, list):
             raise ValueError("If one path is a list, both must be lists")
 
-        # Connessione SSH
+        # SSH connection
         ssh = oacommon.createSSHClient(remoteserver, remoteport, remoteuser, remotepassword)
         scp_client = SCPClient(ssh.get_transport())
 
-        # Esegui trasferimento
+        # Execute transfer
         if 'localtoremote' in direction:
             if ismultipath:
                 for i, res in enumerate(lres, 1):
@@ -487,7 +779,7 @@ def scp(self, param):
 
         logger.info(f"SCP transfer completed successfully: {files_transferred} transfer(s)")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'files_transferred': files_transferred,
             'direction': direction,
@@ -522,21 +814,107 @@ def scp(self, param):
 @oacommon.trace
 def execute_script(self, param):
     """
-    Esegue uno script locale e propaga l'output
+    Executes a local script and propagates output
 
     Args:
-        param: dict con:
-            - script_path: path dello script (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}
-            - args: (opzionale) lista di argomenti - supporta {WALLET:key}, {ENV:var}
-            - interpreter: (opzionale) interprete (es. 'python3', 'bash'), default auto-detect
-            - timeout: (opzionale) timeout in secondi
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - script_path: script path (can use input from previous task) - supports {WALLET:key}, {ENV:var}
+            - args: (optional) list of arguments - supports {WALLET:key}, {ENV:var}
+            - interpreter: (optional) interpreter (e.g., 'python3', 'bash'), default auto-detect
+            - timeout: (optional) timeout in seconds
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con output dello script
+        tuple: (success, output_dict) with script output
+
+    Example YAML:
+        # Execute Python script
+        - name: run_data_processor
+          module: oa-system
+          function: execute_script
+          script_path: "/opt/scripts/process_data.py"
+          interpreter: "python3"
+
+        # Execute bash script with arguments
+        - name: run_backup_script
+          module: oa-system
+          function: execute_script
+          script_path: "/home/admin/backup.sh"
+          args:
+            - "/var/lib/myapp"
+            - "/backup/$(date +%Y%m%d)"
+          interpreter: "bash"
+
+        # Auto-detect interpreter from extension
+        - name: run_perl_script
+          module: oa-system
+          function: execute_script
+          script_path: "/scripts/monitor.pl"
+          # .pl extension auto-detects perl interpreter
+
+        # Script with arguments from wallet
+        - name: deploy_with_credentials
+          module: oa-system
+          function: execute_script
+          script_path: "/opt/deploy.sh"
+          args:
+            - "{ENV:ENVIRONMENT}"
+            - "{WALLET:deploy_key}"
+            - "{VAULT:db_password}"
+          interpreter: "bash"
+
+        # Execute script with timeout
+        - name: long_running_script
+          module: oa-system
+          function: execute_script
+          script_path: "/scripts/import_data.py"
+          interpreter: "python3"
+          timeout: 600
+
+        # Script path from previous task
+        - name: run_generated_script
+          module: oa-system
+          function: execute_script
+          # script_path from previous writetofile task
+          interpreter: "bash"
+
+        # Node.js script
+        - name: run_node_script
+          module: oa-system
+          function: execute_script
+          script_path: "/app/server.js"
+          args:
+            - "--port"
+            - "3000"
+          interpreter: "node"
+
+        # Ruby script with environment variables
+        - name: run_ruby_app
+          module: oa-system
+          function: execute_script
+          script_path: "{ENV:APP_DIR}/app.rb"
+          args:
+            - "production"
+          interpreter: "ruby"
+
+        # Execute without interpreter (script with shebang)
+        - name: run_executable
+          module: oa-system
+          function: execute_script
+          script_path: "/usr/local/bin/custom_tool"
+          args:
+            - "--config"
+            - "/etc/tool.conf"
+
+    Note: Supported auto-detect extensions:
+        - .py  -> python3
+        - .sh  -> bash
+        - .rb  -> ruby
+        - .js  -> node
+        - .pl  -> perl
     """
     func_name = myself()
     logger.info("Executing local script")
@@ -548,7 +926,7 @@ def execute_script(self, param):
     output_data = None
 
     try:
-        # Se script_path non è specificato, usa input
+        # If script_path not specified, use input
         if 'script_path' not in param and 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -561,13 +939,13 @@ def execute_script(self, param):
         if not oacommon.checkandloadparam(self, myself, "script_path", param=param):
             raise ValueError(f"Missing required parameter 'script_path' for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         script_path = oacommon.get_param(param, 'script_path', wallet) or gdict.get('script_path')
 
-        # Args con supporto placeholder
+        # Args with placeholder support
         args = param.get("args", [])
         if isinstance(args, list):
             resolved_args = []
@@ -597,7 +975,7 @@ def execute_script(self, param):
             }
             interpreter = interpreter_map.get(ext)
 
-        # Costruisci comando
+        # Build command
         if interpreter:
             command = [interpreter, script_path] + args
         else:

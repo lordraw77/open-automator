@@ -1,7 +1,8 @@
 """
 Open-Automator JSON Module
-Gestisce operazioni avanzate su dati JSON con data propagation
-Supporto per wallet, placeholder WALLET{key}, ENV{var} e VAULT{key}
+
+Manages advanced JSON data operations with data propagation
+Support for wallet, placeholder {WALLET:key}, {ENV:var} and {VAULT:key}
 """
 
 import oacommon
@@ -17,37 +18,79 @@ gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
 def setgdict(self, gdictparam):
-    """Imposta il dizionario globale"""
+    """Sets the global dictionary"""
     global gdict
     gdict = gdictparam
     self.gdict = gdictparam
 
-
 @oacommon.trace
 def jsonfilter(self, param):
     """
-    Filtra elementi in un array JSON basandosi su condizioni
+    Filters elements in a JSON array based on conditions
 
     Args:
-        param (dict) con:
-            - data: opzionale dati JSON (può usare input da task precedente)
-            - field: campo su cui filtrare - supporta WALLET{key}, ENV{var}
-            - operator: ==, !=, >, <, >=, <=, contains, in, exists
-            - value: valore di confronto - supporta WALLET{key}, ENV{var}
-            - case_sensitive: opzionale (default: True)
-            - saveonvar: opzionale salva risultato in variabile
-            - input: opzionale dati dal task precedente
-            - workflowcontext: opzionale contesto workflow
-            - taskid: opzionale id univoco del task
-            - taskstore: opzionale istanza di TaskResultStore
+        param (dict) with:
+            - data: optional JSON data (can use input from previous task)
+            - field: field to filter on - supports {WALLET:key}, {ENV:var}
+            - operator: ==, !=, >, <, >=, <=, contains, in, exists, not_exists
+            - value: comparison value - supports {WALLET:key}, {ENV:var}
+            - case_sensitive: optional (default: True)
+            - saveonvar: optional save result to variable
+            - input: optional data from previous task
+            - workflowcontext: optional workflow context
+            - taskid: optional unique task id
+            - taskstore: optional TaskResultStore instance
 
     Returns:
         tuple (success, filtered_data)
 
-    Example:
-        Input: [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]
-        Filter: field="age", operator=">", value=26
-        Output: [{"name": "Alice", "age": 30}]
+    Example YAML:
+        # Filter users by age
+        - name: filter_adults
+          module: oa-json
+          function: jsonfilter
+          data:
+            - {name: "Alice", age: 30}
+            - {name: "Bob", age: 25}
+            - {name: "Charlie", age: 35}
+          field: age
+          operator: ">"
+          value: 26
+          # Output: [{name: "Alice", age: 30}, {name: "Charlie", age: 35}]
+
+        # Filter with contains operator
+        - name: filter_emails
+          module: oa-json
+          function: jsonfilter
+          field: email
+          operator: contains
+          value: "@gmail.com"
+          case_sensitive: false
+
+        # Filter from previous task
+        - name: filter_active_users
+          module: oa-json
+          function: jsonfilter
+          # data from previous API call or database query
+          field: status
+          operator: "=="
+          value: "active"
+
+        # Check field existence
+        - name: filter_has_address
+          module: oa-json
+          function: jsonfilter
+          field: address
+          operator: exists
+          value: true
+
+        # Filter with wallet value
+        - name: filter_by_category
+          module: oa-json
+          function: jsonfilter
+          field: category
+          operator: "=="
+          value: "{WALLET:target_category}"
     """
     funcname = myself()
     logger.info("JSON Filter operation")
@@ -61,17 +104,17 @@ def jsonfilter(self, param):
     try:
         wallet = gdict.get("wallet")
 
-        # Data propagation: recupera dati JSON
+        # Data propagation: retrieve JSON data
         data = None
         if "data" in param:
             data = param["data"]
-            # Se è stringa JSON, parsala
+            # If it's JSON string, parse it
             if isinstance(data, str):
                 data = json.loads(data)
         elif "input" in param:
             previnput = param.get("input")
             if isinstance(previnput, dict):
-                # Cerca campi comuni
+                # Look for common fields
                 if "json" in previnput:
                     data = previnput["json"]
                 elif "data" in previnput:
@@ -79,14 +122,14 @@ def jsonfilter(self, param):
                 elif "rows" in previnput:
                     data = previnput["rows"]
                 elif "content" in previnput:
-                    # Potrebbe essere stringa JSON
+                    # Might be JSON string
                     content = previnput["content"]
                     if isinstance(content, str):
                         data = json.loads(content)
                     else:
                         data = content
                 else:
-                    # Usa tutto l'input
+                    # Use all input
                     data = previnput
             elif isinstance(previnput, list):
                 data = previnput
@@ -101,12 +144,12 @@ def jsonfilter(self, param):
         if not isinstance(data, list):
             raise ValueError("Filter operation requires array/list data")
 
-        # Validazione parametri
+        # Validate parameters
         requiredparams = ["field", "operator", "value"]
         if not oacommon.checkandloadparam(self, myself, requiredparams, param=param):
             raise ValueError(f"Missing required parameters for {funcname}")
 
-        # Estrai parametri con supporto placeholder
+        # Extract parameters with placeholder support
         field = oacommon.getparam(param, "field", wallet) or gdict.get("field")
         operator = oacommon.getparam(param, "operator", wallet) or gdict.get("operator")
         value = oacommon.getparam(param, "value", wallet)
@@ -118,7 +161,7 @@ def jsonfilter(self, param):
         logger.info(f"Filter: {field} {operator} {value}")
         logger.debug(f"Input data: {len(data)} items")
 
-        # Applica filtro
+        # Apply filter
         filtered = []
 
         for item in data:
@@ -128,14 +171,14 @@ def jsonfilter(self, param):
 
             item_value = item.get(field)
 
-            # Converti per confronto case-insensitive se necessario
+            # Convert for case-insensitive comparison if needed
             if not case_sensitive and isinstance(item_value, str) and isinstance(value, str):
                 item_value = item_value.lower()
                 compare_value = value.lower()
             else:
                 compare_value = value
 
-            # Applica operatore
+            # Apply operator
             match = False
 
             try:
@@ -154,7 +197,7 @@ def jsonfilter(self, param):
                 elif operator == "contains":
                     match = compare_value in str(item_value)
                 elif operator == "in":
-                    # value deve essere una lista
+                    # value must be a list
                     if isinstance(compare_value, str):
                         compare_value = json.loads(compare_value)
                     match = item_value in compare_value
@@ -174,7 +217,7 @@ def jsonfilter(self, param):
 
         logger.info(f"Filtered: {len(data)} -> {len(filtered)} items")
 
-        # Salva in variabile se richiesto
+        # Save to variable if requested
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = filtered
@@ -207,29 +250,68 @@ def jsonfilter(self, param):
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def jsonextract(self, param):
     """
-    Estrae campi specifici da oggetti JSON
+    Extracts specific fields from JSON objects
 
     Args:
-        param (dict) con:
-            - data: opzionale dati JSON (può usare input)
-            - fields: lista di campi da estrarre - supporta WALLET{key}, ENV{var}
-            - flatten: opzionale appiattisce oggetti nested (default: False)
-            - keep_nulls: opzionale mantieni campi null (default: False)
-            - saveonvar: opzionale salva risultato
-            - input: opzionale dati dal task precedente
+        param (dict) with:
+            - data: optional JSON data (can use input)
+            - fields: list of fields to extract - supports {WALLET:key}, {ENV:var}
+            - flatten: optional flatten nested objects (default: False)
+            - keep_nulls: optional keep null fields (default: False)
+            - saveonvar: optional save result
+            - input: optional data from previous task
             - taskid, taskstore, workflowcontext
 
     Returns:
         tuple (success, extracted_data)
 
-    Example:
-        Input: [{"name": "Alice", "age": 30, "city": "Rome"}]
-        Fields: ["name", "city"]
-        Output: [{"name": "Alice", "city": "Rome"}]
+    Example YAML:
+        # Extract specific fields from array
+        - name: extract_user_info
+          module: oa-json
+          function: jsonextract
+          data:
+            - {name: "Alice", age: 30, city: "Rome", country: "Italy"}
+            - {name: "Bob", age: 25, city: "Milan", country: "Italy"}
+          fields:
+            - name
+            - city
+          # Output: [{name: "Alice", city: "Rome"}, {name: "Bob", city: "Milan"}]
+
+        # Extract with dot notation for nested fields
+        - name: extract_nested
+          module: oa-json
+          function: jsonextract
+          data:
+            user:
+              name: "Alice"
+              email: "alice@example.com"
+              address:
+                city: "Rome"
+          fields:
+            - user.name
+            - user.address.city
+          flatten: true
+          # Output: {"user.name": "Alice", "user.address.city": "Rome"}
+
+        # Extract from previous task
+        - name: extract_from_api
+          module: oa-json
+          function: jsonextract
+          # data from previous API call
+          fields: "id,name,email"  # comma-separated string also supported
+
+        # Keep null values
+        - name: extract_with_nulls
+          module: oa-json
+          function: jsonextract
+          fields:
+            - name
+            - optional_field
+          keep_nulls: true
     """
     funcname = myself()
     logger.info("JSON Extract operation")
@@ -270,15 +352,15 @@ def jsonextract(self, param):
         if data is None:
             raise ValueError("No data to extract from")
 
-        # Validazione parametri
+        # Validate parameters
         if not oacommon.checkandloadparam(self, myself, ["fields"], param=param):
             raise ValueError(f"Missing required parameter 'fields' for {funcname}")
 
         fields = param.get("fields")
 
-        # Supporta stringa separata da virgola
+        # Support comma-separated string
         if isinstance(fields, str):
-            # Risolvi placeholder se presente
+            # Resolve placeholder if present
             fields = oacommon.getparam(param, "fields", wallet) or fields
             fields = [f.strip() for f in fields.split(",")]
 
@@ -288,14 +370,14 @@ def jsonextract(self, param):
         logger.info(f"Extracting fields: {fields}")
         logger.debug(f"Flatten: {flatten}, Keep nulls: {keep_nulls}")
 
-        # Estrai campi
+        # Extract fields
         extracted = None
 
         if isinstance(data, dict):
-            # Singolo oggetto
+            # Single object
             result = {}
             for field in fields:
-                # Supporta dot notation per nested fields
+                # Support dot notation for nested fields
                 if "." in field and flatten:
                     parts = field.split(".")
                     value = data
@@ -314,7 +396,7 @@ def jsonextract(self, param):
             extracted = result
 
         elif isinstance(data, list):
-            # Array di oggetti
+            # Array of objects
             results = []
             for item in data:
                 if not isinstance(item, dict):
@@ -346,7 +428,7 @@ def jsonextract(self, param):
 
         logger.info(f"Extraction completed successfully")
 
-        # Salva in variabile
+        # Save to variable
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = extracted
@@ -369,29 +451,81 @@ def jsonextract(self, param):
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def jsontransform(self, param):
     """
-    Trasforma dati JSON applicando mapping e trasformazioni
+    Transforms JSON data by applying mapping and transformations
 
     Args:
-        param (dict) con:
-            - data: opzionale dati JSON (può usare input)
-            - mapping: dict con {new_field: old_field} o {new_field: "function:old_field"}
-            - functions: opzionale dict con funzioni custom
-            - add_fields: opzionale dict con nuovi campi statici
-            - remove_fields: opzionale lista campi da rimuovere
-            - saveonvar: opzionale
-            - input: opzionale dati dal task precedente
+        param (dict) with:
+            - data: optional JSON data (can use input)
+            - mapping: dict with {new_field: old_field} or {new_field: "function:old_field"}
+            - functions: optional dict with custom functions
+            - add_fields: optional dict with new static fields
+            - remove_fields: optional list of fields to remove
+            - saveonvar: optional
+            - input: optional data from previous task
 
     Returns:
         tuple (success, transformed_data)
 
-    Example:
-        Input: {"first_name": "Alice", "last_name": "Smith", "age": 30}
-        Mapping: {"name": "first_name", "years": "age"}
-        Output: {"name": "Alice", "years": 30}
+    Example YAML:
+        # Rename fields
+        - name: rename_user_fields
+          module: oa-json
+          function: jsontransform
+          data:
+            first_name: "Alice"
+            last_name: "Smith"
+            age: 30
+          mapping:
+            name: first_name
+            surname: last_name
+            years: age
+          # Output: {name: "Alice", surname: "Smith", years: 30}
+
+        # Transform with built-in functions
+        - name: transform_case
+          module: oa-json
+          function: jsontransform
+          mapping:
+            NAME: "upper:name"
+            email_lower: "lower:email"
+            age_int: "int:age"
+          # Built-in functions: upper, lower, int, float, str, bool, strip
+
+        # Add static fields
+        - name: add_metadata
+          module: oa-json
+          function: jsontransform
+          add_fields:
+            source: "import"
+            import_date: "2025-12-30"
+            version: 1
+
+        # Remove unwanted fields
+        - name: cleanup_data
+          module: oa-json
+          function: jsontransform
+          remove_fields:
+            - internal_id
+            - temp_field
+            - _metadata
+
+        # Complex transformation
+        - name: transform_users
+          module: oa-json
+          function: jsontransform
+          data:
+            - {first_name: "alice", email: "ALICE@EXAMPLE.COM", age: "30"}
+          mapping:
+            full_name: "upper:first_name"
+            email: "lower:email"
+            age: "int:age"
+          add_fields:
+            status: "active"
+          remove_fields:
+            - first_name
     """
     funcname = myself()
     logger.info("JSON Transform operation")
@@ -442,7 +576,7 @@ def jsontransform(self, param):
         if remove_fields:
             logger.debug(f"Removing {len(remove_fields)} fields")
 
-        # Funzioni built-in per trasformazioni
+        # Built-in transformation functions
         transform_functions = {
             "upper": lambda x: str(x).upper() if x else x,
             "lower": lambda x: str(x).lower() if x else x,
@@ -453,20 +587,20 @@ def jsontransform(self, param):
             "strip": lambda x: str(x).strip() if x else x,
         }
 
-        # Aggiungi funzioni custom se fornite
+        # Add custom functions if provided
         custom_functions = param.get("functions", {})
 
         def transform_item(item):
-            """Trasforma un singolo item"""
+            """Transform a single item"""
             if not isinstance(item, dict):
                 return item
 
             result = {}
 
-            # Applica mapping
+            # Apply mapping
             for new_field, old_field in mapping.items():
                 if isinstance(old_field, str):
-                    # Controlla se c'è una funzione da applicare
+                    # Check if there's a function to apply
                     if ":" in old_field:
                         func_name, field_name = old_field.split(":", 1)
                         value = item.get(field_name)
@@ -481,27 +615,27 @@ def jsontransform(self, param):
 
                     result[new_field] = value
 
-            # Copia campi non mappati (se non in remove_fields)
+            # Copy unmapped fields (if not in remove_fields)
             for key, value in item.items():
                 if key not in remove_fields and key not in mapping.values():
-                    # Solo se non già presente nel result
+                    # Only if not already present in result
                     if key not in result:
                         result[key] = value
 
-            # Aggiungi campi statici
+            # Add static fields
             for key, value in add_fields.items():
-                # Risolvi placeholder nel valore
+                # Resolve placeholder in value
                 if isinstance(value, str):
                     value = oacommon.getparam(f"{key}={value}", key, wallet) or value
                 result[key] = value
 
-            # Rimuovi campi specificati
+            # Remove specified fields
             for field in remove_fields:
                 result.pop(field, None)
 
             return result
 
-        # Trasforma dati
+        # Transform data
         if isinstance(data, dict):
             transformed = transform_item(data)
         elif isinstance(data, list):
@@ -511,7 +645,7 @@ def jsontransform(self, param):
 
         logger.info("Transformation completed successfully")
 
-        # Salva in variabile
+        # Save to variable
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = transformed
@@ -533,24 +667,65 @@ def jsontransform(self, param):
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def jsonmerge(self, param):
     """
-    Unisce più oggetti/array JSON
+    Merges multiple JSON objects/arrays
 
     Args:
-        param (dict) con:
-            - sources: lista di chiavi da workflowcontext o lista di dati diretti
-            - merge_type: "dict" (merge objects), "array" (concatena arrays), "deep" (deep merge)
-            - overwrite: opzionale per dict merge (default: True)
-            - unique: opzionale rimuovi duplicati in array merge (default: False)
-            - saveonvar: opzionale
-            - input: opzionale dati dal task precedente (viene aggiunto al merge)
-            - workflowcontext: opzionale contesto workflow
+        param (dict) with:
+            - sources: list of keys from workflowcontext or list of direct data
+            - merge_type: "dict" (merge objects), "array" (concatenate arrays), "deep" (deep merge)
+            - overwrite: optional for dict merge (default: True)
+            - unique: optional remove duplicates in array merge (default: False)
+            - saveonvar: optional
+            - input: optional data from previous task (added to merge)
+            - workflowcontext: optional workflow context
 
     Returns:
         tuple (success, merged_data)
+
+    Example YAML:
+        # Merge dict objects
+        - name: merge_configs
+          module: oa-json
+          function: jsonmerge
+          sources:
+            - task_config_base
+            - task_config_override
+          merge_type: dict
+          overwrite: true
+          # Later values overwrite earlier ones
+
+        # Concatenate arrays
+        - name: merge_user_lists
+          module: oa-json
+          function: jsonmerge
+          sources:
+            - users_from_db
+            - users_from_api
+          merge_type: array
+          unique: true
+          # Removes duplicate entries
+
+        # Deep merge nested objects
+        - name: deep_merge_settings
+          module: oa-json
+          function: jsonmerge
+          sources:
+            - {db: {host: "localhost", port: 5432}}
+            - {db: {user: "admin"}, cache: {enabled: true}}
+          merge_type: deep
+          # Output: {db: {host: "localhost", port: 5432, user: "admin"}, cache: {enabled: true}}
+
+        # Merge with input from previous task
+        - name: merge_with_previous
+          module: oa-json
+          function: jsonmerge
+          # input from previous task automatically included
+          sources:
+            - static_data
+          merge_type: dict
     """
     funcname = myself()
     logger.info("JSON Merge operation")
@@ -567,10 +742,10 @@ def jsonmerge(self, param):
         overwrite = param.get("overwrite", True)
         unique = param.get("unique", False)
 
-        # Raccogli dati da unire
+        # Collect data to merge
         data_list = []
 
-        # Da sources
+        # From sources
         if "sources" in param:
             sources = param["sources"]
             workflowcontext = param.get("workflowcontext")
@@ -578,15 +753,15 @@ def jsonmerge(self, param):
             if isinstance(sources, list):
                 for source in sources:
                     if isinstance(source, str) and workflowcontext:
-                        # Recupera da workflowcontext
+                        # Retrieve from workflowcontext
                         data = workflowcontext.get_task_output(source)
                         if data:
                             data_list.append(data)
                     else:
-                        # Dati diretti
+                        # Direct data
                         data_list.append(source)
 
-        # Aggiungi input se presente
+        # Add input if present
         if "input" in param:
             previnput = param.get("input")
             if previnput:
@@ -598,18 +773,18 @@ def jsonmerge(self, param):
 
         logger.info(f"Merging {len(data_list)} sources (type: {merge_type})")
 
-        # Merge basato sul tipo
+        # Merge based on type
         merged = None
 
         if merge_type == "dict":
-            # Merge di dict
+            # Merge dicts
             merged = {}
             for data in data_list:
                 if isinstance(data, dict):
                     if overwrite:
                         merged.update(data)
                     else:
-                        # Non sovrascrivere chiavi esistenti
+                        # Don't overwrite existing keys
                         for key, value in data.items():
                             if key not in merged:
                                 merged[key] = value
@@ -617,7 +792,7 @@ def jsonmerge(self, param):
                     logger.warning(f"Skipping non-dict data in dict merge: {type(data)}")
 
         elif merge_type == "array":
-            # Concatena array
+            # Concatenate arrays
             merged = []
             for data in data_list:
                 if isinstance(data, list):
@@ -627,9 +802,9 @@ def jsonmerge(self, param):
                 else:
                     logger.warning(f"Skipping incompatible data in array merge: {type(data)}")
 
-            # Rimuovi duplicati se richiesto
+            # Remove duplicates if requested
             if unique:
-                # Per dict usa JSON string come chiave
+                # For dicts use JSON string as key
                 seen = set()
                 unique_merged = []
                 for item in merged:
@@ -641,7 +816,7 @@ def jsonmerge(self, param):
                 logger.debug(f"Removed {len(data_list) - len(merged)} duplicates")
 
         elif merge_type == "deep":
-            # Deep merge ricorsivo per dict nested
+            # Recursive deep merge for nested dicts
             def deep_merge(dict1, dict2):
                 result = dict1.copy()
                 for key, value in dict2.items():
@@ -663,7 +838,7 @@ def jsonmerge(self, param):
 
         logger.info(f"Merge completed successfully")
 
-        # Salva in variabile
+        # Save to variable
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = merged
@@ -686,28 +861,74 @@ def jsonmerge(self, param):
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def jsonaggregate(self, param):
     """
-    Aggrega dati JSON (sum, avg, count, min, max, group)
+    Aggregates JSON data (sum, avg, count, min, max, group)
 
     Args:
-        param (dict) con:
-            - data: opzionale dati JSON array (può usare input)
+        param (dict) with:
+            - data: optional JSON array data (can use input)
             - operation: sum, avg, count, min, max, group
-            - field: campo su cui aggregare - supporta WALLET{key}, ENV{var}
-            - group_by: opzionale campo per raggruppamento
-            - saveonvar: opzionale
-            - input: opzionale dati dal task precedente
+            - field: field to aggregate on - supports {WALLET:key}, {ENV:var}
+            - group_by: optional field for grouping
+            - saveonvar: optional
+            - input: optional data from previous task
 
     Returns:
         tuple (success, aggregated_data)
 
-    Example:
-        Input: [{"category": "A", "value": 10}, {"category": "A", "value": 20}]
-        Operation: sum, Field: value, Group_by: category
-        Output: {"A": 30}
+    Example YAML:
+        # Count items
+        - name: count_users
+          module: oa-json
+          function: jsonaggregate
+          data:
+            - {name: "Alice", age: 30}
+            - {name: "Bob", age: 25}
+          operation: count
+          # Output: 2
+
+        # Sum values
+        - name: total_sales
+          module: oa-json
+          function: jsonaggregate
+          data:
+            - {product: "A", amount: 100}
+            - {product: "B", amount: 200}
+            - {product: "C", amount: 150}
+          operation: sum
+          field: amount
+          # Output: 450
+
+        # Average with grouping
+        - name: avg_age_by_department
+          module: oa-json
+          function: jsonaggregate
+          data:
+            - {name: "Alice", age: 30, dept: "IT"}
+            - {name: "Bob", age: 25, dept: "IT"}
+            - {name: "Charlie", age: 35, dept: "Sales"}
+          operation: avg
+          field: age
+          group_by: dept
+          # Output: {"IT": 27.5, "Sales": 35}
+
+        # Group by category
+        - name: group_products
+          module: oa-json
+          function: jsonaggregate
+          operation: group
+          group_by: category
+          # Groups all items by category field
+
+        # Min/Max
+        - name: price_range
+          module: oa-json
+          function: jsonaggregate
+          field: price
+          operation: min
+          # Find minimum price
     """
     funcname = myself()
     logger.info("JSON Aggregate operation")
@@ -737,7 +958,7 @@ def jsonaggregate(self, param):
                 elif "json" in previnput:
                     data = previnput["json"]
                 else:
-                    # Cerca un array dentro l'input
+                    # Look for array inside input
                     for key, value in previnput.items():
                         if isinstance(value, list):
                             data = value
@@ -753,7 +974,7 @@ def jsonaggregate(self, param):
         if not isinstance(data, list):
             raise ValueError("Aggregate operation requires array data")
 
-        # Validazione parametri
+        # Validate parameters
         requiredparams = ["operation"]
         if not oacommon.checkandloadparam(self, myself, requiredparams, param=param):
             raise ValueError(f"Missing required parameters for {funcname}")
@@ -768,7 +989,7 @@ def jsonaggregate(self, param):
 
         if operation == "count":
             if group_by:
-                # Conta per gruppo
+                # Count by group
                 counts = {}
                 for item in data:
                     if isinstance(item, dict):
@@ -783,7 +1004,7 @@ def jsonaggregate(self, param):
                 raise ValueError(f"Field is required for {operation} operation")
 
             if group_by:
-                # Aggrega per gruppo
+                # Aggregate by group
                 groups = {}
                 for item in data:
                     if not isinstance(item, dict):
@@ -800,7 +1021,7 @@ def jsonaggregate(self, param):
                         except (ValueError, TypeError):
                             logger.warning(f"Skipping non-numeric value: {field_value}")
 
-                # Calcola aggregazione per ogni gruppo
+                # Calculate aggregation for each group
                 result = {}
                 for group, values in groups.items():
                     if values:
@@ -814,7 +1035,7 @@ def jsonaggregate(self, param):
                             result[group] = max(values)
 
             else:
-                # Aggrega su tutto il dataset
+                # Aggregate on entire dataset
                 values = []
                 for item in data:
                     if isinstance(item, dict):
@@ -838,7 +1059,7 @@ def jsonaggregate(self, param):
                     result = 0
 
         elif operation == "group":
-            # Raggruppa elementi
+            # Group elements
             if not group_by:
                 raise ValueError("group_by is required for group operation")
 
@@ -857,7 +1078,7 @@ def jsonaggregate(self, param):
 
         logger.info(f"Aggregation completed: {operation}")
 
-        # Salva in variabile
+        # Save to variable
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = result
@@ -882,22 +1103,81 @@ def jsonaggregate(self, param):
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def jsonvalidate(self, param):
     """
-    Valida JSON contro un JSON Schema
+    Validates JSON against a JSON Schema
 
     Args:
-        param (dict) con:
-            - data: opzionale dati JSON (può usare input)
-            - schema: JSON Schema per validazione
-            - strict: opzionale fail on validation error (default: True)
-            - saveonvar: opzionale
-            - input: opzionale dati dal task precedente
+        param (dict) with:
+            - data: optional JSON data (can use input)
+            - schema: JSON Schema for validation
+            - strict: optional fail on validation error (default: True)
+            - saveonvar: optional
+            - input: optional data from previous task
 
     Returns:
         tuple (success, validation_result)
+
+    Example YAML:
+        # Validate user data
+        - name: validate_user
+          module: oa-json
+          function: jsonvalidate
+          data:
+            name: "Alice"
+            email: "alice@example.com"
+            age: 30
+          schema:
+            type: object
+            required:
+              - name
+              - email
+            properties:
+              name:
+                type: string
+              email:
+                type: string
+                format: email
+              age:
+                type: integer
+                minimum: 0
+          strict: true
+
+        # Validate array of items
+        - name: validate_products
+          module: oa-json
+          function: jsonvalidate
+          schema:
+            type: array
+            items:
+              type: object
+              required:
+                - id
+                - name
+                - price
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+                price:
+                  type: number
+                  minimum: 0
+
+        # Non-strict validation (doesn't fail on error)
+        - name: check_optional_fields
+          module: oa-json
+          function: jsonvalidate
+          schema:
+            type: object
+            properties:
+              optional_field:
+                type: string
+          strict: false
+          # Continues even if validation fails
+
+    Note: Requires jsonschema library: pip install jsonschema
     """
     funcname = myself()
     logger.info("JSON Validate operation")
@@ -909,7 +1189,7 @@ def jsonvalidate(self, param):
     outputdata = None
 
     try:
-        # Import opzionale di jsonschema
+        # Optional import of jsonschema
         try:
             import jsonschema
             from jsonschema import validate, ValidationError
@@ -951,7 +1231,7 @@ def jsonvalidate(self, param):
 
         logger.info("Validating JSON against schema")
 
-        # Valida
+        # Validate
         valid = True
         errors = []
 
@@ -972,7 +1252,7 @@ def jsonvalidate(self, param):
                 tasksuccess = False
                 errormsg = f"JSON validation failed: {e.message}"
 
-        # Salva in variabile
+        # Save to variable
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = {"valid": valid, "errors": errors}
@@ -996,23 +1276,65 @@ def jsonvalidate(self, param):
 
     return tasksuccess, outputdata
 
-
 @oacommon.trace
 def jsonsort(self, param):
     """
-    Ordina array JSON per campo
+    Sorts JSON array by field
 
     Args:
-        param (dict) con:
-            - data: opzionale dati JSON array (può usare input)
-            - sort_by: campo per ordinamento - supporta WALLET{key}, ENV{var}
-            - reverse: opzionale ordine decrescente (default: False)
-            - numeric: opzionale ordina come numeri (default: auto-detect)
-            - saveonvar: opzionale
-            - input: opzionale dati dal task precedente
+        param (dict) with:
+            - data: optional JSON array data (can use input)
+            - sort_by: field for sorting - supports {WALLET:key}, {ENV:var}
+            - reverse: optional descending order (default: False)
+            - numeric: optional sort as numbers (default: auto-detect)
+            - saveonvar: optional
+            - input: optional data from previous task
 
     Returns:
         tuple (success, sorted_data)
+
+    Example YAML:
+        # Sort by name (alphabetical)
+        - name: sort_users_by_name
+          module: oa-json
+          function: jsonsort
+          data:
+            - {name: "Charlie", age: 35}
+            - {name: "Alice", age: 30}
+            - {name: "Bob", age: 25}
+          sort_by: name
+          # Output: [{name: "Alice"...}, {name: "Bob"...}, {name: "Charlie"...}]
+
+        # Sort by age (numeric, descending)
+        - name: sort_by_age_desc
+          module: oa-json
+          function: jsonsort
+          sort_by: age
+          reverse: true
+          numeric: true
+          # Output: Oldest to youngest
+
+        # Sort from previous filter task
+        - name: sort_filtered_results
+          module: oa-json
+          function: jsonsort
+          # data from previous jsonfilter task
+          sort_by: created_date
+          reverse: true
+
+        # Auto-detect numeric sorting
+        - name: sort_by_price
+          module: oa-json
+          function: jsonsort
+          sort_by: price
+          # Automatically detects if price is numeric
+
+        # Sort with environment variable
+        - name: sort_dynamic
+          module: oa-json
+          function: jsonsort
+          sort_by: "{ENV:SORT_FIELD}"
+          reverse: false
     """
     funcname = myself()
     logger.info("JSON Sort operation")
@@ -1040,7 +1362,7 @@ def jsonsort(self, param):
                 elif "json" in previnput:
                     data = previnput["json"]
                 else:
-                    # Cerca array
+                    # Look for array
                     for key, value in previnput.items():
                         if isinstance(value, list):
                             data = value
@@ -1065,9 +1387,9 @@ def jsonsort(self, param):
 
         logger.info(f"Sorting by: {sort_by}, Reverse: {reverse}")
 
-        # Determina se ordinare come numero
+        # Determine if sorting as number
         if numeric is None:
-            # Auto-detect: controlla il primo valore
+            # Auto-detect: check first value
             for item in data:
                 if isinstance(item, dict):
                     value = item.get(sort_by)
@@ -1075,7 +1397,7 @@ def jsonsort(self, param):
                         numeric = isinstance(value, (int, float))
                         break
 
-        # Ordina
+        # Sort
         def sort_key(item):
             if isinstance(item, dict):
                 value = item.get(sort_by)
@@ -1093,7 +1415,7 @@ def jsonsort(self, param):
 
         logger.info(f"Sorted {len(sorted_data)} items")
 
-        # Salva in variabile
+        # Save to variable
         if oacommon.checkparam("saveonvar", param):
             saveonvar = param["saveonvar"]
             gdict[saveonvar] = sorted_data

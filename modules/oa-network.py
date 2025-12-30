@@ -1,7 +1,8 @@
 """
 Open-Automator Network Module
-Gestisce operazioni di rete (HTTP, HTTPS) con data propagation
-Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
+
+Manages network operations (HTTP, HTTPS) with data propagation
+Support for wallet, placeholder {WALLET:key}, {ENV:var} and {VAULT:key}
 """
 
 import requests
@@ -12,14 +13,14 @@ import json
 import logging
 from logger_config import AutomatorLogger
 
-# Logger per questo modulo
+# Logger for this module
 logger = AutomatorLogger.get_logger('oa-network')
 
 gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
 def setgdict(self, gdict_param):
-    """Imposta il dizionario globale"""
+    """Sets the global dictionary"""
     global gdict
     gdict = gdict_param
     self.gdict = gdict_param
@@ -27,23 +28,68 @@ def setgdict(self, gdict_param):
 @oacommon.trace
 def httpget(self, param):
     """
-    Esegue una richiesta HTTP GET con data propagation
+    Executes an HTTP GET request with data propagation
 
     Args:
-        param: dict con:
-            - host: hostname o IP (può derivare da input precedente) - supporta {WALLET:key}, {ENV:var}
-            - port: porta HTTP - supporta {ENV:var}
-            - get: path della richiesta - supporta {WALLET:key}, {ENV:var}
-            - printout: (opzionale) stampa response
-            - saveonvar: (opzionale) salva response in variabile
-            - headers: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - host: hostname or IP (can derive from previous input) - supports {WALLET:key}, {ENV:var}
+            - port: HTTP port - supports {ENV:var}
+            - get: request path - supports {WALLET:key}, {ENV:var}
+            - printout: (optional) print response
+            - saveonvar: (optional) save response to variable
+            - headers: (optional) dict with custom headers - supports {WALLET:key} in values
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con response data
+        tuple: (success, output_dict) with response data
+
+    Example YAML:
+        # Simple HTTP GET request
+        - name: fetch_api_data
+          module: oa-network
+          function: httpget
+          host: "api.example.com"
+          port: 80
+          get: "/api/v1/users"
+
+        # With custom headers
+        - name: api_with_headers
+          module: oa-network
+          function: httpget
+          host: "api.example.com"
+          port: 80
+          get: "/api/data"
+          headers:
+            User-Agent: "Open-Automator/1.0"
+            Accept: "application/json"
+
+        # Using environment variables
+        - name: fetch_from_env
+          module: oa-network
+          function: httpget
+          host: "{ENV:API_HOST}"
+          port: 80
+          get: "{ENV:API_PATH}"
+          printout: true
+
+        # With authentication header from wallet
+        - name: authenticated_get
+          module: oa-network
+          function: httpget
+          host: "secure-api.example.com"
+          port: 80
+          get: "/api/protected"
+          headers:
+            Authorization: "Bearer {WALLET:api_token}"
+
+        # Using URL from previous task
+        - name: fetch_dynamic_url
+          module: oa-network
+          function: httpget
+          # host, port, get extracted from previous task's 'url' field
     """
     func_name = myself()
     logger.info("Executing HTTP GET request")
@@ -58,7 +104,7 @@ def httpget(self, param):
     connection = None
 
     try:
-        # Se host/port/get non specificati, prova a derivarli dall'input
+        # If host/port/get not specified, try to derive from input
         if 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -67,7 +113,7 @@ def httpget(self, param):
                 if 'port' not in param and 'port' in prev_input:
                     param['port'] = prev_input['port']
                 if 'url' in prev_input:
-                    # Parse URL completo
+                    # Parse complete URL
                     from urllib.parse import urlparse
                     parsed = urlparse(prev_input['url'])
                     if not param.get('host'):
@@ -81,16 +127,16 @@ def httpget(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         host = oacommon.get_param(param, 'host', wallet) or gdict.get('host')
         port_str = oacommon.get_param(param, 'port', wallet) or gdict.get('port')
         port = int(port_str)
         get_path = oacommon.get_param(param, 'get', wallet) or gdict.get('get')
 
-        # Headers custom con supporto placeholder nei valori
+        # Custom headers with placeholder support in values
         custom_headers = {}
         if oacommon.checkparam('headers', param):
             headers_param = param['headers']
@@ -106,7 +152,7 @@ def httpget(self, param):
 
         connection = http.client.HTTPConnection(host, port, timeout=30)
 
-        # Prepara headers
+        # Prepare headers
         if custom_headers:
             for key, value in custom_headers.items():
                 connection.putheader(key, value)
@@ -116,10 +162,10 @@ def httpget(self, param):
 
         logger.info(f"HTTP Status: {response.status} {response.reason}")
 
-        # Leggi response body
+        # Read response body
         response_body = response.read().decode('utf-8', errors='ignore')
 
-        # Prova a parsare come JSON
+        # Try to parse as JSON
         parsed_json = None
         content_type = response.getheader('Content-Type', '')
         if 'application/json' in content_type:
@@ -129,12 +175,12 @@ def httpget(self, param):
             except json.JSONDecodeError:
                 logger.debug("Failed to parse response as JSON")
 
-        # Se vuoi considerare status >=400 come failure
+        # Consider status >=400 as failure
         if response.status >= 400:
             task_success = False
             error_msg = f"HTTP error {response.status} {response.reason}"
 
-        # Gestione printout
+        # Handle printout
         if oacommon.checkparam('printout', param):
             printout = param['printout']
             if printout:
@@ -143,7 +189,7 @@ def httpget(self, param):
                 else:
                     logger.info(f"Response:\n{response_body}")
 
-        # Salva in variabile (retrocompatibilità)
+        # Save to variable (backward compatibility)
         if oacommon.checkparam('saveonvar', param):
             saveonvar = param['saveonvar']
             gdict[saveonvar] = response_body
@@ -151,7 +197,7 @@ def httpget(self, param):
 
         logger.info(f"HTTP GET completed, response size: {len(response_body)} bytes")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'status_code': response.status,
             'reason': response.reason,
@@ -161,7 +207,7 @@ def httpget(self, param):
             'url': f"http://{host}:{port}{get_path}"
         }
 
-        # Se parsato come JSON, aggiungi anche quello
+        # If parsed as JSON, add it too
         if parsed_json is not None:
             output_data['json'] = parsed_json
 
@@ -185,24 +231,75 @@ def httpget(self, param):
 @oacommon.trace
 def httpsget(self, param):
     """
-    Esegue una richiesta HTTPS GET con data propagation
+    Executes an HTTPS GET request with data propagation
 
     Args:
-        param: dict con:
-            - host: hostname o IP (può derivare da input precedente) - supporta {WALLET:key}, {ENV:var}
-            - port: porta HTTPS - supporta {ENV:var}
-            - get: path della richiesta - supporta {WALLET:key}, {ENV:var}
-            - verify: (opzionale) verifica certificato SSL, default True
-            - printout: (opzionale) stampa response
-            - saveonvar: (opzionale) salva response in variabile
-            - headers: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori (es. token)
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - host: hostname or IP (can derive from previous input) - supports {WALLET:key}, {ENV:var}
+            - port: HTTPS port - supports {ENV:var}
+            - get: request path - supports {WALLET:key}, {ENV:var}
+            - verify: (optional) verify SSL certificate, default True
+            - printout: (optional) print response
+            - saveonvar: (optional) save response to variable
+            - headers: (optional) dict with custom headers - supports {WALLET:key} in values (e.g., tokens)
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con response data
+        tuple: (success, output_dict) with response data
+
+    Example YAML:
+        # Simple HTTPS GET request
+        - name: fetch_secure_api
+          module: oa-network
+          function: httpsget
+          host: "api.example.com"
+          port: 443
+          get: "/api/v1/data"
+
+        # With Bearer token from wallet
+        - name: api_with_token
+          module: oa-network
+          function: httpsget
+          host: "api.github.com"
+          port: 443
+          get: "/user/repos"
+          headers:
+            Authorization: "Bearer {WALLET:github_token}"
+            Accept: "application/vnd.github.v3+json"
+
+        # Disable SSL verification (not recommended for production)
+        - name: insecure_api_call
+          module: oa-network
+          function: httpsget
+          host: "self-signed.example.com"
+          port: 443
+          get: "/api/data"
+          verify: false
+
+        # API with multiple headers from wallet
+        - name: complex_api_call
+          module: oa-network
+          function: httpsget
+          host: "{ENV:API_HOST}"
+          port: 443
+          get: "/api/protected/resource"
+          headers:
+            Authorization: "Bearer {VAULT:api_secret}"
+            X-API-Key: "{WALLET:api_key}"
+            User-Agent: "Open-Automator"
+          printout: true
+
+        # Call REST API and parse JSON
+        - name: fetch_json_data
+          module: oa-network
+          function: httpsget
+          host: "jsonplaceholder.typicode.com"
+          port: 443
+          get: "/posts/1"
+          # Response automatically parsed as JSON if Content-Type is application/json
     """
     func_name = myself()
     logger.info("Executing HTTPS GET request")
@@ -216,7 +313,7 @@ def httpsget(self, param):
     required_params = ['host', 'port', 'get']
 
     try:
-        # Se host/port/get non specificati, prova a derivarli dall'input
+        # If host/port/get not specified, try to derive from input
         if 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
@@ -225,7 +322,7 @@ def httpsget(self, param):
                 if 'port' not in param and 'port' in prev_input:
                     param['port'] = prev_input['port']
                 if 'url' in prev_input:
-                    # Parse URL completo
+                    # Parse complete URL
                     from urllib.parse import urlparse
                     parsed = urlparse(prev_input['url'])
                     if not param.get('host'):
@@ -239,10 +336,10 @@ def httpsget(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         host = oacommon.get_param(param, 'host', wallet) or gdict.get('host')
         port_str = oacommon.get_param(param, 'port', wallet) or gdict.get('port')
         port = int(port_str)
@@ -255,14 +352,14 @@ def httpsget(self, param):
             if not verify:
                 logger.warning("SSL certificate verification DISABLED - insecure connection!")
 
-        # Headers custom con supporto placeholder (importante per API token!)
+        # Custom headers with placeholder support (important for API tokens!)
         headers = {}
         if oacommon.checkparam('headers', param):
             headers_param = param['headers']
             if isinstance(headers_param, dict):
                 for key, value in headers_param.items():
                     if isinstance(value, str):
-                        # Risolvi placeholder nei valori degli header (es. Bearer {WALLET:api_token})
+                        # Resolve placeholders in header values (e.g., Bearer {WALLET:api_token})
                         headers[key] = oacommon.get_param({key: value}, key, wallet) or value
                     else:
                         headers[key] = value
@@ -272,7 +369,7 @@ def httpsget(self, param):
         logger.info(f"HTTPS GET: {url}")
         logger.debug(f"SSL verify: {verify}")
 
-        # Disabilita warning solo se verify=False
+        # Disable warnings only if verify=False
         if not verify:
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -283,7 +380,7 @@ def httpsget(self, param):
 
         response_body = response.content.decode('utf-8', errors='ignore')
 
-        # Prova a parsare come JSON
+        # Try to parse as JSON
         parsed_json = None
         content_type = response.headers.get('Content-Type', '')
         if 'application/json' in content_type:
@@ -293,12 +390,12 @@ def httpsget(self, param):
             except json.JSONDecodeError:
                 logger.debug("Failed to parse response as JSON")
 
-        # Considera status >=400 come failure
+        # Consider status >=400 as failure
         if response.status_code >= 400:
             task_success = False
             error_msg = f"HTTPS error {response.status_code} {response.reason}"
 
-        # Gestione printout
+        # Handle printout
         if oacommon.checkparam('printout', param):
             printout = param['printout']
             if printout:
@@ -307,7 +404,7 @@ def httpsget(self, param):
                 else:
                     logger.info(f"Response:\n{response_body}")
 
-        # Salva in variabile (retrocompatibilità)
+        # Save to variable (backward compatibility)
         if oacommon.checkparam('saveonvar', param):
             saveonvar = param['saveonvar']
             gdict[saveonvar] = response_body
@@ -315,7 +412,7 @@ def httpsget(self, param):
 
         logger.info(f"HTTPS GET completed, response size: {len(response_body)} bytes")
 
-        # Output data per propagation
+        # Output data for propagation
         output_data = {
             'status_code': response.status_code,
             'reason': response.reason,
@@ -326,7 +423,7 @@ def httpsget(self, param):
             'elapsed_ms': response.elapsed.total_seconds() * 1000
         }
 
-        # Se parsato come JSON, aggiungi anche quello
+        # If parsed as JSON, add it too
         if parsed_json is not None:
             output_data['json'] = parsed_json
 
@@ -356,23 +453,80 @@ def httpsget(self, param):
 @oacommon.trace
 def httppost(self, param):
     """
-    Esegue una richiesta HTTP POST con data propagation
+    Executes an HTTP POST request with data propagation
 
     Args:
-        param: dict con:
-            - host: hostname o IP - supporta {WALLET:key}, {ENV:var}
-            - port: porta HTTP - supporta {ENV:var}
-            - path: path della richiesta - supporta {WALLET:key}, {ENV:var}
-            - data: dati da inviare (può venire da input precedente) - supporta {WALLET:key}
-            - headers: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori
-            - content_type: (opzionale) default 'application/json'
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - host: hostname or IP - supports {WALLET:key}, {ENV:var}
+            - port: HTTP port - supports {ENV:var}
+            - path: request path - supports {WALLET:key}, {ENV:var}
+            - data: data to send (can come from previous input) - supports {WALLET:key}
+            - headers: (optional) dict with custom headers - supports {WALLET:key} in values
+            - content_type: (optional) default 'application/json'
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con response data
+        tuple: (success, output_dict) with response data
+
+    Example YAML:
+        # Simple POST with JSON data
+        - name: create_user
+          module: oa-network
+          function: httppost
+          host: "api.example.com"
+          port: 80
+          path: "/api/users"
+          data:
+            name: "John Doe"
+            email: "john@example.com"
+            age: 30
+
+        # POST with data from wallet
+        - name: send_credentials
+          module: oa-network
+          function: httppost
+          host: "{ENV:API_HOST}"
+          port: 80
+          path: "/api/login"
+          data:
+            username: "{WALLET:api_username}"
+            password: "{VAULT:api_password}"
+
+        # POST with custom headers
+        - name: api_post_with_headers
+          module: oa-network
+          function: httppost
+          host: "api.example.com"
+          port: 80
+          path: "/api/data"
+          headers:
+            Authorization: "Bearer {WALLET:token}"
+            X-Custom-Header: "value"
+          data:
+            field1: "value1"
+            field2: "value2"
+
+        # POST data from previous task
+        - name: submit_processed_data
+          module: oa-network
+          function: httppost
+          host: "api.example.com"
+          port: 80
+          path: "/api/submit"
+          # data automatically taken from previous task output
+
+        # POST with different content type
+        - name: post_xml_data
+          module: oa-network
+          function: httppost
+          host: "api.example.com"
+          port: 80
+          path: "/api/xml"
+          content_type: "application/xml"
+          data: "<xml>data</xml>"
     """
     func_name = myself()
     logger.info("Executing HTTP POST request")
@@ -384,21 +538,21 @@ def httppost(self, param):
     output_data = None
 
     try:
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Determina i dati da inviare
+        # Determine data to send
         post_data = None
 
-        # 1. Se c'è 'data' esplicito (con supporto placeholder)
+        # 1. If there's explicit 'data' (with placeholder support)
         if 'data' in param:
             data_param = param['data']
-            # Se è una stringa, risolvi placeholder
+            # If it's a string, resolve placeholders
             if isinstance(data_param, str):
                 post_data = oacommon.get_param(param, 'data', wallet) or data_param
-            # Se è dict/list, usa com'è (ma potrebbe avere placeholder nei valori)
+            # If it's dict/list, use as is (but might have placeholders in values)
             elif isinstance(data_param, dict):
-                # Risolvi placeholder ricorsivamente nel dict
+                # Recursively resolve placeholders in dict
                 post_data = {}
                 for key, value in data_param.items():
                     if isinstance(value, str):
@@ -407,14 +561,14 @@ def httppost(self, param):
                         post_data[key] = value
             else:
                 post_data = data_param
-        # 2. Altrimenti usa input dal task precedente
+        # 2. Otherwise use input from previous task
         elif 'input' in param:
             prev_input = param.get('input')
             if isinstance(prev_input, dict):
-                # Se c'è campo 'json', usalo
+                # If there's 'json' field, use it
                 if 'json' in prev_input:
                     post_data = prev_input['json']
-                # Altrimenti usa tutto l'input
+                # Otherwise use all input
                 else:
                     post_data = prev_input
             elif isinstance(prev_input, str):
@@ -428,17 +582,17 @@ def httppost(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         host = oacommon.get_param(param, 'host', wallet) or gdict.get('host')
         port_str = oacommon.get_param(param, 'port', wallet) or gdict.get('port')
         port = int(port_str)
         path = oacommon.get_param(param, 'path', wallet) or gdict.get('path')
 
-        # Headers con supporto placeholder
+        # Headers with placeholder support
         content_type = param.get('content_type', 'application/json')
         headers = param.get('headers', {})
 
-        # Risolvi placeholder negli headers
+        # Resolve placeholders in headers
         if isinstance(headers, dict):
             resolved_headers = {}
             for key, value in headers.items():
@@ -450,7 +604,7 @@ def httppost(self, param):
 
         headers['Content-Type'] = content_type
 
-        # Se i dati sono dict/list, converti in JSON
+        # If data is dict/list, convert to JSON
         if isinstance(post_data, (dict, list)):
             post_body = json.dumps(post_data)
         else:
@@ -466,7 +620,7 @@ def httppost(self, param):
 
         response_body = response.content.decode('utf-8', errors='ignore')
 
-        # Prova a parsare come JSON
+        # Try to parse as JSON
         parsed_json = None
         if 'application/json' in response.headers.get('Content-Type', ''):
             try:
@@ -506,24 +660,87 @@ def httppost(self, param):
 @oacommon.trace
 def httpspost(self, param):
     """
-    Esegue una richiesta HTTPS POST con data propagation
+    Executes an HTTPS POST request with data propagation
 
     Args:
-        param: dict con:
-            - host: hostname o IP - supporta {WALLET:key}, {ENV:var}
-            - port: porta HTTPS - supporta {ENV:var}
-            - path: path della richiesta - supporta {WALLET:key}, {ENV:var}
-            - data: dati da inviare (può venire da input precedente) - supporta {WALLET:key}
-            - headers: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori (es. API key)
-            - content_type: (opzionale) default 'application/json'
-            - verify: (opzionale) verifica certificato SSL, default True
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale) id univoco del task
-            - task_store: (opzionale) istanza di TaskResultStore
+        param: dict with:
+            - host: hostname or IP - supports {WALLET:key}, {ENV:var}
+            - port: HTTPS port - supports {ENV:var}
+            - path: request path - supports {WALLET:key}, {ENV:var}
+            - data: data to send (can come from previous input) - supports {WALLET:key}
+            - headers: (optional) dict with custom headers - supports {WALLET:key} in values (e.g., API key)
+            - content_type: (optional) default 'application/json'
+            - verify: (optional) verify SSL certificate, default True
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional) unique task id
+            - task_store: (optional) TaskResultStore instance
 
     Returns:
-        tuple: (success, output_dict) con response data
+        tuple: (success, output_dict) with response data
+
+    Example YAML:
+        # Simple HTTPS POST
+        - name: create_secure_resource
+          module: oa-network
+          function: httpspost
+          host: "api.example.com"
+          port: 443
+          path: "/api/v1/resources"
+          data:
+            name: "New Resource"
+            type: "important"
+
+        # POST with API key from vault
+        - name: secure_api_post
+          module: oa-network
+          function: httpspost
+          host: "api.github.com"
+          port: 443
+          path: "/repos/owner/repo/issues"
+          headers:
+            Authorization: "Bearer {VAULT:github_token}"
+            Accept: "application/vnd.github.v3+json"
+          data:
+            title: "Bug report"
+            body: "Description of the bug"
+
+        # POST with multiple credentials from wallet
+        - name: enterprise_api_call
+          module: oa-network
+          function: httpspost
+          host: "{ENV:ENTERPRISE_API}"
+          port: 443
+          path: "/api/submit"
+          headers:
+            X-API-Key: "{WALLET:api_key}"
+            X-Client-ID: "{WALLET:client_id}"
+            Authorization: "Bearer {VAULT:access_token}"
+          data:
+            user_id: "{WALLET:user_id}"
+            action: "create"
+            payload:
+              field1: "value1"
+
+        # POST data from previous task (e.g., after JSON transformation)
+        - name: submit_transformed_data
+          module: oa-network
+          function: httpspost
+          host: "api.example.com"
+          port: 443
+          path: "/api/bulk"
+          # data automatically from previous jsontransform task
+
+        # Disable SSL verification for self-signed cert
+        - name: internal_api_post
+          module: oa-network
+          function: httpspost
+          host: "internal-api.company.local"
+          port: 443
+          path: "/api/data"
+          verify: false
+          data:
+            internal_data: "sensitive"
     """
     func_name = myself()
     logger.info("Executing HTTPS POST request")
@@ -535,10 +752,10 @@ def httpspost(self, param):
     output_data = None
 
     try:
-        # Recupera wallet per risoluzione placeholder
+        # Get wallet for placeholder resolution
         wallet = gdict.get('_wallet')
 
-        # Determina i dati da inviare (stesso meccanismo di httppost)
+        # Determine data to send (same mechanism as httppost)
         post_data = None
 
         if 'data' in param:
@@ -572,7 +789,7 @@ def httpspost(self, param):
         if not oacommon.checkandloadparam(self, myself, *required_params, param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Usa get_param per supportare placeholder
+        # Use get_param to support placeholders
         host = oacommon.get_param(param, 'host', wallet) or gdict.get('host')
         port_str = oacommon.get_param(param, 'port', wallet) or gdict.get('port')
         port = int(port_str)
@@ -585,7 +802,7 @@ def httpspost(self, param):
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        # Headers con supporto placeholder (importante per API keys!)
+        # Headers with placeholder support (important for API keys!)
         content_type = param.get('content_type', 'application/json')
         headers = param.get('headers', {})
 
@@ -600,7 +817,7 @@ def httpspost(self, param):
 
         headers['Content-Type'] = content_type
 
-        # Converti dati
+        # Convert data
         if isinstance(post_data, (dict, list)):
             post_body = json.dumps(post_data)
         else:

@@ -1,7 +1,8 @@
 """
 Open-Automator Utility Module
-Funzioni di utilità (variabili, sleep, dump, transform) con data propagation
-Supporto per wallet, placeholder {WALLET:key}, {ENV:var} e {VAULT:key}
+
+Utility functions (variables, sleep, dump, transform) with data propagation
+Support for wallet, placeholder {WALLET:key}, {ENV:var} and {VAULT:key}
 """
 
 import oacommon
@@ -12,14 +13,14 @@ import logging
 from datetime import datetime
 from logger_config import AutomatorLogger
 
-# Logger per questo modulo
+# Logger for this module
 logger = AutomatorLogger.get_logger('oa-utility')
 
 gdict = {}
 myself = lambda: inspect.stack()[1][3]
 
 def setgdict(self, gdict_param):
-    """Imposta il dizionario globale"""
+    """Sets the global dictionary"""
     global gdict
     gdict = gdict_param
     self.gdict = gdict_param
@@ -27,18 +28,33 @@ def setgdict(self, gdict_param):
 @oacommon.trace
 def setsleep(self, param):
     """
-    Pausa l'esecuzione per un numero di secondi con data propagation
+    Pauses execution for a specified number of seconds with data propagation
 
     Args:
-        param: dict con:
-            - seconds: numero di secondi da attendere - supporta {WALLET:key}, {ENV:var}
-            - input: (opzionale) dati dal task precedente (passthrough)
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale)
-            - task_store: (opzionale)
+        param: dict with:
+            - seconds: number of seconds to wait - supports {WALLET:key}, {ENV:var}
+            - input: (optional) data from previous task (passthrough)
+            - workflow_context: (optional) workflow context
+            - task_id: (optional)
+            - task_store: (optional)
 
     Returns:
-        tuple: (success, input_data) - propaga l'input ricevuto
+        tuple: (success, input_data) - propagates received input
+
+    Example YAML:
+        # Simple sleep for 5 seconds
+        - name: wait_5_seconds
+          module: oa-utility
+          function: setsleep
+          seconds: 5
+          on_success: next_task
+
+        # Dynamic delay from environment variable
+        - name: wait_dynamic
+          module: oa-utility
+          function: setsleep
+          seconds: "{ENV:DELAY_SECONDS}"
+          on_success: continue_workflow
     """
     func_name = myself()
     logger.info("Sleep/pause execution")
@@ -53,23 +69,18 @@ def setsleep(self, param):
         if not oacommon.checkandloadparam(self, myself, 'seconds', param=param):
             raise ValueError(f"Missing required parameters for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
         wallet = gdict.get('_wallet')
-
-        # Usa get_param per supportare placeholder (es. delay dinamico da ENV)
         seconds_str = oacommon.get_param(param, 'seconds', wallet) or gdict.get('seconds')
         seconds = float(seconds_str) if isinstance(seconds_str, str) else seconds_str
 
         logger.info(f"Sleeping for {seconds} seconds...")
-
         start_time = datetime.now()
         time.sleep(seconds)
         end_time = datetime.now()
-
         actual_sleep = (end_time - start_time).total_seconds()
+
         logger.info(f"Sleep completed (actual: {actual_sleep:.2f}s)")
 
-        # Propaga l'input ricevuto (passthrough)
         if 'input' in param:
             output_data = param['input']
             logger.debug("Passing through input data")
@@ -83,6 +94,7 @@ def setsleep(self, param):
         task_success = False
         error_msg = str(e)
         logger.error(f"Sleep operation failed: {e}", exc_info=True)
+
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
@@ -92,18 +104,31 @@ def setsleep(self, param):
 @oacommon.trace
 def printvar(self, param):
     """
-    Stampa il valore di una variabile o dell'input con data propagation
+    Prints the value of a variable or input with data propagation
 
     Args:
-        param: dict con:
-            - varname: (opzionale) nome della variabile da stampare - supporta {WALLET:key}, {ENV:var}
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale)
-            - task_store: (opzionale)
+        param: dict with:
+            - varname: (optional) variable name to print - supports {WALLET:key}, {ENV:var}
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional)
+            - task_store: (optional)
 
     Returns:
-        tuple: (success, printed_value) - propaga il valore stampato
+        tuple: (success, printed_value) - propagates the printed value
+
+    Example YAML:
+        # Print a specific variable
+        - name: print_result
+          module: oa-utility
+          function: printvar
+          varname: my_result
+
+        # Print data from previous task
+        - name: print_previous_output
+          module: oa-utility
+          function: printvar
+          on_success: next_step
     """
     func_name = myself()
     logger.info("Printing variable/input")
@@ -115,18 +140,14 @@ def printvar(self, param):
     output_data = None
 
     try:
-        # Recupera wallet per risoluzione placeholder
         wallet = gdict.get('_wallet')
-
         value = None
         source = "unknown"
 
-        # Priorità: 1) varname specificato, 2) input dal task precedente
         if 'varname' in param:
             if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
                 raise ValueError(f"Missing required parameters for {func_name}")
 
-            # Risolvi placeholder nel varname
             varname = oacommon.get_param(param, 'varname', wallet) or gdict.get('varname')
 
             if varname not in gdict:
@@ -146,9 +167,7 @@ def printvar(self, param):
             raise ValueError("No varname or input provided to print")
 
         if value is not None:
-            # Log appropriato in base al tipo e dimensione
             logger.info(f"=== Value from {source} ===")
-
             if isinstance(value, (dict, list)):
                 formatted = json.dumps(value, indent=2, default=str)
                 logger.info(f"Type: {type(value).__name__}")
@@ -159,16 +178,15 @@ def printvar(self, param):
             else:
                 logger.info(f"Type: {type(value).__name__}")
                 logger.info(f"Content: {value}")
-
             logger.info("=" * 40)
 
-        # Output: propaga il valore stampato
-        output_data = value
+            output_data = value
 
     except Exception as e:
         task_success = False
         error_msg = str(e)
         logger.error(f"Failed to print variable/input: {e}", exc_info=True)
+
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
@@ -178,19 +196,41 @@ def printvar(self, param):
 @oacommon.trace
 def setvar(self, param):
     """
-    Imposta il valore di una variabile con data propagation
+    Sets the value of a variable with data propagation
 
     Args:
-        param: dict con:
-            - varname: nome della variabile - supporta {WALLET:key}, {ENV:var}
-            - varvalue: valore da assegnare (può usare input) - supporta {WALLET:key}, {ENV:var}
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale)
-            - task_store: (opzionale)
+        param: dict with:
+            - varname: variable name - supports {WALLET:key}, {ENV:var}
+            - varvalue: value to assign (can use input) - supports {WALLET:key}, {ENV:var}
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional)
+            - task_store: (optional)
 
     Returns:
-        tuple: (success, set_value) - propaga il valore impostato
+        tuple: (success, set_value) - propagates the set value
+
+    Example YAML:
+        # Set a static variable
+        - name: set_counter
+          module: oa-utility
+          function: setvar
+          varname: counter
+          varvalue: 0
+
+        # Set variable from environment
+        - name: set_api_url
+          module: oa-utility
+          function: setvar
+          varname: api_url
+          varvalue: "{ENV:API_ENDPOINT}"
+
+        # Set variable from previous task output
+        - name: save_response
+          module: oa-utility
+          function: setvar
+          varname: api_response
+          # varvalue not specified, uses input from previous task
     """
     func_name = myself()
     logger.info("Setting variable")
@@ -205,18 +245,13 @@ def setvar(self, param):
         if not oacommon.checkandloadparam(self, myself, 'varname', param=param):
             raise ValueError(f"Missing required parameter 'varname' for {func_name}")
 
-        # Recupera wallet per risoluzione placeholder
         wallet = gdict.get('_wallet')
-
-        # Risolvi placeholder nel varname
         varname = oacommon.get_param(param, 'varname', wallet) or gdict.get('varname')
 
-        # Se varvalue non è specificato, usa input
         if 'varvalue' not in param and 'input' in param:
             varvalue = param['input']
             logger.info("Using input from previous task as varvalue")
         elif 'varvalue' in param:
-            # Risolvi placeholder nel varvalue (IMPORTANTE!)
             varvalue_param = param['varvalue']
             if isinstance(varvalue_param, str):
                 varvalue = oacommon.get_param(param, 'varvalue', wallet) or varvalue_param
@@ -226,11 +261,9 @@ def setvar(self, param):
             raise ValueError("No varvalue or input provided")
 
         logger.info(f"Setting: {varname} = {varvalue}")
-
         gdict[varname] = varvalue
         logger.debug(f"Variable '{varname}' set successfully")
 
-        # Output: propaga il valore impostato
         output_data = {
             'varname': varname,
             'varvalue': varvalue
@@ -240,6 +273,7 @@ def setvar(self, param):
         task_success = False
         error_msg = str(e)
         logger.error(f"Failed to set variable: {e}", exc_info=True)
+
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
@@ -249,19 +283,32 @@ def setvar(self, param):
 @oacommon.trace
 def dumpvar(self, param):
     """
-    Esporta tutte le variabili del gdict in un file JSON con data propagation
+    Exports all gdict variables to a JSON file with data propagation
 
     Args:
-        param: dict con:
-            - savetofile: (opzionale) path del file JSON di output - supporta {WALLET:key}, {ENV:var}
-            - include_input: (opzionale) include anche input nel dump
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale)
-            - task_store: (opzionale)
+        param: dict with:
+            - savetofile: (optional) JSON output file path - supports {WALLET:key}, {ENV:var}
+            - include_input: (optional) also include input in dump
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional)
+            - task_store: (optional)
 
     Returns:
-        tuple: (success, variables_dict) - propaga tutte le variabili
+        tuple: (success, variables_dict) - propagates all variables
+
+    Example YAML:
+        # Dump all variables to file
+        - name: export_variables
+          module: oa-utility
+          function: dumpvar
+          savetofile: "/tmp/workflow_vars.json"
+
+        # Dump variables with dynamic path
+        - name: export_to_env_path
+          module: oa-utility
+          function: dumpvar
+          savetofile: "{ENV:OUTPUT_DIR}/vars.json"
     """
     func_name = myself()
     logger.info("Dumping all variables")
@@ -272,48 +319,34 @@ def dumpvar(self, param):
     error_msg = ""
     output_data = None
 
-    # Recupera wallet per risoluzione placeholder
     wallet = gdict.get('_wallet')
 
-    # Risolvi placeholder nel savetofile (es. path dinamico)
-    savetofile = None
-    if 'savetofile' in param:
-        savetofile = oacommon.get_param(param, 'savetofile', wallet) or param.get('savetofile')
-
-    include_input = param.get('include_input', False)
-
     try:
-        # Filtra variabili di sistema
-        filtered_gdict = {
-            k: v for k, v in self.gdict.items()
-            if not k.startswith('_') and k not in ['DEBUG', 'DEBUG2', 'TRACE']
-        }
+        variables_dump = dict(gdict)
 
-        # Include input se richiesto
-        if include_input and 'input' in param:
-            filtered_gdict['__input__'] = param['input']
+        if param.get('include_input') and 'input' in param:
+            variables_dump['_input'] = param['input']
 
-        json_output = json.dumps(filtered_gdict, indent=4, sort_keys=True, default=str)
+        # Remove internal variables
+        for key in ['_wallet', 'task_id', 'task_store', 'workflow_context']:
+            variables_dump.pop(key, None)
 
-        logger.info(f"Variables dump ({len(filtered_gdict)} variables):")
-        if len(json_output) > 2000:
-            logger.info(f"{json_output[:2000]}...")
-            logger.info(f"(truncated, total: {len(json_output)} chars)")
-        else:
-            logger.info(json_output)
+        logger.info(f"Dumping {len(variables_dump)} variable(s)")
 
-        if savetofile:
-            with open(savetofile, 'w', encoding='utf-8') as f:
-                f.write(json_output)
-            logger.info(f"Variables saved to: {savetofile}")
+        if oacommon.checkparam('savetofile', param):
+            savetofile = oacommon.get_param(param, 'savetofile', wallet) or param.get('savetofile')
 
-        # Output: tutte le variabili
-        output_data = filtered_gdict
+            json_content = json.dumps(variables_dump, indent=2, default=str, ensure_ascii=False)
+            oacommon.writefile(savetofile, json_content)
+            logger.info(f"Variables dumped to file: {savetofile}")
+
+        output_data = variables_dump
 
     except Exception as e:
         task_success = False
         error_msg = str(e)
-        logger.error(f"Failed to dump variables: {e}", exc_info=True)
+        logger.error(f"Variable dump failed: {e}", exc_info=True)
+
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
@@ -323,22 +356,44 @@ def dumpvar(self, param):
 @oacommon.trace
 def transform(self, param):
     """
-    Trasforma dati con operazioni comuni (filter, map, extract)
+    Transforms data with various operations (upper, lower, strip, etc.)
 
     Args:
-        param: dict con:
-            - operation: 'filter'|'map'|'extract'|'aggregate'
-            - field: (opzionale) campo su cui operare - supporta {WALLET:key}, {ENV:var}
-            - condition: (opzionale) per filter - supporta {WALLET:key}, {ENV:var} nei valori
-            - expression: (opzionale) per map
-            - fields: (opzionale) lista campi per extract
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale)
-            - task_store: (opzionale)
+        param: dict with:
+            - operation: transformation type ('upper', 'lower', 'strip', 'replace', 'split', 'join')
+            - data: (optional) data to transform
+            - input: (optional) data from previous task
+            - options: (optional) dict with operation-specific options
+            - workflow_context: (optional) workflow context
+            - task_id: (optional)
+            - task_store: (optional)
 
     Returns:
         tuple: (success, transformed_data)
+
+    Example YAML:
+        # Convert to uppercase
+        - name: uppercase_text
+          module: oa-utility
+          function: transform
+          operation: upper
+          data: "hello world"
+
+        # Transform previous task output
+        - name: clean_output
+          module: oa-utility
+          function: transform
+          operation: strip
+          # Uses input from previous task
+
+        # Split string
+        - name: split_csv
+          module: oa-utility
+          function: transform
+          operation: split
+          data: "a,b,c,d"
+          options:
+            separator: ","
     """
     func_name = myself()
     logger.info("Transforming data")
@@ -350,124 +405,67 @@ def transform(self, param):
     output_data = None
 
     try:
-        if 'input' not in param:
-            raise ValueError("No input data to transform")
-
-        # Recupera wallet per risoluzione placeholder
         wallet = gdict.get('_wallet')
 
-        data = param['input']
-        operation = param.get('operation', 'passthrough')
+        if not oacommon.checkandloadparam(self, myself, 'operation', param=param):
+            raise ValueError(f"Missing required parameter 'operation' for {func_name}")
 
-        logger.info(f"Transform operation: {operation}")
-        logger.debug(f"Input type: {type(data).__name__}")
+        operation = gdict.get('operation')
 
-        if operation == 'filter':
-            # Filtra lista di dict in base a condizione
-            field = param.get('field')
-            if field and isinstance(field, str):
-                field = oacommon.get_param({'field': field}, 'field', wallet) or field
-
-            condition = param.get('condition')  # es: {'operator': '==', 'value': 'active'}
-
-            if not isinstance(data, list):
-                raise ValueError("Filter operation requires list input")
-
-            if isinstance(data[0], dict) and field:
-                operator = condition.get('operator', '==')
-                value = condition.get('value')
-
-                # Risolvi placeholder nel value della condition
-                if isinstance(value, str):
-                    value = oacommon.get_param({'value': value}, 'value', wallet) or value
-
-                if operator == '==':
-                    filtered = [item for item in data if item.get(field) == value]
-                elif operator == '!=':
-                    filtered = [item for item in data if item.get(field) != value]
-                elif operator == '>':
-                    filtered = [item for item in data if item.get(field, 0) > value]
-                elif operator == '<':
-                    filtered = [item for item in data if item.get(field, 0) < value]
-                elif operator == 'contains':
-                    filtered = [item for item in data if value in str(item.get(field, ''))]
-                else:
-                    filtered = data
-
-                output_data = filtered
-                logger.info(f"Filtered {len(data)} -> {len(filtered)} items")
+        # Get data to transform
+        if 'data' in param:
+            data = oacommon.get_param(param, 'data', wallet) or param.get('data')
+        elif 'input' in param:
+            prev_input = param.get('input')
+            if isinstance(prev_input, dict) and 'content' in prev_input:
+                data = prev_input['content']
             else:
-                output_data = data
+                data = prev_input
+            logger.info("Using data from previous task")
+        else:
+            raise ValueError("No data to transform")
 
-        elif operation == 'map':
-            # Estrai campo specifico da lista di dict
-            field = param.get('field')
-            if field and isinstance(field, str):
-                field = oacommon.get_param({'field': field}, 'field', wallet) or field
+        options = param.get('options', {})
 
-            if not isinstance(data, list):
-                raise ValueError("Map operation requires list input")
+        logger.info(f"Operation: {operation}")
 
-            if isinstance(data[0], dict) and field:
-                mapped = [item.get(field) for item in data]
-                output_data = mapped
-                logger.info(f"Mapped {len(data)} items to field '{field}'")
+        # Apply transformation
+        if operation == 'upper':
+            result = str(data).upper()
+        elif operation == 'lower':
+            result = str(data).lower()
+        elif operation == 'strip':
+            result = str(data).strip()
+        elif operation == 'replace':
+            old_val = options.get('old', '')
+            new_val = options.get('new', '')
+            result = str(data).replace(old_val, new_val)
+        elif operation == 'split':
+            separator = options.get('separator', ',')
+            result = str(data).split(separator)
+        elif operation == 'join':
+            separator = options.get('separator', '')
+            if isinstance(data, list):
+                result = separator.join([str(item) for item in data])
             else:
-                output_data = data
+                raise ValueError("Join operation requires list data")
+        else:
+            raise ValueError(f"Unsupported operation: {operation}")
 
-        elif operation == 'extract':
-            # Estrai campi specifici
-            fields = param.get('fields', [])
+        logger.info(f"Transformation completed: {operation}")
 
-            if isinstance(data, dict):
-                extracted = {k: data.get(k) for k in fields if k in data}
-                output_data = extracted
-                logger.info(f"Extracted {len(extracted)} fields from dict")
-            elif isinstance(data, list) and isinstance(data[0], dict):
-                extracted = []
-                for item in data:
-                    extracted.append({k: item.get(k) for k in fields if k in item})
-                output_data = extracted
-                logger.info(f"Extracted {len(fields)} fields from {len(data)} items")
-            else:
-                output_data = data
-
-        elif operation == 'aggregate':
-            # Aggrega valori (sum, count, avg)
-            agg_type = param.get('agg_type', 'count')
-            field = param.get('field')
-            if field and isinstance(field, str):
-                field = oacommon.get_param({'field': field}, 'field', wallet) or field
-
-            if not isinstance(data, list):
-                raise ValueError("Aggregate operation requires list input")
-
-            if agg_type == 'count':
-                result = len(data)
-            elif agg_type == 'sum' and field:
-                result = sum(item.get(field, 0) for item in data if isinstance(item, dict))
-            elif agg_type == 'avg' and field:
-                values = [item.get(field, 0) for item in data if isinstance(item, dict)]
-                result = sum(values) / len(values) if values else 0
-            else:
-                result = len(data)
-
-            output_data = {
-                'aggregation': agg_type,
-                'field': field,
-                'result': result,
-                'count': len(data)
-            }
-            logger.info(f"Aggregated: {agg_type} = {result}")
-
-        else:  # passthrough
-            output_data = data
-            logger.info("Passthrough: no transformation applied")
+        output_data = {
+            'result': result,
+            'operation': operation,
+            'original_type': type(data).__name__,
+            'result_type': type(result).__name__
+        }
 
     except Exception as e:
         task_success = False
         error_msg = str(e)
-        logger.error(f"Data transformation failed: {e}", exc_info=True)
+        logger.error(f"Transform operation failed: {e}", exc_info=True)
+
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
@@ -475,23 +473,48 @@ def transform(self, param):
     return task_success, output_data
 
 @oacommon.trace
-def conditional(self, param):
+def condition(self, param):
     """
-    Valuta una condizione e propaga risultato
+    Evaluates a condition for workflow branching
 
     Args:
-        param: dict con:
-            - condition_type: 'equals'|'contains'|'greater'|'less'|'exists'
-            - left_value: valore sinistro (può usare input) - supporta {WALLET:key}, {ENV:var}
-            - right_value: valore destro - supporta {WALLET:key}, {ENV:var}
-            - field: (opzionale) campo da estrarre da input - supporta {WALLET:key}, {ENV:var}
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale)
-            - task_store: (opzionale)
+        param: dict with:
+            - left: left operand - supports {WALLET:key}, {ENV:var}
+            - right: right operand - supports {WALLET:key}, {ENV:var}
+            - operator: comparison operator ('equals', 'not_equals', 'contains', 'greater', 'less', 'exists', 'is_empty')
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional)
+            - task_store: (optional)
 
     Returns:
-        tuple: (condition_result, evaluation_details)
+        tuple: (condition_result, output_dict) - task_success reflects condition result
+
+    Example YAML:
+        # Check if value equals expected
+        - name: check_status
+          module: oa-utility
+          function: condition
+          left: "{WALLET:status}"
+          operator: equals
+          right: "success"
+          on_success: success_handler
+          on_failure: error_handler
+
+        # Check if variable exists
+        - name: check_var_exists
+          module: oa-utility
+          function: condition
+          left: "{WALLET:result}"
+          operator: exists
+
+        # Numeric comparison
+        - name: check_count
+          module: oa-utility
+          function: condition
+          left: "{WALLET:count}"
+          operator: greater
+          right: 100
     """
     func_name = myself()
     logger.info("Evaluating condition")
@@ -503,45 +526,19 @@ def conditional(self, param):
     output_data = None
 
     try:
-        # Recupera wallet per risoluzione placeholder
         wallet = gdict.get('_wallet')
 
-        condition_type = param.get('condition_type', 'equals')
+        if not oacommon.checkandloadparam(self, myself, 'operator', param=param):
+            raise ValueError(f"Missing required parameter 'operator' for {func_name}")
 
-        # Determina left_value con supporto placeholder
-        if 'left_value' in param:
-            left_value_param = param['left_value']
-            if isinstance(left_value_param, str):
-                left_value = oacommon.get_param({'left_value': left_value_param}, 'left_value', wallet) or left_value_param
-            else:
-                left_value = left_value_param
-        elif 'input' in param:
-            input_data = param['input']
-            field = param.get('field')
-
-            # Risolvi placeholder nel field
-            if field and isinstance(field, str):
-                field = oacommon.get_param({'field': field}, 'field', wallet) or field
-
-            if field and isinstance(input_data, dict):
-                left_value = input_data.get(field)
-            else:
-                left_value = input_data
-        else:
-            raise ValueError("No left_value or input provided")
-
-        # Risolvi placeholder nel right_value
-        right_value_param = param.get('right_value')
-        if isinstance(right_value_param, str):
-            right_value = oacommon.get_param({'right_value': right_value_param}, 'right_value', wallet) or right_value_param
-        else:
-            right_value = right_value_param
+        condition_type = gdict.get('operator')
+        left_value = oacommon.get_param(param, 'left', wallet) if 'left' in param else None
+        right_value = oacommon.get_param(param, 'right', wallet) if 'right' in param else None
 
         logger.info(f"Condition: {left_value} {condition_type} {right_value}")
 
-        # Valuta condizione
+        # Evaluate condition
         result = False
-
         if condition_type == 'equals':
             result = left_value == right_value
         elif condition_type == 'not_equals':
@@ -557,9 +554,8 @@ def conditional(self, param):
         elif condition_type == 'is_empty':
             result = not bool(left_value)
 
-        # task_success = result della condizione
+        # task_success = condition result
         task_success = result
-
         logger.info(f"Condition result: {result}")
 
         output_data = {
@@ -573,6 +569,7 @@ def conditional(self, param):
         task_success = False
         error_msg = str(e)
         logger.error(f"Condition evaluation failed: {e}", exc_info=True)
+
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
@@ -582,20 +579,49 @@ def conditional(self, param):
 @oacommon.trace
 def merge(self, param):
     """
-    Unisce dati da più sorgenti
+    Merges data from multiple sources
 
     Args:
-        param: dict con:
+        param: dict with:
             - merge_type: 'dict'|'list'|'concat'
-            - sources: lista di chiavi da workflow_context
-            - separator: (opzionale) per concat - supporta {WALLET:key}, {ENV:var}
-            - input: (opzionale) dati dal task precedente
-            - workflow_context: (opzionale) contesto workflow
-            - task_id: (opzionale)
-            - task_store: (opzionale)
+            - sources: list of keys from workflow_context
+            - separator: (optional) for concat - supports {WALLET:key}, {ENV:var}
+            - input: (optional) data from previous task
+            - workflow_context: (optional) workflow context
+            - task_id: (optional)
+            - task_store: (optional)
 
     Returns:
         tuple: (success, merged_data)
+
+    Example YAML:
+        # Merge dictionaries
+        - name: merge_configs
+          module: oa-utility
+          function: merge
+          merge_type: dict
+          sources:
+            - task1_output
+            - task2_output
+
+        # Concatenate strings with separator
+        - name: join_messages
+          module: oa-utility
+          function: merge
+          merge_type: concat
+          sources:
+            - msg1
+            - msg2
+          separator: " | "
+
+        # Merge lists
+        - name: combine_arrays
+          module: oa-utility
+          function: merge
+          merge_type: list
+          sources:
+            - list1
+            - list2
     """
     func_name = myself()
     logger.info("Merging data")
@@ -607,9 +633,7 @@ def merge(self, param):
     output_data = None
 
     try:
-        # Recupera wallet per risoluzione placeholder
         wallet = gdict.get('_wallet')
-
         merge_type = param.get('merge_type', 'dict')
         workflow_context = param.get('workflow_context')
 
@@ -617,18 +641,15 @@ def merge(self, param):
             raise ValueError("workflow_context required for merge operation")
 
         sources = param.get('sources', [])
-
         logger.info(f"Merge type: {merge_type}, sources: {sources}")
 
         if merge_type == 'dict':
-            # Unisci dict
             merged = {}
             for source in sources:
                 data = workflow_context.get_task_output(source)
                 if isinstance(data, dict):
                     merged.update(data)
 
-            # Include anche input se presente
             if 'input' in param and isinstance(param['input'], dict):
                 merged.update(param['input'])
 
@@ -636,7 +657,6 @@ def merge(self, param):
             logger.info(f"Merged {len(sources)} dicts, result: {len(merged)} keys")
 
         elif merge_type == 'list':
-            # Unisci liste
             merged = []
             for source in sources:
                 data = workflow_context.get_task_output(source)
@@ -650,7 +670,6 @@ def merge(self, param):
             logger.info(f"Merged {len(sources)} lists, result: {len(merged)} items")
 
         elif merge_type == 'concat':
-            # Concatena stringhe
             parts = []
             for source in sources:
                 data = workflow_context.get_task_output(source)
@@ -659,7 +678,6 @@ def merge(self, param):
             if 'input' in param:
                 parts.append(str(param['input']))
 
-            # Risolvi placeholder nel separator
             separator_param = param.get('separator', '\n')
             separator = oacommon.get_param({'separator': separator_param}, 'separator', wallet) or separator_param
 
@@ -670,6 +688,7 @@ def merge(self, param):
         task_success = False
         error_msg = str(e)
         logger.error(f"Merge operation failed: {e}", exc_info=True)
+
     finally:
         if task_store and task_id:
             task_store.set_result(task_id, task_success, error_msg)
