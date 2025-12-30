@@ -190,8 +190,10 @@
         <div class="module-index">
             <h2>📑 Indice Moduli</h2>
             <ul>
+                <li><a href="#oadocker">oa-docker</a> - 3 funzioni</li>
                 <li><a href="#oagit">oa-git</a> - 6 funzioni</li>
                 <li><a href="#oaio">oa-io</a> - 7 funzioni</li>
+                <li><a href="#oajson">oa-json</a> - 7 funzioni</li>
                 <li><a href="#oamoduletemplate">oa-moduletemplate</a> - 2 funzioni</li>
                 <li><a href="#oanetwork">oa-network</a> - 4 funzioni</li>
                 <li><a href="#oanotify">oa-notify</a> - 3 funzioni</li>
@@ -199,6 +201,83 @@
                 <li><a href="#oasystem">oa-system</a> - 5 funzioni</li>
                 <li><a href="#oautility">oa-utility</a> - 7 funzioni</li>
             </ul>
+        </div>
+        <hr>
+        <h2 id="oadocker">oa-docker</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (3)</h3>
+            <ul>
+                <li><a href="#oadocker-container_run"><code>container_run()</code></a> - Avvia un container Docker con data propagation</li>
+                <li><a href="#oadocker-container_stop"><code>container_stop()</code></a> - Ferma un container Docker con data propagation</li>
+                <li><a href="#oadocker-container_logs"><code>container_logs()</code></a> - Recupera i log di un container Docker</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oadocker-container_run">
+            <div class="function-name">container_run()</div>
+            <p>Avvia un container Docker con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>image</code>: nome immagine Docker - supporta WALLET{key}, ENV{var}</li>
+                    <li><code>name</code>: (opzionale) nome del container - supporta ENV{var}</li>
+                    <li><code>ports</code>: (opzionale) dict port mapping es. {"8080": "80"}</li>
+                    <li><code>volumes</code>: (opzionale) dict volume mapping</li>
+                    <li><code>env</code>: (opzionale) dict variabili ambiente</li>
+                    <li><code>detach</code>: (opzionale) run in background (default: True)</li>
+                    <li><code>remove</code>: (opzionale) auto-remove al termine (default: False)</li>
+                    <li><code>command</code>: (opzionale) comando da eseguire</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflowcontext</code>: (opzionale) contesto workflow</li>
+                    <li><code>taskid</code>: (opzionale) id univoco del task</li>
+                    <li><code>taskstore</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, outputdict) con info sul container</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oadocker-container_stop">
+            <div class="function-name">container_stop()</div>
+            <p>Ferma un container Docker con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>container</code>: nome o ID del container (può usare input da task precedente)</li>
+                    <li><code>timeout</code>: (opzionale) timeout in secondi (default: 10)</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflowcontext</code>: (opzionale) contesto workflow</li>
+                    <li><code>taskid</code>: (opzionale) id univoco del task</li>
+                    <li><code>taskstore</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, outputdict) con info sul container fermato</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oadocker-container_logs">
+            <div class="function-name">container_logs()</div>
+            <p>Recupera i log di un container Docker</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>container</code>: nome o ID (può usare input da task precedente)</li>
+                    <li><code>tail</code>: (opzionale) numero righe (default: all)</li>
+                    <li><code>follow</code>: (opzionale) segui log in real-time (default: False)</li>
+                    <li><code>timestamps</code>: (opzionale) mostra timestamps (default: False)</li>
+                    <li><code>saveonvar</code>: (opzionale) salva log in variabile</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li>taskid, taskstore, workflowcontext</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, logs) - propaga i log</p>
+            </div>
         </div>
         <hr>
         <h2 id="oagit">oa-git</h2>
@@ -504,6 +583,182 @@
             <div class="returns">
                 <strong>Ritorna:</strong>
                 <p>tuple: (success, json_data) - ritorna i dati JSON parsati</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oajson">oa-json</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (7)</h3>
+            <ul>
+                <li><a href="#oajson-jsonfilter"><code>jsonfilter()</code></a> - Filtra elementi in un array JSON basandosi su condizioni</li>
+                <li><a href="#oajson-jsonextract"><code>jsonextract()</code></a> - Estrae campi specifici da oggetti JSON</li>
+                <li><a href="#oajson-jsontransform"><code>jsontransform()</code></a> - Trasforma dati JSON applicando mapping e trasformazioni</li>
+                <li><a href="#oajson-jsonmerge"><code>jsonmerge()</code></a> - Unisce più oggetti/array JSON</li>
+                <li><a href="#oajson-jsonaggregate"><code>jsonaggregate()</code></a> - Aggrega dati JSON (sum, avg, count, min, max, group)</li>
+                <li><a href="#oajson-jsonvalidate"><code>jsonvalidate()</code></a> - Valida JSON contro un JSON Schema</li>
+                <li><a href="#oajson-jsonsort"><code>jsonsort()</code></a> - Ordina array JSON per campo</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oajson-jsonfilter">
+            <div class="function-name">jsonfilter()</div>
+            <p>Filtra elementi in un array JSON basandosi su condizioni</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>data</code>: opzionale dati JSON (può usare input da task precedente)</li>
+                    <li><code>field</code>: campo su cui filtrare - supporta WALLET{key}, ENV{var}</li>
+                    <li><code>operator</code>: ==, !=, >, <, >=, <=, contains, in, exists</li>
+                    <li><code>value</code>: valore di confronto - supporta WALLET{key}, ENV{var}</li>
+                    <li><code>case_sensitive</code>: opzionale (default: True)</li>
+                    <li><code>saveonvar</code>: opzionale salva risultato in variabile</li>
+                    <li><code>input</code>: opzionale dati dal task precedente</li>
+                    <li><code>workflowcontext</code>: opzionale contesto workflow</li>
+                    <li><code>taskid</code>: opzionale id univoco del task</li>
+                    <li><code>taskstore</code>: opzionale istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, filtered_data)</p>
+                <p>Example:</p>
+                <p>Input: [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]</p>
+                <p>Filter: field="age", operator=">", value=26</p>
+                <p>Output: [{"name": "Alice", "age": 30}]</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oajson-jsonextract">
+            <div class="function-name">jsonextract()</div>
+            <p>Estrae campi specifici da oggetti JSON</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>data</code>: opzionale dati JSON (può usare input)</li>
+                    <li><code>fields</code>: lista di campi da estrarre - supporta WALLET{key}, ENV{var}</li>
+                    <li><code>flatten</code>: opzionale appiattisce oggetti nested (default: False)</li>
+                    <li><code>keep_nulls</code>: opzionale mantieni campi null (default: False)</li>
+                    <li><code>saveonvar</code>: opzionale salva risultato</li>
+                    <li><code>input</code>: opzionale dati dal task precedente</li>
+                    <li>taskid, taskstore, workflowcontext</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, extracted_data)</p>
+                <p>Example:</p>
+                <p>Input: [{"name": "Alice", "age": 30, "city": "Rome"}]</p>
+                <p>Fields: ["name", "city"]</p>
+                <p>Output: [{"name": "Alice", "city": "Rome"}]</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oajson-jsontransform">
+            <div class="function-name">jsontransform()</div>
+            <p>Trasforma dati JSON applicando mapping e trasformazioni</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>data</code>: opzionale dati JSON (può usare input)</li>
+                    <li><code>mapping</code>: dict con {new_field: old_field} o {new_field: "function:old_field"}</li>
+                    <li><code>functions</code>: opzionale dict con funzioni custom</li>
+                    <li><code>add_fields</code>: opzionale dict con nuovi campi statici</li>
+                    <li><code>remove_fields</code>: opzionale lista campi da rimuovere</li>
+                    <li><code>saveonvar</code>: opzionale</li>
+                    <li><code>input</code>: opzionale dati dal task precedente</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, transformed_data)</p>
+                <p>Example:</p>
+                <p>Input: {"first_name": "Alice", "last_name": "Smith", "age": 30}</p>
+                <p>Mapping: {"name": "first_name", "years": "age"}</p>
+                <p>Output: {"name": "Alice", "years": 30}</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oajson-jsonmerge">
+            <div class="function-name">jsonmerge()</div>
+            <p>Unisce più oggetti/array JSON</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>sources</code>: lista di chiavi da workflowcontext o lista di dati diretti</li>
+                    <li><code>merge_type</code>: "dict" (merge objects), "array" (concatena arrays), "deep" (deep merge)</li>
+                    <li><code>overwrite</code>: opzionale per dict merge (default: True)</li>
+                    <li><code>unique</code>: opzionale rimuovi duplicati in array merge (default: False)</li>
+                    <li><code>saveonvar</code>: opzionale</li>
+                    <li><code>input</code>: opzionale dati dal task precedente (viene aggiunto al merge)</li>
+                    <li><code>workflowcontext</code>: opzionale contesto workflow</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, merged_data)</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oajson-jsonaggregate">
+            <div class="function-name">jsonaggregate()</div>
+            <p>Aggrega dati JSON (sum, avg, count, min, max, group)</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>data</code>: opzionale dati JSON array (può usare input)</li>
+                    <li><code>operation</code>: sum, avg, count, min, max, group</li>
+                    <li><code>field</code>: campo su cui aggregare - supporta WALLET{key}, ENV{var}</li>
+                    <li><code>group_by</code>: opzionale campo per raggruppamento</li>
+                    <li><code>saveonvar</code>: opzionale</li>
+                    <li><code>input</code>: opzionale dati dal task precedente</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, aggregated_data)</p>
+                <p>Example:</p>
+                <p>Input: [{"category": "A", "value": 10}, {"category": "A", "value": 20}]</p>
+                <p>Operation: sum, Field: value, Group_by: category</p>
+                <p>Output: {"A": 30}</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oajson-jsonvalidate">
+            <div class="function-name">jsonvalidate()</div>
+            <p>Valida JSON contro un JSON Schema</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>data</code>: opzionale dati JSON (può usare input)</li>
+                    <li><code>schema</code>: JSON Schema per validazione</li>
+                    <li><code>strict</code>: opzionale fail on validation error (default: True)</li>
+                    <li><code>saveonvar</code>: opzionale</li>
+                    <li><code>input</code>: opzionale dati dal task precedente</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, validation_result)</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oajson-jsonsort">
+            <div class="function-name">jsonsort()</div>
+            <p>Ordina array JSON per campo</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param (dict) con</code>: </li>
+                    <li><code>data</code>: opzionale dati JSON array (può usare input)</li>
+                    <li><code>sort_by</code>: campo per ordinamento - supporta WALLET{key}, ENV{var}</li>
+                    <li><code>reverse</code>: opzionale ordine decrescente (default: False)</li>
+                    <li><code>numeric</code>: opzionale ordina come numeri (default: auto-detect)</li>
+                    <li><code>saveonvar</code>: opzionale</li>
+                    <li><code>input</code>: opzionale dati dal task precedente</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple (success, sorted_data)</p>
             </div>
         </div>
         <hr>

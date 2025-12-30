@@ -23,13 +23,13 @@ help:
 	@echo "  make build-all        - Build tutte le Docker image"
 
 build-shell:
-	bash buildShell.sh
+	bash buildShell.sh	--push --username lordraw
 build-fastapi:
-	bash buildFastapi.sh
+	bash buildFastapi.sh --push --username lordraw
 build-streamlit:
-	bash buildStreamlit.sh
-b7uild-wellet:
-	bash buildWellet.sh
+	bash buildStreamlit.sh --push --username lordraw
+build-wellet:
+	bash buildWellet.sh --push --username lordraw
 build-all: build-shell build-fastapi build-streamlit build-wellet
 
 install:
