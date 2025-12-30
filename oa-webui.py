@@ -135,6 +135,27 @@ async def serve_dashboard():
 
     return HTMLResponse(content=content)
 
+
+@app.get("/readme", response_class=HTMLResponse)
+async def serve_readme():
+    """Serve il file README_MODULES.html"""
+    readme_path = os.path.join(os.getcwd(), "README_MODULES.html")
+    if not os.path.exists(readme_path):
+        return HTMLResponse(
+            content=f"""
+<!DOCTYPE html>
+<html>
+<head><title>README Not Found</title></head>
+<body>
+<h1>README_MODULES.html not found</h1>
+<p>Please ensure <code>README_MODULES.html</code> is in: {os.getcwd()}</p>
+</body>
+</html>
+""",
+            status_code=404
+        )
+    return FileResponse(readme_path)
+
 @app.get("/health")
 async def health_check():
     wallet_status = "loaded" if active_wallet and active_wallet.loaded else "not_loaded"

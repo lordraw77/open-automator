@@ -776,6 +776,13 @@ def render_sidebar():
             st.markdown(f'<p class="wallet-info">Secrets: {len(wallet.secrets)}</p>', 
                        unsafe_allow_html=True)
 
+        
+        # Bottone documentazione moduli
+        if st.button("📖 Documentazione Moduli", use_container_width=True,
+                    type="primary" if st.session_state.current_page == 'readme' else "secondary"):
+            st.session_state.current_page = 'readme'
+            st.rerun()
+
         st.divider()
         st.caption("v1.4.1 - Plain Wallet")
 
@@ -1185,10 +1192,38 @@ def render_wallet_page():
         if st.button("🔓 Unload Wallet", type="secondary"):
             unload_wallet()
 
+
+def render_readme_page():
+    """Mostra la pagina con la documentazione dei moduli"""
+    st.title("📖 Documentazione Moduli")
+
+    readme_path = os.path.join(os.getcwd(), "README_MODULES.html")
+    if os.path.exists(readme_path):
+        with open(readme_path, 'r', encoding='utf-8') as f:
+            readme_html = f.read()
+
+        # Mostra il contenuto HTML
+        st.components.v1.html(readme_html, height=800, scrolling=True)
+
+        st.divider()
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("← Torna ai Workflow", type="primary", use_container_width=True):
+                st.session_state.current_page = 'workflow'
+                st.rerun()
+    else:
+        st.error(f"❌ File README_MODULES.html non trovato in: {os.getcwd()}")
+        st.divider()
+        if st.button("← Torna ai Workflow", type="primary"):
+            st.session_state.current_page = 'workflow'
+            st.rerun()
+
 def main():
     render_sidebar()
 
-    if st.session_state.current_page == 'workflow':
+    if st.session_state.current_page == 'readme':
+        render_readme_page()
+    elif st.session_state.current_page == 'workflow':
         render_workflow_page()
     else:
         render_wallet_page()

@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 DOCKERFILE="${DOCKERFILE:-Dockerfile.streamlit}"
 IMAGE_NAME="${IMAGE_NAME:-open-automator-streamlit}"
 DOCKER_USERNAME="${DOCKER_USERNAME:-lordraw}"
-VERSION="${VERSION:-2.0.0}"
+VERSION="${VERSION:-2.0.1}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 BUILDER_NAME="multiarch-builder"
 

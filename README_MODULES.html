@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open-Automator - Documentazione Moduli</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-left: 4px solid #3498db;
+        }
+
+        h3 {
+            color: #555;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .module-index {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+
+        .module-index h2 {
+            margin-top: 0;
+        }
+
+        .module-index ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .module-index li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .module-index li:last-child {
+            border-bottom: none;
+        }
+
+        .module-index a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .module-index a:hover {
+            text-decoration: underline;
+        }
+
+        .function-list {
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .function-list ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .function-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .function-list li:last-child {
+            border-bottom: none;
+        }
+
+        .function-detail {
+            background-color: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .function-name {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px 15px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #e74c3c;
+        }
+
+        .params, .returns {
+            margin: 15px 0;
+        }
+
+        .params strong, .returns strong {
+            color: #2980b9;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .params ul, .returns ul {
+            margin-left: 20px;
+        }
+
+        .params li {
+            margin: 5px 0;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ecf0f1;
+            margin: 30px 0;
+        }
+
+        .footer {
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+        }
+
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Open-Automator - Documentazione Moduli</h1>
+        <p class="subtitle">Documentazione automatica dei moduli e funzioni disponibili.</p>
+
+        <div class="module-index">
+            <h2>📑 Indice Moduli</h2>
+            <ul>
+                <li><a href="#oagit">oa-git</a> - 6 funzioni</li>
+                <li><a href="#oaio">oa-io</a> - 7 funzioni</li>
+                <li><a href="#oamoduletemplate">oa-moduletemplate</a> - 2 funzioni</li>
+                <li><a href="#oanetwork">oa-network</a> - 4 funzioni</li>
+                <li><a href="#oanotify">oa-notify</a> - 3 funzioni</li>
+                <li><a href="#oapg">oa-pg</a> - 3 funzioni</li>
+                <li><a href="#oasystem">oa-system</a> - 5 funzioni</li>
+                <li><a href="#oautility">oa-utility</a> - 7 funzioni</li>
+            </ul>
+        </div>
+        <hr>
+        <h2 id="oagit">oa-git</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (6)</h3>
+            <ul>
+                <li><a href="#oagit-clone"><code>clone()</code></a> - Clona un repository Git con data propagation</li>
+                <li><a href="#oagit-pull"><code>pull()</code></a> - Esegue git pull su un repository esistente con data propagation</li>
+                <li><a href="#oagit-push"><code>push()</code></a> - Esegue git push con data propagation</li>
+                <li><a href="#oagit-tag"><code>tag()</code></a> - Crea, lista o elimina tag Git con data propagation</li>
+                <li><a href="#oagit-branch"><code>branch()</code></a> - Gestisce branch Git (crea, lista, elimina, checkout) con data propagation</li>
+                <li><a href="#oagit-status"><code>status()</code></a> - Ottiene lo status del repository Git con data propagation</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oagit-clone">
+            <div class="function-name">clone()</div>
+            <p>Clona un repository Git con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>repo_url</code>: URL del repository (https o ssh) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>dest_path</code>: path di destinazione locale</li>
+                    <li><code>branch</code>: (opzionale) branch specifico da clonare</li>
+                    <li><code>depth</code>: (opzionale) clone shallow con depth specificato</li>
+                    <li><code>recursive</code>: (opzionale) clone ricorsivo dei submodules, default False</li>
+                    <li><code>username</code>: (opzionale) username per HTTPS auth - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>password</code>: (opzionale) password/token per HTTPS auth - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sul clone</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oagit-pull">
+            <div class="function-name">pull()</div>
+            <p>Esegue git pull su un repository esistente con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>repo_path</code>: path del repository locale - supporta {ENV:var}</li>
+                    <li><code>branch</code>: (opzionale) branch da pullare</li>
+                    <li><code>rebase</code>: (opzionale) usa rebase invece di merge, default False</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sul pull</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oagit-push">
+            <div class="function-name">push()</div>
+            <p>Esegue git push con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>repo_path</code>: path del repository locale - supporta {ENV:var}</li>
+                    <li><code>branch</code>: (opzionale) branch da pushare</li>
+                    <li><code>remote</code>: (opzionale) remote name, default 'origin'</li>
+                    <li><code>force</code>: (opzionale) force push, default False</li>
+                    <li><code>tags</code>: (opzionale) push tags, default False</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sul push</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oagit-tag">
+            <div class="function-name">tag()</div>
+            <p>Crea, lista o elimina tag Git con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>repo_path</code>: path del repository locale - supporta {ENV:var}</li>
+                    <li><code>operation</code>: 'create'|'list'|'delete'</li>
+                    <li><code>tag_name</code>: (opzionale) nome del tag (per create/delete) - supporta {ENV:var}</li>
+                    <li><code>message</code>: (opzionale) messaggio del tag annotato</li>
+                    <li><code>commit</code>: (opzionale) commit su cui creare il tag</li>
+                    <li><code>push</code>: (opzionale) push del tag dopo creazione, default False</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sui tag</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oagit-branch">
+            <div class="function-name">branch()</div>
+            <p>Gestisce branch Git (crea, lista, elimina, checkout) con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>repo_path</code>: path del repository locale - supporta {ENV:var}</li>
+                    <li><code>operation</code>: 'create'|'list'|'delete'|'checkout'</li>
+                    <li><code>branch_name</code>: (opzionale) nome del branch (per create/delete/checkout) - supporta {ENV:var}</li>
+                    <li><code>from_branch</code>: (opzionale) branch/commit sorgente per create</li>
+                    <li><code>force</code>: (opzionale) force delete, default False</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sui branch</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oagit-status">
+            <div class="function-name">status()</div>
+            <p>Ottiene lo status del repository Git con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>repo_path</code>: path del repository locale - supporta {ENV:var}</li>
+                    <li><code>short</code>: (opzionale) formato short, default False</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con status info</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oaio">oa-io</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (7)</h3>
+            <ul>
+                <li><a href="#oaio-copy"><code>copy()</code></a> - Copia file o directory con data propagation</li>
+                <li><a href="#oaio-zip"><code>zip()</code></a> - Crea un archivio ZIP con data propagation</li>
+                <li><a href="#oaio-unzip"><code>unzip()</code></a> - Estrae un archivio ZIP con data propagation</li>
+                <li><a href="#oaio-readfile"><code>readfile()</code></a> - Legge il contenuto di un file con data propagation</li>
+                <li><a href="#oaio-writefile"><code>writefile()</code></a> - Scrive contenuto in un file con data propagation</li>
+                <li><a href="#oaio-replace"><code>replace()</code></a> - Sostituisce testo in una variabile con data propagation</li>
+                <li><a href="#oaio-loadvarfromjson"><code>loadvarfromjson()</code></a> - Carica variabili da un file JSON nel gdict con data propagation</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oaio-copy">
+            <div class="function-name">copy()</div>
+            <p>Copia file o directory con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>srcpath</code>: path sorgente - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>dstpath</code>: path destinazione - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>recursive</code>: True per directory, False per file singolo</li>
+                    <li>input (opzionale, da task precedente)</li>
+                    <li>workflow_context (opzionale)</li>
+                    <li>task_id (opzionale)</li>
+                    <li>task_store (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con informazioni sulla copia</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oaio-zip">
+            <div class="function-name">zip()</div>
+            <p>Crea un archivio ZIP con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>zipfilename</code>: nome file ZIP - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>pathtozip</code>: path da comprimere (può usare input da task precedente) - supporta {ENV:var}</li>
+                    <li><code>zipfilter</code>: filtro file (es. "*.txt" o "*")</li>
+                    <li>input (opzionale, da task precedente)</li>
+                    <li>workflow_context (opzionale)</li>
+                    <li>task_id (opzionale)</li>
+                    <li>task_store (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sul ZIP creato</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oaio-unzip">
+            <div class="function-name">unzip()</div>
+            <p>Estrae un archivio ZIP con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>zipfilename</code>: file ZIP da estrarre (può usare input da task precedente) - supporta {ENV:var}</li>
+                    <li><code>pathwhereunzip</code>: directory destinazione - supporta {ENV:var}</li>
+                    <li>input (opzionale, da task precedente)</li>
+                    <li>workflow_context (opzionale)</li>
+                    <li>task_id (opzionale)</li>
+                    <li>task_store (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sull'estrazione</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oaio-readfile">
+            <div class="function-name">readfile()</div>
+            <p>Legge il contenuto di un file con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>filename</code>: file da leggere (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li>varname (opzionale se si vuole solo ritornare il contenuto)</li>
+                    <li>input (opzionale, da task precedente)</li>
+                    <li>workflow_context (opzionale)</li>
+                    <li>task_id (opzionale)</li>
+                    <li>task_store (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, file_content) - il contenuto del file viene propagato</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oaio-writefile">
+            <div class="function-name">writefile()</div>
+            <p>Scrive contenuto in un file con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>filename</code>: file da scrivere - supporta {WALLET:key}, {ENV:var}</li>
+                    <li>varname (opzionale se c'è input dal task precedente)</li>
+                    <li><code>content (opzionale, alternativa a varname) - supporta {WALLET</code>: key}, {ENV:var}</li>
+                    <li>input (opzionale, da task precedente)</li>
+                    <li>workflow_context (opzionale)</li>
+                    <li>task_id (opzionale)</li>
+                    <li>task_store (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sul file scritto</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oaio-replace">
+            <div class="function-name">replace()</div>
+            <p>Sostituisce testo in una variabile con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li>varname (opzionale se c'è input)</li>
+                    <li><code>leftvalue</code>: testo da cercare</li>
+                    <li><code>rightvalue</code>: testo sostitutivo</li>
+                    <li>input (opzionale, da task precedente)</li>
+                    <li>workflow_context (opzionale)</li>
+                    <li>task_id (opzionale)</li>
+                    <li>task_store (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, modified_content)</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oaio-loadvarfromjson">
+            <div class="function-name">loadvarfromjson()</div>
+            <p>Carica variabili da un file JSON nel gdict con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>filename</code>: file JSON (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li>input (opzionale, da task precedente)</li>
+                    <li>workflow_context (opzionale)</li>
+                    <li>task_id (opzionale)</li>
+                    <li>task_store (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, json_data) - ritorna i dati JSON parsati</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oamoduletemplate">oa-moduletemplate</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (2)</h3>
+            <ul>
+                <li><a href="#oamoduletemplate-templatefunction"><code>templatefunction()</code></a> - Descrizione della funzione con data propagation</li>
+                <li><a href="#oamoduletemplate-advanced_function"><code>advanced_function()</code></a> - Funzione avanzata con supporto per operazioni multiple</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oamoduletemplate-templatefunction">
+            <div class="function-name">templatefunction()</div>
+            <p>Descrizione della funzione con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>param1</code>: (tipo) descrizione parametro obbligatorio</li>
+                    <li><code>param2</code>: (tipo) descrizione parametro obbligatorio (supporta {var})</li>
+                    <li><code>param3</code>: (tipo, opzionale) descrizione parametro opzionale</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_data) dove output_data contiene i risultati</p>
+                <p>Example YAML:</p>
+                <p>- name: example_task</p>
+                <p>module: oa-moduletemplate</p>
+                <p>function: templatefunction</p>
+                <p>param1: "value1"</p>
+                <p>param2: "value2 with {variable}"</p>
+                <p>param3: "optional_value"</p>
+                <p>on_success: next_task</p>
+                <p>on_failure: error_handler</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oamoduletemplate-advanced_function">
+            <div class="function-name">advanced_function()</div>
+            <p>Funzione avanzata con supporto per operazioni multiple</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>operation</code>: (str) 'create'|'read'|'update'|'delete'</li>
+                    <li><code>target</code>: (str) target dell'operazione</li>
+                    <li><code>data</code>: (dict, opzionale) dati per l'operazione</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_data)</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oanetwork">oa-network</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (4)</h3>
+            <ul>
+                <li><a href="#oanetwork-httpget"><code>httpget()</code></a> - Esegue una richiesta HTTP GET con data propagation</li>
+                <li><a href="#oanetwork-httpsget"><code>httpsget()</code></a> - Esegue una richiesta HTTPS GET con data propagation</li>
+                <li><a href="#oanetwork-httppost"><code>httppost()</code></a> - Esegue una richiesta HTTP POST con data propagation</li>
+                <li><a href="#oanetwork-httpspost"><code>httpspost()</code></a> - Esegue una richiesta HTTPS POST con data propagation</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oanetwork-httpget">
+            <div class="function-name">httpget()</div>
+            <p>Esegue una richiesta HTTP GET con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>host</code>: hostname o IP (può derivare da input precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>port</code>: porta HTTP - supporta {ENV:var}</li>
+                    <li><code>get</code>: path della richiesta - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>printout</code>: (opzionale) stampa response</li>
+                    <li><code>saveonvar</code>: (opzionale) salva response in variabile</li>
+                    <li><code>headers</code>: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con response data</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oanetwork-httpsget">
+            <div class="function-name">httpsget()</div>
+            <p>Esegue una richiesta HTTPS GET con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>host</code>: hostname o IP (può derivare da input precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>port</code>: porta HTTPS - supporta {ENV:var}</li>
+                    <li><code>get</code>: path della richiesta - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>verify</code>: (opzionale) verifica certificato SSL, default True</li>
+                    <li><code>printout</code>: (opzionale) stampa response</li>
+                    <li><code>saveonvar</code>: (opzionale) salva response in variabile</li>
+                    <li><code>headers</code>: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori (es. token)</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con response data</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oanetwork-httppost">
+            <div class="function-name">httppost()</div>
+            <p>Esegue una richiesta HTTP POST con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>host</code>: hostname o IP - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>port</code>: porta HTTP - supporta {ENV:var}</li>
+                    <li><code>path</code>: path della richiesta - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>data</code>: dati da inviare (può venire da input precedente) - supporta {WALLET:key}</li>
+                    <li><code>headers</code>: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori</li>
+                    <li><code>content_type</code>: (opzionale) default 'application/json'</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con response data</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oanetwork-httpspost">
+            <div class="function-name">httpspost()</div>
+            <p>Esegue una richiesta HTTPS POST con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>host</code>: hostname o IP - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>port</code>: porta HTTPS - supporta {ENV:var}</li>
+                    <li><code>path</code>: path della richiesta - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>data</code>: dati da inviare (può venire da input precedente) - supporta {WALLET:key}</li>
+                    <li><code>headers</code>: (opzionale) dict con headers custom - supporta {WALLET:key} nei valori (es. API key)</li>
+                    <li><code>content_type</code>: (opzionale) default 'application/json'</li>
+                    <li><code>verify</code>: (opzionale) verifica certificato SSL, default True</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con response data</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oanotify">oa-notify</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (3)</h3>
+            <ul>
+                <li><a href="#oanotify-sendtelegramnotify"><code>sendtelegramnotify()</code></a> - Invia un messaggio Telegram con bot API e data propagation</li>
+                <li><a href="#oanotify-sendmailbygmail"><code>sendmailbygmail()</code></a> - Invia email tramite Gmail SMTP SSL con data propagation</li>
+                <li><a href="#oanotify-formatmessage"><code>formatmessage()</code></a> - Formatta un messaggio da dati strutturati (helper per notifiche)</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oanotify-sendtelegramnotify">
+            <div class="function-name">sendtelegramnotify()</div>
+            <p>Invia un messaggio Telegram con bot API e data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>tokenid</code>: token del bot Telegram - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>chatid</code>: lista di chat_id - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>message</code>: messaggio da inviare (può venire da input precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>printresponse</code>: (opzionale) stampa response</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sull'invio</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oanotify-sendmailbygmail">
+            <div class="function-name">sendmailbygmail()</div>
+            <p>Invia email tramite Gmail SMTP SSL con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>senderemail</code>: email mittente - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>receiveremail</code>: email destinatario - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>senderpassword</code>: password mittente - supporta {WALLET:key}, {VAULT:key}</li>
+                    <li><code>subject</code>: oggetto email - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>messagetext</code>: (opzionale) testo plain - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>messagehtml</code>: (opzionale) testo HTML - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sull'invio</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oanotify-formatmessage">
+            <div class="function-name">formatmessage()</div>
+            <p>Formatta un messaggio da dati strutturati (helper per notifiche)</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>template</code>: (opzionale) template del messaggio con placeholder {key} - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>data</code>: (opzionale) dict con dati da formattare</li>
+                    <li><code>format</code>: (opzionale) 'json', 'text', 'markdown'</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, formatted_message)</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oapg">oa-pg</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (3)</h3>
+            <ul>
+                <li><a href="#oapg-select"><code>select()</code></a> - Esegue SELECT su PostgreSQL con data propagation</li>
+                <li><a href="#oapg-execute"><code>execute()</code></a> - Esegue INSERT/UPDATE/DELETE su PostgreSQL con data propagation</li>
+                <li><a href="#oapg-insert"><code>insert()</code></a> - Helper per INSERT con data propagation da input precedente</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oapg-select">
+            <div class="function-name">select()</div>
+            <p>Esegue SELECT su PostgreSQL con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>pgdatabase</code>: nome database - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>pgdbhost</code>: host - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>pgdbusername</code>: username - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>pgdbpassword</code>: password - supporta {WALLET:key}, {VAULT:key}</li>
+                    <li><code>pgdbport</code>: porta - supporta {ENV:var}</li>
+                    <li><code>statement</code>: query SQL (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>printout</code>: (opzionale) stampa risultato, default False</li>
+                    <li><code>tojsonfile</code>: (opzionale) percorso file JSON</li>
+                    <li><code>saveonvar</code>: (opzionale) salva in variabile</li>
+                    <li><code>format</code>: (opzionale) 'rows', 'dict', 'json' - default 'dict'</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_data) con risultati query</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oapg-execute">
+            <div class="function-name">execute()</div>
+            <p>Esegue INSERT/UPDATE/DELETE su PostgreSQL con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>pgdatabase</code>: nome database - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>pgdbhost</code>: host - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>pgdbusername</code>: username - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>pgdbpassword</code>: password - supporta {WALLET:key}, {VAULT:key}</li>
+                    <li><code>pgdbport</code>: porta - supporta {ENV:var}</li>
+                    <li><code>statement</code>: statement SQL (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>printout</code>: (opzionale) stampa risultato, default False</li>
+                    <li><code>fail_on_zero</code>: (opzionale) fallisce se 0 righe affette, default False</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_data) con numero righe affette</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oapg-insert">
+            <div class="function-name">insert()</div>
+            <p>Helper per INSERT con data propagation da input precedente</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport - supportano {WALLET</code>: key}, {ENV:var}</li>
+                    <li><code>table</code>: nome tabella - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>data</code>: (opzionale) dict o lista di dict da inserire</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente (se formato corretto)</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_data)</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oasystem">oa-system</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (5)</h3>
+            <ul>
+                <li><a href="#oasystem-runcmd"><code>runcmd()</code></a> - Esegue un comando shell locale con data propagation</li>
+                <li><a href="#oasystem-systemd"><code>systemd()</code></a> - Gestisce servizi systemd su server remoto con data propagation</li>
+                <li><a href="#oasystem-remotecommand"><code>remotecommand()</code></a> - Esegue un comando remoto via SSH con data propagation</li>
+                <li><a href="#oasystem-scp"><code>scp()</code></a> - Trasferisce file/directory via SCP con data propagation</li>
+                <li><a href="#oasystem-execute_script"><code>execute_script()</code></a> - Esegue uno script locale e propaga l'output</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oasystem-runcmd">
+            <div class="function-name">runcmd()</div>
+            <p>Esegue un comando shell locale con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>command</code>: comando da eseguire (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>printout</code>: (opzionale) stampa output, default False</li>
+                    <li><code>saveonvar</code>: (opzionale) salva output in variabile</li>
+                    <li><code>shell</code>: (opzionale) usa shell, default True</li>
+                    <li><code>timeout</code>: (opzionale) timeout in secondi</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con output del comando</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oasystem-systemd">
+            <div class="function-name">systemd()</div>
+            <p>Gestisce servizi systemd su server remoto con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>remoteserver</code>: host remoto - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>remoteuser</code>: username SSH - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>remotepassword</code>: password SSH - supporta {WALLET:key}, {VAULT:key}</li>
+                    <li><code>remoteport</code>: porta SSH - supporta {ENV:var}</li>
+                    <li><code>servicename</code>: nome del servizio - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>servicestate</code>: start|stop|restart|status|daemon-reload</li>
+                    <li><code>saveonvar</code>: (opzionale) salva output in variabile</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con output systemd</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oasystem-remotecommand">
+            <div class="function-name">remotecommand()</div>
+            <p>Esegue un comando remoto via SSH con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>remoteserver</code>: host remoto - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>remoteuser</code>: username SSH - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>remotepassword</code>: password SSH - supporta {WALLET:key}, {VAULT:key}</li>
+                    <li><code>remoteport</code>: porta SSH - supporta {ENV:var}</li>
+                    <li><code>command</code>: comando da eseguire (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>saveonvar</code>: (opzionale) salva output in variabile</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con output del comando remoto</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oasystem-scp">
+            <div class="function-name">scp()</div>
+            <p>Trasferisce file/directory via SCP con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>remoteserver</code>: host remoto - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>remoteuser</code>: username SSH - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>remotepassword</code>: password SSH - supporta {WALLET:key}, {VAULT:key}</li>
+                    <li><code>remoteport</code>: porta SSH - supporta {ENV:var}</li>
+                    <li><code>localpath</code>: path locale (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>remotepath</code>: path remoto - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>recursive</code>: True/False</li>
+                    <li><code>direction</code>: localtoremote|remotetolocal</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con info sul trasferimento</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oasystem-execute_script">
+            <div class="function-name">execute_script()</div>
+            <p>Esegue uno script locale e propaga l'output</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>script_path</code>: path dello script (può usare input da task precedente) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>args</code>: (opzionale) lista di argomenti - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>interpreter</code>: (opzionale) interprete (es. 'python3', 'bash'), default auto-detect</li>
+                    <li><code>timeout</code>: (opzionale) timeout in secondi</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale) id univoco del task</li>
+                    <li><code>task_store</code>: (opzionale) istanza di TaskResultStore</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, output_dict) con output dello script</p>
+            </div>
+        </div>
+        <hr>
+        <h2 id="oautility">oa-utility</h2>
+        <div class="function-list">
+            <h3>📋 Funzioni disponibili (7)</h3>
+            <ul>
+                <li><a href="#oautility-setsleep"><code>setsleep()</code></a> - Pausa l'esecuzione per un numero di secondi con data propagation</li>
+                <li><a href="#oautility-printvar"><code>printvar()</code></a> - Stampa il valore di una variabile o dell'input con data propagation</li>
+                <li><a href="#oautility-setvar"><code>setvar()</code></a> - Imposta il valore di una variabile con data propagation</li>
+                <li><a href="#oautility-dumpvar"><code>dumpvar()</code></a> - Esporta tutte le variabili del gdict in un file JSON con data propagation</li>
+                <li><a href="#oautility-transform"><code>transform()</code></a> - Trasforma dati con operazioni comuni (filter, map, extract)</li>
+                <li><a href="#oautility-conditional"><code>conditional()</code></a> - Valuta una condizione e propaga risultato</li>
+                <li><a href="#oautility-merge"><code>merge()</code></a> - Unisce dati da più sorgenti</li>
+            </ul>
+        </div>
+        <div class="function-detail" id="oautility-setsleep">
+            <div class="function-name">setsleep()</div>
+            <p>Pausa l'esecuzione per un numero di secondi con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>seconds</code>: numero di secondi da attendere - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente (passthrough)</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale)</li>
+                    <li><code>task_store</code>: (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, input_data) - propaga l'input ricevuto</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oautility-printvar">
+            <div class="function-name">printvar()</div>
+            <p>Stampa il valore di una variabile o dell'input con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>varname</code>: (opzionale) nome della variabile da stampare - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale)</li>
+                    <li><code>task_store</code>: (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, printed_value) - propaga il valore stampato</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oautility-setvar">
+            <div class="function-name">setvar()</div>
+            <p>Imposta il valore di una variabile con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>varname</code>: nome della variabile - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>varvalue</code>: valore da assegnare (può usare input) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale)</li>
+                    <li><code>task_store</code>: (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, set_value) - propaga il valore impostato</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oautility-dumpvar">
+            <div class="function-name">dumpvar()</div>
+            <p>Esporta tutte le variabili del gdict in un file JSON con data propagation</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>savetofile</code>: (opzionale) path del file JSON di output - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>include_input</code>: (opzionale) include anche input nel dump</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale)</li>
+                    <li><code>task_store</code>: (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, variables_dict) - propaga tutte le variabili</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oautility-transform">
+            <div class="function-name">transform()</div>
+            <p>Trasforma dati con operazioni comuni (filter, map, extract)</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>operation</code>: 'filter'|'map'|'extract'|'aggregate'</li>
+                    <li><code>field</code>: (opzionale) campo su cui operare - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>condition</code>: (opzionale) per filter - supporta {WALLET:key}, {ENV:var} nei valori</li>
+                    <li><code>expression</code>: (opzionale) per map</li>
+                    <li><code>fields</code>: (opzionale) lista campi per extract</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale)</li>
+                    <li><code>task_store</code>: (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, transformed_data)</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oautility-conditional">
+            <div class="function-name">conditional()</div>
+            <p>Valuta una condizione e propaga risultato</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>condition_type</code>: 'equals'|'contains'|'greater'|'less'|'exists'</li>
+                    <li><code>left_value</code>: valore sinistro (può usare input) - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>right_value</code>: valore destro - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>field</code>: (opzionale) campo da estrarre da input - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale)</li>
+                    <li><code>task_store</code>: (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (condition_result, evaluation_details)</p>
+            </div>
+        </div>
+        <div class="function-detail" id="oautility-merge">
+            <div class="function-name">merge()</div>
+            <p>Unisce dati da più sorgenti</p>
+            <div class="params">
+                <strong>Parametri:</strong>
+                <ul>
+                    <li><code>param</code>: dict con:</li>
+                    <li><code>merge_type</code>: 'dict'|'list'|'concat'</li>
+                    <li><code>sources</code>: lista di chiavi da workflow_context</li>
+                    <li><code>separator</code>: (opzionale) per concat - supporta {WALLET:key}, {ENV:var}</li>
+                    <li><code>input</code>: (opzionale) dati dal task precedente</li>
+                    <li><code>workflow_context</code>: (opzionale) contesto workflow</li>
+                    <li><code>task_id</code>: (opzionale)</li>
+                    <li><code>task_store</code>: (opzionale)</li>
+                </ul>
+            </div>
+            <div class="returns">
+                <strong>Ritorna:</strong>
+                <p>tuple: (success, merged_data)</p>
+            </div>
+        </div>
+        <hr>
+        <div class="footer">
+            <p>Documentazione generata automaticamente da <code>generate_readme.py</code></p>
+        </div>
+    </div>
+</body>
+</html>

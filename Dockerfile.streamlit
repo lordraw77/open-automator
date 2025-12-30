@@ -33,6 +33,9 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 COPY --chown=automator:automator *.py ./
 COPY --chown=automator:automator ./modules/*.py ./modules/
 
+# Copia file di documentazione
+COPY --chown=automator:automator README_MODULES.html ./README_MODULES.html
+
 # Copia Streamlit app e API server
 COPY --chown=automator:automator streamlit_app.py ./
 COPY --chown=automator:automator api_server.py ./
@@ -43,6 +46,8 @@ COPY --chown=automator:automator .streamlit/config.toml /home/automator/.streaml
 
 # Configurazione Supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+
 
 # Espone entrambe le porte
 EXPOSE 8502 8503
