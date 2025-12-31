@@ -26,6 +26,40 @@ from wallet import Wallet, PlainWallet
 logger = AutomatorLogger.get_logger('oa-webui')
 gdict = {}
 
+# ============= CONFIGURATION =============
+# Server Configuration
+FASTAPI_PORT = int(os.getenv('FASTAPI_PORT', '8000'))
+FASTAPI_HOST = os.getenv('FASTAPI_HOST', '0.0.0.0')
+
+# Security Configuration
+API_KEY = os.getenv('API_KEY', None)
+JWT_SECRET = os.getenv('JWT_SECRET', None)
+
+# Wallet Configuration
+OA_WALLET_FILE = os.getenv('OA_WALLET_FILE', None)
+OA_WALLET_PASSWORD = os.getenv('OA_WALLET_PASSWORD', None)
+
+# Logging Configuration
+OA_LOG_LEVEL = os.getenv('OA_LOG_LEVEL', 'INFO')
+
+# Directory Configuration
+OA_WORKFLOWS_DIR = os.getenv('OA_WORKFLOWS_DIR', os.path.join(os.getcwd(), 'workflows'))
+OA_DATA_DIR = os.getenv('OA_DATA_DIR', os.path.join(os.getcwd(), 'data'))
+OA_LOGS_DIR = os.getenv('OA_LOGS_DIR', os.path.join(os.getcwd(), 'logs'))
+
+# Job Configuration
+MAX_CONCURRENT_JOBS = int(os.getenv('MAX_CONCURRENT_JOBS', '5'))
+JOB_TIMEOUT_SECONDS = int(os.getenv('JOB_TIMEOUT_SECONDS', '3600'))
+
+# CORS Configuration
+ENABLE_CORS = os.getenv('ENABLE_CORS', 'true').lower() in ('true', '1', 'yes')
+CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',') if os.getenv('CORS_ORIGINS') else ['*']
+
+# Crea le directory se non esistono
+for directory in [OA_WORKFLOWS_DIR, OA_DATA_DIR, OA_LOGS_DIR]:
+    os.makedirs(directory, exist_ok=True)
+
+
 # ============= FASTAPI APP =============
 
 app = FastAPI(
@@ -34,14 +68,15 @@ app = FastAPI(
     version="1.1.0"
 )
 
-# CORS per sviluppo
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS middleware - configurabile da env
+if ENABLE_CORS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # ============= STATE MANAGEMENT =============
 
@@ -52,6 +87,7 @@ class WorkflowState:
         self._lock = threading.Lock()
         self._workflows: Dict[str, Dict] = {}
         self._active_engines: Dict[str, WorkflowEngine] = {}
+        self._job_semaphore = threading.Semaphore(MAX_CONCURRENT_JOBS)
 
     def register_workflow(self, workflow_id: str, yaml_content: dict):
         with self._lock:
@@ -78,6 +114,15 @@ class WorkflowState:
     def get_engine(self, workflow_id: str) -> Optional[WorkflowEngine]:
         with self._lock:
             return self._active_engines.get(workflow_id)
+
+
+    def acquire_job_slot(self) -> bool:
+        """Acquisisce uno slot per eseguire un job (con timeout 1s)"""
+        return self._job_semaphore.acquire(timeout=1)
+
+    def release_job_slot(self):
+        """Rilascia uno slot job"""
+        self._job_semaphore.release()
 
 workflow_state = WorkflowState()
 
@@ -109,6 +154,102 @@ class ConnectionManager:
                 logger.error(f"Failed to send WebSocket message: {e}")
 
 manager = ConnectionManager()
+
+# ============= STARTUP =============
+def load_workflows_from_directory():
+    """Carica tutti i workflow dalla directory OA_WORKFLOWS_DIR all'avvio"""
+    if not os.path.exists(OA_WORKFLOWS_DIR):
+        logger.warning(f"Directory workflow non trovata: {OA_WORKFLOWS_DIR}")
+        os.makedirs(OA_WORKFLOWS_DIR, exist_ok=True)
+        logger.info(f"Creata directory workflow: {OA_WORKFLOWS_DIR}")
+        return
+
+    loaded_count = 0
+    error_count = 0
+
+    logger.info(f"📂 Caricamento workflow da: {OA_WORKFLOWS_DIR}")
+
+    for filename in os.listdir(OA_WORKFLOWS_DIR):
+        if filename.endswith(('.yaml', '.yml')):
+            workflow_path = os.path.join(OA_WORKFLOWS_DIR, filename)
+            workflow_id = os.path.splitext(filename)[0]
+
+            try:
+                with open(workflow_path, 'r', encoding='utf-8') as f:
+                    yaml_content = yaml.safe_load(f)
+
+                workflow_state.register_workflow(workflow_id, yaml_content)
+                loaded_count += 1
+                logger.info(f"  ✓ Workflow caricato: {workflow_id} ({filename})")
+
+            except Exception as e:
+                error_count += 1
+                logger.error(f"  ✗ Errore caricamento workflow {filename}: {e}")
+
+    logger.info(f"📊 Caricamento completato: {loaded_count} workflow caricati, {error_count} errori")
+
+def load_wallet_if_configured():
+    """Carica il wallet se OA_WALLET_FILE è configurato"""
+    global active_wallet
+
+    if not OA_WALLET_FILE:
+        logger.info("💼 Nessun wallet configurato (OA_WALLET_FILE non impostato)")
+        return
+
+    if not os.path.exists(OA_WALLET_FILE):
+        logger.warning(f"⚠️  File wallet non trovato: {OA_WALLET_FILE}")
+        return
+
+    try:
+        with wallet_lock:
+            if OA_WALLET_PASSWORD:
+                # Wallet cifrato
+                active_wallet = Wallet(OA_WALLET_FILE, OA_WALLET_PASSWORD)
+                active_wallet.load_wallet(OA_WALLET_PASSWORD)
+                logger.info(f"💼 ✓ Wallet cifrato caricato: {OA_WALLET_FILE} ({len(active_wallet.secrets)} secrets)")
+            else:
+                # Wallet plain
+                active_wallet = PlainWallet(OA_WALLET_FILE)
+                active_wallet.load_wallet()
+                logger.info(f"💼 ✓ Wallet plain caricato: {OA_WALLET_FILE} ({len(active_wallet.secrets)} secrets)")
+
+            gdict['wallet'] = active_wallet
+
+    except Exception as e:
+        logger.error(f"❌ Errore caricamento wallet: {e}")
+        active_wallet = None
+
+@app.on_event("startup")
+async def startup_event():
+    """Evento di avvio dell'applicazione"""
+    print()
+    print("=" * 70)
+    print("🚀 Open-Automator Web UI - Avvio")
+    print("=" * 70)
+    logger.info(f"🌐 Server: {FASTAPI_HOST}:{FASTAPI_PORT}")
+    logger.info(f"📂 Workflows Dir: {OA_WORKFLOWS_DIR}")
+    logger.info(f"📂 Data Dir: {OA_DATA_DIR}")
+    logger.info(f"📂 Logs Dir: {OA_LOGS_DIR}")
+    logger.info(f"📊 Max Concurrent Jobs: {MAX_CONCURRENT_JOBS}")
+    logger.info(f"⏱️  Job Timeout: {JOB_TIMEOUT_SECONDS}s")
+    logger.info(f"🔒 CORS: {'Abilitato' if ENABLE_CORS else 'Disabilitato'} (origins: {CORS_ORIGINS})")
+    logger.info(f"📝 Log Level: {OA_LOG_LEVEL}")
+    if API_KEY:
+        logger.info("🔐 API Key: Configurata")
+    if JWT_SECRET:
+        logger.info("🔑 JWT Secret: Configurato")
+    print("-" * 70)
+
+    # Carica wallet se configurato
+    load_wallet_if_configured()
+
+    # Carica workflow dalla directory
+    load_workflows_from_directory()
+
+    print("-" * 70)
+    print("✅ Avvio completato")
+    print("=" * 70)
+    print()
 
 # ============= ROOT & HEALTH =============
 
@@ -460,6 +601,12 @@ async def execute_workflow(workflow_id: str):
         
         def run_workflow():
             try:
+            # Acquisisce slot per job concorrente
+                if not workflow_state.acquire_job_slot():
+                    workflow["status"] = "queued"
+                    logger.warning(f"Max concurrent jobs raggiunto, workflow {{workflow_id}} in coda")
+                    return
+            
                 logger.info(f"Starting workflow: {workflow_id}")
                 success, context = engine.execute()
                 workflow["status"] = "completed" if success else "failed"
@@ -743,11 +890,12 @@ def setgdict(self, gdict_param):
 if __name__ == "__main__":
     import uvicorn
     print("=" * 70)
-    print("🚀 Open-Automator Web UI Server (with Wallet Management)")
+    print("🚀 Open-Automator Web UI Server")
     print("=" * 70)
-    print(f"📍 Dashboard: http://localhost:8000")
-    print(f"📍 API Docs: http://localhost:8000/docs")
-    print(f"📍 Health: http://localhost:8000/health")
-    print(f"🔐 Wallet API: http://localhost:8000/api/wallet/status")
+    print(f"📍 Dashboard: http://localhost:{FASTAPI_PORT}")
+    print(f"📍 API Docs: http://localhost:{FASTAPI_PORT}/docs")
+    print(f"📍 Health: http://localhost:{FASTAPI_PORT}/health")
+    print(f"📂 Workflows: {OA_WORKFLOWS_DIR}")
+    print(f"📊 Max Jobs: {MAX_CONCURRENT_JOBS}")
     print("=" * 70)
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(app, host=FASTAPI_HOST, port=FASTAPI_PORT, log_level=OA_LOG_LEVEL.lower())
