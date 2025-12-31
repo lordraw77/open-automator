@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open-Automator - Documentazione Moduli</title>
+    <title>Open-Automator - Module Documentation</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -18,6 +19,7 @@
             background-color: #f5f5f5;
             padding: 20px;
         }
+
 
         .container {
             max-width: 1200px;
@@ -28,12 +30,14 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
+
         h1 {
             color: #2c3e50;
             border-bottom: 3px solid #3498db;
             padding-bottom: 10px;
             margin-bottom: 20px;
         }
+
 
         h2 {
             color: #34495e;
@@ -44,17 +48,20 @@
             border-left: 4px solid #3498db;
         }
 
+
         h3 {
             color: #555;
             margin-top: 25px;
             margin-bottom: 15px;
         }
 
+
         .subtitle {
             color: #7f8c8d;
             margin-bottom: 30px;
             font-size: 1.1em;
         }
+
 
         .module-index {
             background-color: #f8f9fa;
@@ -63,23 +70,28 @@
             margin-bottom: 30px;
         }
 
+
         .module-index h2 {
             margin-top: 0;
         }
+
 
         .module-index ul {
             list-style: none;
             padding-left: 0;
         }
 
+
         .module-index li {
             padding: 8px 0;
             border-bottom: 1px solid #e0e0e0;
         }
 
+
         .module-index li:last-child {
             border-bottom: none;
         }
+
 
         .module-index a {
             color: #3498db;
@@ -87,9 +99,11 @@
             font-weight: 500;
         }
 
+
         .module-index a:hover {
             text-decoration: underline;
         }
+
 
         .function-list {
             background-color: #fff;
@@ -99,19 +113,23 @@
             margin: 20px 0;
         }
 
+
         .function-list ul {
             list-style: none;
             padding-left: 0;
         }
+
 
         .function-list li {
             padding: 8px 0;
             border-bottom: 1px solid #f0f0f0;
         }
 
+
         .function-list li:last-child {
             border-bottom: none;
         }
+
 
         .function-detail {
             background-color: #fafafa;
@@ -120,6 +138,7 @@
             padding: 20px;
             margin: 20px 0;
         }
+
 
         .function-name {
             font-family: 'Courier New', Courier, monospace;
@@ -131,6 +150,7 @@
             margin-bottom: 15px;
         }
 
+
         code {
             background-color: #f4f4f4;
             padding: 2px 6px;
@@ -139,9 +159,11 @@
             color: #e74c3c;
         }
 
+
         .params, .returns {
             margin: 15px 0;
         }
+
 
         .params strong, .returns strong {
             color: #2980b9;
@@ -149,19 +171,23 @@
             margin-bottom: 8px;
         }
 
+
         .params ul, .returns ul {
             margin-left: 20px;
         }
 
+
         .params li {
             margin: 5px 0;
         }
+
 
         hr {
             border: none;
             border-top: 2px solid #ecf0f1;
             margin: 30px 0;
         }
+
 
         .footer {
             text-align: center;
@@ -172,10 +198,12 @@
             border-top: 1px solid #ecf0f1;
         }
 
+
         a {
             color: #3498db;
             text-decoration: none;
         }
+
 
         a:hover {
             text-decoration: underline;
@@ -184,28 +212,28 @@
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Open-Automator - Documentazione Moduli</h1>
-        <p class="subtitle">Documentazione automatica dei moduli e funzioni disponibili.</p>
+        <h1>🚀 Open-Automator - Module Documentation</h1>
+        <p class="subtitle">Automatic documentation of available modules and functions.</p>
 
         <div class="module-index">
-            <h2>📑 Indice Moduli</h2>
+            <h2>📑 Module Index</h2>
             <ul>
-                <li><a href="#oadocker">oa-docker</a> - 3 funzioni</li>
-                <li><a href="#oagit">oa-git</a> - 6 funzioni</li>
-                <li><a href="#oaio">oa-io</a> - 7 funzioni</li>
-                <li><a href="#oajson">oa-json</a> - 7 funzioni</li>
-                <li><a href="#oamoduletemplate">oa-moduletemplate</a> - 2 funzioni</li>
-                <li><a href="#oanetwork">oa-network</a> - 4 funzioni</li>
-                <li><a href="#oanotify">oa-notify</a> - 3 funzioni</li>
-                <li><a href="#oapg">oa-pg</a> - 3 funzioni</li>
-                <li><a href="#oasystem">oa-system</a> - 5 funzioni</li>
-                <li><a href="#oautility">oa-utility</a> - 7 funzioni</li>
+                <li><a href="#oadocker">oa-docker</a> - 3 functions</li>
+                <li><a href="#oagit">oa-git</a> - 6 functions</li>
+                <li><a href="#oaio">oa-io</a> - 7 functions</li>
+                <li><a href="#oajson">oa-json</a> - 7 functions</li>
+                <li><a href="#oamoduletemplate">oa-moduletemplate</a> - 2 functions</li>
+                <li><a href="#oanetwork">oa-network</a> - 4 functions</li>
+                <li><a href="#oanotify">oa-notify</a> - 3 functions</li>
+                <li><a href="#oapg">oa-pg</a> - 3 functions</li>
+                <li><a href="#oasystem">oa-system</a> - 5 functions</li>
+                <li><a href="#oautility">oa-utility</a> - 7 functions</li>
             </ul>
         </div>
         <hr>
         <h2 id="oadocker">oa-docker</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (3)</h3>
+            <h3>📋 Available functions (3)</h3>
             <ul>
                 <li><a href="#oadocker-container_run"><code>container_run()</code></a> - Starts a Docker container with data propagation</li>
                 <li><a href="#oadocker-container_stop"><code>container_stop()</code></a> - Stops a Docker container with data propagation</li>
@@ -216,7 +244,7 @@
             <div class="function-name">container_run()</div>
             <p>Starts a Docker container with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>image</code>: Docker image name - supports {WALLET:key}, {ENV:var}</li>
@@ -234,7 +262,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, outputdict) with container info</p>
                 <p>Example YAML:</p>
                 <p># Run simple container</p>
@@ -262,7 +290,7 @@
             <div class="function-name">container_stop()</div>
             <p>Stops a Docker container with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>container</code>: container name or ID (can use input from previous task)</li>
@@ -274,7 +302,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, outputdict) with stopped container info</p>
                 <p>Example YAML:</p>
                 <p># Stop specific container</p>
@@ -294,7 +322,7 @@
             <div class="function-name">container_logs()</div>
             <p>Retrieves logs from a Docker container</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>container</code>: container name or ID (can use input from previous task)</li>
@@ -307,7 +335,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, logs) - propagates the logs</p>
                 <p>Example YAML:</p>
                 <p># Get last 100 lines of logs</p>
@@ -328,7 +356,7 @@
         <hr>
         <h2 id="oagit">oa-git</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (6)</h3>
+            <h3>📋 Available functions (6)</h3>
             <ul>
                 <li><a href="#oagit-clone"><code>clone()</code></a> - Clones a Git repository with data propagation</li>
                 <li><a href="#oagit-pull"><code>pull()</code></a> - Executes git pull on an existing repository with data propagation</li>
@@ -342,7 +370,7 @@
             <div class="function-name">clone()</div>
             <p>Clones a Git repository with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>repo_url</code>: repository URL (https or ssh) - supports {WALLET:key}, {ENV:var}</li>
@@ -359,7 +387,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with clone info</p>
                 <p>Example YAML:</p>
                 <p># Clone public repository</p>
@@ -397,7 +425,7 @@
             <div class="function-name">pull()</div>
             <p>Executes git pull on an existing repository with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>repo_path</code>: local repository path - supports {ENV:var}</li>
@@ -410,7 +438,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with pull info</p>
                 <p>Example YAML:</p>
                 <p># Simple pull</p>
@@ -436,7 +464,7 @@
             <div class="function-name">push()</div>
             <p>Executes git push with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>repo_path</code>: local repository path - supports {ENV:var}</li>
@@ -451,7 +479,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with push info</p>
                 <p>Example YAML:</p>
                 <p># Simple push to origin</p>
@@ -486,7 +514,7 @@
             <div class="function-name">tag()</div>
             <p>Creates, lists, or deletes Git tags with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>repo_path</code>: local repository path - supports {ENV:var}</li>
@@ -502,7 +530,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with tag info</p>
                 <p>Example YAML:</p>
                 <p># Create lightweight tag</p>
@@ -541,7 +569,7 @@
             <div class="function-name">branch()</div>
             <p>Manages Git branches (create, list, delete, checkout) with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>repo_path</code>: local repository path - supports {ENV:var}</li>
@@ -556,7 +584,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with branch info</p>
                 <p>Example YAML:</p>
                 <p># Create new branch</p>
@@ -601,7 +629,7 @@
             <div class="function-name">status()</div>
             <p>Gets the Git repository status with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>repo_path</code>: local repository path - supports {ENV:var}</li>
@@ -613,7 +641,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with status info</p>
                 <p>Example YAML:</p>
                 <p># Get full status</p>
@@ -637,7 +665,7 @@
         <hr>
         <h2 id="oaio">oa-io</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (7)</h3>
+            <h3>📋 Available functions (7)</h3>
             <ul>
                 <li><a href="#oaio-copy"><code>copy()</code></a> - Copies files or directories with data propagation</li>
                 <li><a href="#oaio-zip"><code>zip()</code></a> - Creates a ZIP archive with data propagation</li>
@@ -652,7 +680,7 @@
             <div class="function-name">copy()</div>
             <p>Copies files or directories with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>srcpath</code>: source path - supports {WALLET:key}, {ENV:var}</li>
@@ -665,7 +693,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with copy information</p>
                 <p>Example YAML:</p>
                 <p># Copy single file</p>
@@ -695,7 +723,7 @@
             <div class="function-name">zip()</div>
             <p>Creates a ZIP archive with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>zipfilename</code>: ZIP file name - supports {WALLET:key}, {ENV:var}</li>
@@ -708,7 +736,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with ZIP info</p>
                 <p>Example YAML:</p>
                 <p># Create ZIP of directory with all files</p>
@@ -750,7 +778,7 @@
             <div class="function-name">unzip()</div>
             <p>Extracts a ZIP archive with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>zipfilename</code>: ZIP file to extract (can use input from previous task) - supports {ENV:var}</li>
@@ -762,7 +790,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with extraction info</p>
                 <p>Example YAML:</p>
                 <p># Extract ZIP archive</p>
@@ -789,7 +817,7 @@
             <div class="function-name">readfile()</div>
             <p>Reads file content with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>filename</code>: file to read (can use input from previous task) - supports {WALLET:key}, {ENV:var}</li>
@@ -801,7 +829,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, file_content) - file content is propagated</p>
                 <p>Example YAML:</p>
                 <p># Read config file</p>
@@ -831,7 +859,7 @@
             <div class="function-name">writefile()</div>
             <p>Writes content to a file with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>filename</code>: file to write - supports {WALLET:key}, {ENV:var}</li>
@@ -844,7 +872,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with file info</p>
                 <p>Example YAML:</p>
                 <p># Write static content</p>
@@ -877,7 +905,7 @@
             <div class="function-name">replace()</div>
             <p>Replaces text in a variable with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>varname</code>: (optional if there's input)</li>
@@ -890,7 +918,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, modified_content)</p>
                 <p>Example YAML:</p>
                 <p># Replace in static content</p>
@@ -925,7 +953,7 @@
             <div class="function-name">loadvarfromjson()</div>
             <p>Loads variables from a JSON file into gdict with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>filename</code>: JSON file (can use input from previous task) - supports {WALLET:key}, {ENV:var}</li>
@@ -936,7 +964,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, json_data) - returns parsed JSON data</p>
                 <p>Example YAML:</p>
                 <p># Load config from JSON</p>
@@ -962,7 +990,7 @@
         <hr>
         <h2 id="oajson">oa-json</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (7)</h3>
+            <h3>📋 Available functions (7)</h3>
             <ul>
                 <li><a href="#oajson-jsonfilter"><code>jsonfilter()</code></a> - Filters elements in a JSON array based on conditions</li>
                 <li><a href="#oajson-jsonextract"><code>jsonextract()</code></a> - Extracts specific fields from JSON objects</li>
@@ -977,7 +1005,7 @@
             <div class="function-name">jsonfilter()</div>
             <p>Filters elements in a JSON array based on conditions</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>data</code>: optional JSON data (can use input from previous task)</li>
@@ -993,7 +1021,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, filtered_data)</p>
                 <p>Example YAML:</p>
                 <p># Filter users by age</p>
@@ -1044,7 +1072,7 @@
             <div class="function-name">jsonextract()</div>
             <p>Extracts specific fields from JSON objects</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>data</code>: optional JSON data (can use input)</li>
@@ -1057,7 +1085,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, extracted_data)</p>
                 <p>Example YAML:</p>
                 <p># Extract specific fields from array</p>
@@ -1106,7 +1134,7 @@
             <div class="function-name">jsontransform()</div>
             <p>Transforms JSON data by applying mapping and transformations</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>data</code>: optional JSON data (can use input)</li>
@@ -1119,7 +1147,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, transformed_data)</p>
                 <p>Example YAML:</p>
                 <p># Rename fields</p>
@@ -1180,7 +1208,7 @@
             <div class="function-name">jsonmerge()</div>
             <p>Merges multiple JSON objects/arrays</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>sources</code>: list of keys from workflowcontext or list of direct data</li>
@@ -1193,7 +1221,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, merged_data)</p>
                 <p>Example YAML:</p>
                 <p># Merge dict objects</p>
@@ -1239,7 +1267,7 @@
             <div class="function-name">jsonaggregate()</div>
             <p>Aggregates JSON data (sum, avg, count, min, max, group)</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>data</code>: optional JSON array data (can use input)</li>
@@ -1251,7 +1279,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, aggregated_data)</p>
                 <p>Example YAML:</p>
                 <p># Count items</p>
@@ -1306,7 +1334,7 @@
             <div class="function-name">jsonvalidate()</div>
             <p>Validates JSON against a JSON Schema</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>data</code>: optional JSON data (can use input)</li>
@@ -1317,7 +1345,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, validation_result)</p>
                 <p>Example YAML:</p>
                 <p># Validate user data</p>
@@ -1381,7 +1409,7 @@
             <div class="function-name">jsonsort()</div>
             <p>Sorts JSON array by field</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param (dict) with</code>: </li>
                     <li><code>data</code>: optional JSON array data (can use input)</li>
@@ -1393,7 +1421,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple (success, sorted_data)</p>
                 <p>Example YAML:</p>
                 <p># Sort by name (alphabetical)</p>
@@ -1438,7 +1466,7 @@
         <hr>
         <h2 id="oamoduletemplate">oa-moduletemplate</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (2)</h3>
+            <h3>📋 Available functions (2)</h3>
             <ul>
                 <li><a href="#oamoduletemplate-templatefunction"><code>templatefunction()</code></a> - Function description with data propagation</li>
                 <li><a href="#oamoduletemplate-advanced_function"><code>advanced_function()</code></a> - Advanced function with support for multiple operations</li>
@@ -1448,7 +1476,7 @@
             <div class="function-name">templatefunction()</div>
             <p>Function description with data propagation This is a template function showing best practices for: - Data propagation from previous tasks - Parameter validation - Error handling - Output standardization - Logging</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>param1</code>: (type) required parameter description</li>
@@ -1461,7 +1489,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_data) where output_data contains results</p>
                 <p>Example YAML:</p>
                 <p># Basic usage</p>
@@ -1497,7 +1525,7 @@
             <div class="function-name">advanced_function()</div>
             <p>Advanced function with support for multiple operations This demonstrates how to implement CRUD-style operations with data propagation and proper error handling.</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>operation</code>: (str) 'create'|'read'|'update'|'delete'</li>
@@ -1510,7 +1538,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_data)</p>
                 <p>Example YAML:</p>
                 <p># CREATE operation</p>
@@ -1570,7 +1598,7 @@
         <hr>
         <h2 id="oanetwork">oa-network</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (4)</h3>
+            <h3>📋 Available functions (4)</h3>
             <ul>
                 <li><a href="#oanetwork-httpget"><code>httpget()</code></a> - Executes an HTTP GET request with data propagation</li>
                 <li><a href="#oanetwork-httpsget"><code>httpsget()</code></a> - Executes an HTTPS GET request with data propagation</li>
@@ -1582,7 +1610,7 @@
             <div class="function-name">httpget()</div>
             <p>Executes an HTTP GET request with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>host</code>: hostname or IP (can derive from previous input) - supports {WALLET:key}, {ENV:var}</li>
@@ -1598,7 +1626,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with response data</p>
                 <p>Example YAML:</p>
                 <p># Simple HTTP GET request</p>
@@ -1646,7 +1674,7 @@
             <div class="function-name">httpsget()</div>
             <p>Executes an HTTPS GET request with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>host</code>: hostname or IP (can derive from previous input) - supports {WALLET:key}, {ENV:var}</li>
@@ -1663,7 +1691,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with response data</p>
                 <p>Example YAML:</p>
                 <p># Simple HTTPS GET request</p>
@@ -1717,7 +1745,7 @@
             <div class="function-name">httppost()</div>
             <p>Executes an HTTP POST request with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>host</code>: hostname or IP - supports {WALLET:key}, {ENV:var}</li>
@@ -1733,7 +1761,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with response data</p>
                 <p>Example YAML:</p>
                 <p># Simple POST with JSON data</p>
@@ -1793,7 +1821,7 @@
             <div class="function-name">httpspost()</div>
             <p>Executes an HTTPS POST request with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>host</code>: hostname or IP - supports {WALLET:key}, {ENV:var}</li>
@@ -1810,7 +1838,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with response data</p>
                 <p>Example YAML:</p>
                 <p># Simple HTTPS POST</p>
@@ -1875,7 +1903,7 @@
         <hr>
         <h2 id="oanotify">oa-notify</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (3)</h3>
+            <h3>📋 Available functions (3)</h3>
             <ul>
                 <li><a href="#oanotify-sendtelegramnotify"><code>sendtelegramnotify()</code></a> - Sends a Telegram message via bot API with data propagation</li>
                 <li><a href="#oanotify-sendmailbygmail"><code>sendmailbygmail()</code></a> - Sends email via Gmail SMTP SSL with data propagation</li>
@@ -1886,7 +1914,7 @@
             <div class="function-name">sendtelegramnotify()</div>
             <p>Sends a Telegram message via bot API with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>tokenid</code>: Telegram bot token - supports {WALLET:key}, {ENV:var}</li>
@@ -1900,7 +1928,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with sending info</p>
                 <p>Example YAML:</p>
                 <p># Send simple message</p>
@@ -1933,7 +1961,7 @@
             <div class="function-name">sendmailbygmail()</div>
             <p>Sends email via Gmail SMTP SSL with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>senderemail</code>: sender email - supports {WALLET:key}, {ENV:var}</li>
@@ -1949,7 +1977,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with sending info</p>
                 <p>Example YAML:</p>
                 <p># Send plain text email</p>
@@ -1985,7 +2013,7 @@
             <div class="function-name">formatmessage()</div>
             <p>Formats a message from structured data (helper for notifications)</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>template</code>: (optional) message template with {key} placeholders - supports {WALLET:key}, {ENV:var}</li>
@@ -1998,7 +2026,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, formatted_message)</p>
                 <p>Example YAML:</p>
                 <p># Format with template</p>
@@ -2029,7 +2057,7 @@
         <hr>
         <h2 id="oapg">oa-pg</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (3)</h3>
+            <h3>📋 Available functions (3)</h3>
             <ul>
                 <li><a href="#oapg-select"><code>select()</code></a> - Executes SELECT on PostgreSQL with data propagation</li>
                 <li><a href="#oapg-execute"><code>execute()</code></a> - Executes INSERT/UPDATE/DELETE on PostgreSQL with data propagation</li>
@@ -2040,7 +2068,7 @@
             <div class="function-name">select()</div>
             <p>Executes SELECT on PostgreSQL with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>pgdatabase</code>: database name - supports {WALLET:key}, {ENV:var}</li>
@@ -2060,7 +2088,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_data) with query results</p>
                 <p>Example YAML:</p>
                 <p># Simple SELECT query</p>
@@ -2154,7 +2182,7 @@
             <div class="function-name">execute()</div>
             <p>Executes INSERT/UPDATE/DELETE on PostgreSQL with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>pgdatabase</code>: database name - supports {WALLET:key}, {ENV:var}</li>
@@ -2172,7 +2200,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_data) with affected rows count</p>
                 <p>Example YAML:</p>
                 <p># Simple UPDATE</p>
@@ -2279,7 +2307,7 @@
             <div class="function-name">insert()</div>
             <p>Helper for INSERT with data propagation from previous input</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport - support {WALLET</code>: key}, {ENV:var}</li>
@@ -2292,7 +2320,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_data)</p>
                 <p>Example YAML:</p>
                 <p># Insert single row</p>
@@ -2372,7 +2400,7 @@
         <hr>
         <h2 id="oasystem">oa-system</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (5)</h3>
+            <h3>📋 Available functions (5)</h3>
             <ul>
                 <li><a href="#oasystem-runcmd"><code>runcmd()</code></a> - Executes a local shell command with data propagation</li>
                 <li><a href="#oasystem-systemd"><code>systemd()</code></a> - Manages systemd services on remote server with data propagation</li>
@@ -2385,7 +2413,7 @@
             <div class="function-name">runcmd()</div>
             <p>Executes a local shell command with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>command</code>: command to execute (can use input from previous task) - supports {WALLET:key}, {ENV:var}</li>
@@ -2400,7 +2428,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with command output</p>
                 <p>Example YAML:</p>
                 <p># Simple command</p>
@@ -2450,7 +2478,7 @@
             <div class="function-name">systemd()</div>
             <p>Manages systemd services on remote server with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>remoteserver</code>: remote host - supports {WALLET:key}, {ENV:var}</li>
@@ -2467,7 +2495,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with systemd output</p>
                 <p>Example YAML:</p>
                 <p># Start a service</p>
@@ -2537,7 +2565,7 @@
             <div class="function-name">remotecommand()</div>
             <p>Executes a remote command via SSH with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>remoteserver</code>: remote host - supports {WALLET:key}, {ENV:var}</li>
@@ -2553,7 +2581,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with remote command output</p>
                 <p>Example YAML:</p>
                 <p># Simple remote command</p>
@@ -2630,7 +2658,7 @@
             <div class="function-name">scp()</div>
             <p>Transfers files/directories via SCP with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>remoteserver</code>: remote host - supports {WALLET:key}, {ENV:var}</li>
@@ -2648,7 +2676,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with transfer info</p>
                 <p>Example YAML:</p>
                 <p># Upload file to remote server</p>
@@ -2747,7 +2775,7 @@
             <div class="function-name">execute_script()</div>
             <p>Executes a local script and propagates output</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>script_path</code>: script path (can use input from previous task) - supports {WALLET:key}, {ENV:var}</li>
@@ -2761,7 +2789,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, output_dict) with script output</p>
                 <p>Example YAML:</p>
                 <p># Execute Python script</p>
@@ -2844,7 +2872,7 @@
         <hr>
         <h2 id="oautility">oa-utility</h2>
         <div class="function-list">
-            <h3>📋 Funzioni disponibili (7)</h3>
+            <h3>📋 Available functions (7)</h3>
             <ul>
                 <li><a href="#oautility-setsleep"><code>setsleep()</code></a> - Pauses execution for a specified number of seconds with data propagation</li>
                 <li><a href="#oautility-printvar"><code>printvar()</code></a> - Prints the value of a variable or input with data propagation</li>
@@ -2859,7 +2887,7 @@
             <div class="function-name">setsleep()</div>
             <p>Pauses execution for a specified number of seconds with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>seconds</code>: number of seconds to wait - supports {WALLET:key}, {ENV:var}</li>
@@ -2870,7 +2898,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, input_data) - propagates received input</p>
                 <p>Example YAML:</p>
                 <p># Simple sleep for 5 seconds</p>
@@ -2891,7 +2919,7 @@
             <div class="function-name">printvar()</div>
             <p>Prints the value of a variable or input with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>varname</code>: (optional) variable name to print - supports {WALLET:key}, {ENV:var}</li>
@@ -2902,7 +2930,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, printed_value) - propagates the printed value</p>
                 <p>Example YAML:</p>
                 <p># Print a specific variable</p>
@@ -2921,7 +2949,7 @@
             <div class="function-name">setvar()</div>
             <p>Sets the value of a variable with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>varname</code>: variable name - supports {WALLET:key}, {ENV:var}</li>
@@ -2933,7 +2961,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, set_value) - propagates the set value</p>
                 <p>Example YAML:</p>
                 <p># Set a static variable</p>
@@ -2960,7 +2988,7 @@
             <div class="function-name">dumpvar()</div>
             <p>Exports all gdict variables to a JSON file with data propagation</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>savetofile</code>: (optional) JSON output file path - supports {WALLET:key}, {ENV:var}</li>
@@ -2972,7 +3000,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, variables_dict) - propagates all variables</p>
                 <p>Example YAML:</p>
                 <p># Dump all variables to file</p>
@@ -2991,7 +3019,7 @@
             <div class="function-name">transform()</div>
             <p>Transforms data with various operations (upper, lower, strip, etc.)</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>operation</code>: transformation type ('upper', 'lower', 'strip', 'replace', 'split', 'join')</li>
@@ -3004,7 +3032,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, transformed_data)</p>
                 <p>Example YAML:</p>
                 <p># Convert to uppercase</p>
@@ -3033,7 +3061,7 @@
             <div class="function-name">condition()</div>
             <p>Evaluates a condition for workflow branching</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>left</code>: left operand - supports {WALLET:key}, {ENV:var}</li>
@@ -3046,7 +3074,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (condition_result, output_dict) - task_success reflects condition result</p>
                 <p>Example YAML:</p>
                 <p># Check if value equals expected</p>
@@ -3077,7 +3105,7 @@
             <div class="function-name">merge()</div>
             <p>Merges data from multiple sources</p>
             <div class="params">
-                <strong>Parametri:</strong>
+                <strong>Parameters:</strong>
                 <ul>
                     <li><code>param</code>: dict with:</li>
                     <li><code>merge_type</code>: 'dict'|'list'|'concat'</li>
@@ -3090,7 +3118,7 @@
                 </ul>
             </div>
             <div class="returns">
-                <strong>Ritorna:</strong>
+                <strong>Returns:</strong>
                 <p>tuple: (success, merged_data)</p>
                 <p>Example YAML:</p>
                 <p># Merge dictionaries</p>
@@ -3122,7 +3150,7 @@
         </div>
         <hr>
         <div class="footer">
-            <p>Documentazione generata automaticamente da <code>generate_readme.py</code></p>
+            <p>Documentation automatically generated by <code>generate_readme.py</code></p>
         </div>
     </div>
 </body>

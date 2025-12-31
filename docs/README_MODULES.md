@@ -1,27 +1,27 @@
-# Open-Automator - Documentazione Moduli
+# Open-Automator - Module Documentation
 
-Documentazione automatica dei moduli e funzioni disponibili.
+Automatic documentation of available modules and functions.
 
 ---
 
-## 📑 Indice Moduli
+## 📑 Module Index
 
-- [oa-docker](#oadocker) - 3 funzioni
-- [oa-git](#oagit) - 6 funzioni
-- [oa-io](#oaio) - 7 funzioni
-- [oa-json](#oajson) - 7 funzioni
-- [oa-moduletemplate](#oamoduletemplate) - 2 funzioni
-- [oa-network](#oanetwork) - 4 funzioni
-- [oa-notify](#oanotify) - 3 funzioni
-- [oa-pg](#oapg) - 3 funzioni
-- [oa-system](#oasystem) - 5 funzioni
-- [oa-utility](#oautility) - 7 funzioni
+- [oa-docker](#oadocker) - 3 functions
+- [oa-git](#oagit) - 6 functions
+- [oa-io](#oaio) - 7 functions
+- [oa-json](#oajson) - 7 functions
+- [oa-moduletemplate](#oamoduletemplate) - 2 functions
+- [oa-network](#oanetwork) - 4 functions
+- [oa-notify](#oanotify) - 3 functions
+- [oa-pg](#oapg) - 3 functions
+- [oa-system](#oasystem) - 5 functions
+- [oa-utility](#oautility) - 7 functions
 
 ---
 
 ## oa-docker
 
-### 📋 Funzioni disponibili (3)
+### 📋 Available functions (3)
 
 - [`container_run()`](#oadocker-container_run) - Starts a Docker container with data propagation
 - [`container_stop()`](#oadocker-container_stop) - Stops a Docker container with data propagation
@@ -33,7 +33,7 @@ Documentazione automatica dei moduli e funzioni disponibili.
 
 Starts a Docker container with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `image`: Docker image name - supports {WALLET:key}, {ENV:var}
@@ -49,7 +49,7 @@ Starts a Docker container with data propagation
 - `taskid`: (optional) unique task id
 - `taskstore`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, outputdict) with container info
 
@@ -99,7 +99,7 @@ volumes:
 
 Stops a Docker container with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `container`: container name or ID (can use input from previous task)
@@ -109,7 +109,7 @@ Stops a Docker container with data propagation
 - `taskid`: (optional) unique task id
 - `taskstore`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, outputdict) with stopped container info
 
@@ -143,7 +143,7 @@ function: container_stop
 
 Retrieves logs from a Docker container
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `container`: container name or ID (can use input from previous task)
@@ -154,7 +154,7 @@ Retrieves logs from a Docker container
 - `input`: (optional) data from previous task
 - taskid, taskstore, workflowcontext
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, logs) - propagates the logs
 
@@ -190,7 +190,7 @@ saveonvar: container_output
 
 ## oa-git
 
-### 📋 Funzioni disponibili (6)
+### 📋 Available functions (6)
 
 - [`clone()`](#oagit-clone) - Clones a Git repository with data propagation
 - [`pull()`](#oagit-pull) - Executes git pull on an existing repository with data propagation
@@ -205,7 +205,7 @@ saveonvar: container_output
 
 Clones a Git repository with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `repo_url`: repository URL (https or ssh) - supports {WALLET:key}, {ENV:var}
@@ -220,7 +220,7 @@ Clones a Git repository with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with clone info
 
@@ -290,7 +290,7 @@ recursive: true
 
 Executes git pull on an existing repository with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `repo_path`: local repository path - supports {ENV:var}
@@ -301,7 +301,7 @@ Executes git pull on an existing repository with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with pull info
 
@@ -347,7 +347,7 @@ function: pull
 
 Executes git push with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `repo_path`: local repository path - supports {ENV:var}
@@ -360,7 +360,7 @@ Executes git push with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with push info
 
@@ -424,7 +424,7 @@ branch: "main"
 
 Creates, lists, or deletes Git tags with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `repo_path`: local repository path - supports {ENV:var}
@@ -438,7 +438,7 @@ Creates, lists, or deletes Git tags with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with tag info
 
@@ -510,7 +510,7 @@ push: true
 
 Manages Git branches (create, list, delete, checkout) with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `repo_path`: local repository path - supports {ENV:var}
@@ -523,7 +523,7 @@ Manages Git branches (create, list, delete, checkout) with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with branch info
 
@@ -607,7 +607,7 @@ force: true
 
 Gets the Git repository status with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `repo_path`: local repository path - supports {ENV:var}
@@ -617,7 +617,7 @@ Gets the Git repository status with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with status info
 
@@ -659,7 +659,7 @@ function: status
 
 ## oa-io
 
-### 📋 Funzioni disponibili (7)
+### 📋 Available functions (7)
 
 - [`copy()`](#oaio-copy) - Copies files or directories with data propagation
 - [`zip()`](#oaio-zip) - Creates a ZIP archive with data propagation
@@ -675,7 +675,7 @@ function: status
 
 Copies files or directories with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `srcpath`: source path - supports {WALLET:key}, {ENV:var}
@@ -686,7 +686,7 @@ Copies files or directories with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with copy information
 
@@ -740,7 +740,7 @@ recursive: false
 
 Creates a ZIP archive with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `zipfilename`: ZIP file name - supports {WALLET:key}, {ENV:var}
@@ -751,7 +751,7 @@ Creates a ZIP archive with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with ZIP info
 
@@ -829,7 +829,7 @@ zipfilter: "*"
 
 Extracts a ZIP archive with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `zipfilename`: ZIP file to extract (can use input from previous task) - supports {ENV:var}
@@ -839,7 +839,7 @@ Extracts a ZIP archive with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with extraction info
 
@@ -887,7 +887,7 @@ pathwhereunzip: "/tmp/extracted"
 
 Reads file content with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `filename`: file to read (can use input from previous task) - supports {WALLET:key}, {ENV:var}
@@ -897,7 +897,7 @@ Reads file content with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, file_content) - file content is propagated
 
@@ -951,7 +951,7 @@ varname: email_template
 
 Writes content to a file with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `filename`: file to write - supports {WALLET:key}, {ENV:var}
@@ -962,7 +962,7 @@ Writes content to a file with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with file info
 
@@ -1022,7 +1022,7 @@ varname: my_data_variable
 
 Replaces text in a variable with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `varname`: (optional if there's input)
@@ -1033,7 +1033,7 @@ Replaces text in a variable with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, modified_content)
 
@@ -1097,7 +1097,7 @@ rightvalue: ":443"
 
 Loads variables from a JSON file into gdict with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `filename`: JSON file (can use input from previous task) - supports {WALLET:key}, {ENV:var}
@@ -1106,7 +1106,7 @@ Loads variables from a JSON file into gdict with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, json_data) - returns parsed JSON data
 
@@ -1152,7 +1152,7 @@ function: loadvarfromjson
 
 ## oa-json
 
-### 📋 Funzioni disponibili (7)
+### 📋 Available functions (7)
 
 - [`jsonfilter()`](#oajson-jsonfilter) - Filters elements in a JSON array based on conditions
 - [`jsonextract()`](#oajson-jsonextract) - Extracts specific fields from JSON objects
@@ -1168,7 +1168,7 @@ function: loadvarfromjson
 
 Filters elements in a JSON array based on conditions
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `data`: optional JSON data (can use input from previous task)
@@ -1182,7 +1182,7 @@ Filters elements in a JSON array based on conditions
 - `taskid`: optional unique task id
 - `taskstore`: optional TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, filtered_data)
 
@@ -1278,7 +1278,7 @@ value: "{WALLET:target_category}"
 
 Extracts specific fields from JSON objects
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `data`: optional JSON data (can use input)
@@ -1289,7 +1289,7 @@ Extracts specific fields from JSON objects
 - `input`: optional data from previous task
 - taskid, taskstore, workflowcontext
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, extracted_data)
 
@@ -1381,7 +1381,7 @@ keep_nulls: true
 
 Transforms JSON data by applying mapping and transformations
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `data`: optional JSON data (can use input)
@@ -1392,7 +1392,7 @@ Transforms JSON data by applying mapping and transformations
 - `saveonvar`: optional
 - `input`: optional data from previous task
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, transformed_data)
 
@@ -1508,7 +1508,7 @@ remove_fields:
 
 Merges multiple JSON objects/arrays
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `sources`: list of keys from workflowcontext or list of direct data
@@ -1519,7 +1519,7 @@ Merges multiple JSON objects/arrays
 - `input`: optional data from previous task (added to merge)
 - `workflowcontext`: optional workflow context
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, merged_data)
 
@@ -1605,7 +1605,7 @@ merge_type: dict
 
 Aggregates JSON data (sum, avg, count, min, max, group)
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `data`: optional JSON array data (can use input)
@@ -1615,7 +1615,7 @@ Aggregates JSON data (sum, avg, count, min, max, group)
 - `saveonvar`: optional
 - `input`: optional data from previous task
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, aggregated_data)
 
@@ -1719,7 +1719,7 @@ operation: min
 
 Validates JSON against a JSON Schema
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `data`: optional JSON data (can use input)
@@ -1728,7 +1728,7 @@ Validates JSON against a JSON Schema
 - `saveonvar`: optional
 - `input`: optional data from previous task
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, validation_result)
 
@@ -1850,7 +1850,7 @@ Note: Requires jsonschema library: pip install jsonschema
 
 Sorts JSON array by field
 
-**Parametri:**
+**Parameters:**
 
 - `param (dict) with`: 
 - `data`: optional JSON array data (can use input)
@@ -1860,7 +1860,7 @@ Sorts JSON array by field
 - `saveonvar`: optional
 - `input`: optional data from previous task
 
-**Ritorna:**
+**Returns:**
 
 tuple (success, sorted_data)
 
@@ -1944,7 +1944,7 @@ reverse: false
 
 ## oa-moduletemplate
 
-### 📋 Funzioni disponibili (2)
+### 📋 Available functions (2)
 
 - [`templatefunction()`](#oamoduletemplate-templatefunction) - Function description with data propagation
 - [`advanced_function()`](#oamoduletemplate-advanced_function) - Advanced function with support for multiple operations
@@ -1955,7 +1955,7 @@ reverse: false
 
 Function description with data propagation This is a template function showing best practices for: - Data propagation from previous tasks - Parameter validation - Error handling - Output standardization - Logging
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `param1`: (type) required parameter description
@@ -1966,7 +1966,7 @@ Function description with data propagation This is a template function showing b
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_data) where output_data contains results
 
@@ -2032,7 +2032,7 @@ on_failure: error_handler
 
 Advanced function with support for multiple operations This demonstrates how to implement CRUD-style operations with data propagation and proper error handling.
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `operation`: (str) 'create'|'read'|'update'|'delete'
@@ -2043,7 +2043,7 @@ Advanced function with support for multiple operations This demonstrates how to 
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_data)
 
@@ -2157,7 +2157,7 @@ timestamp: "{WALLET:current_time}"
 
 ## oa-network
 
-### 📋 Funzioni disponibili (4)
+### 📋 Available functions (4)
 
 - [`httpget()`](#oanetwork-httpget) - Executes an HTTP GET request with data propagation
 - [`httpsget()`](#oanetwork-httpsget) - Executes an HTTPS GET request with data propagation
@@ -2170,7 +2170,7 @@ timestamp: "{WALLET:current_time}"
 
 Executes an HTTP GET request with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `host`: hostname or IP (can derive from previous input) - supports {WALLET:key}, {ENV:var}
@@ -2184,7 +2184,7 @@ Executes an HTTP GET request with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with response data
 
@@ -2274,7 +2274,7 @@ function: httpget
 
 Executes an HTTPS GET request with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `host`: hostname or IP (can derive from previous input) - supports {WALLET:key}, {ENV:var}
@@ -2289,7 +2289,7 @@ Executes an HTTPS GET request with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with response data
 
@@ -2391,7 +2391,7 @@ get: "/posts/1"
 
 Executes an HTTP POST request with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `host`: hostname or IP - supports {WALLET:key}, {ENV:var}
@@ -2405,7 +2405,7 @@ Executes an HTTP POST request with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with response data
 
@@ -2519,7 +2519,7 @@ data: "<xml>data</xml>"
 
 Executes an HTTPS POST request with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `host`: hostname or IP - supports {WALLET:key}, {ENV:var}
@@ -2534,7 +2534,7 @@ Executes an HTTPS POST request with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with response data
 
@@ -2658,7 +2658,7 @@ internal_data: "sensitive"
 
 ## oa-notify
 
-### 📋 Funzioni disponibili (3)
+### 📋 Available functions (3)
 
 - [`sendtelegramnotify()`](#oanotify-sendtelegramnotify) - Sends a Telegram message via bot API with data propagation
 - [`sendmailbygmail()`](#oanotify-sendmailbygmail) - Sends email via Gmail SMTP SSL with data propagation
@@ -2670,7 +2670,7 @@ internal_data: "sensitive"
 
 Sends a Telegram message via bot API with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `tokenid`: Telegram bot token - supports {WALLET:key}, {ENV:var}
@@ -2682,7 +2682,7 @@ Sends a Telegram message via bot API with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with sending info
 
@@ -2742,7 +2742,7 @@ message: "Error occurred: {WALLET:error_message}"
 
 Sends email via Gmail SMTP SSL with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `senderemail`: sender email - supports {WALLET:key}, {ENV:var}
@@ -2756,7 +2756,7 @@ Sends email via Gmail SMTP SSL with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with sending info
 
@@ -2822,7 +2822,7 @@ subject: "Task Output"
 
 Formats a message from structured data (helper for notifications)
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `template`: (optional) message template with {key} placeholders - supports {WALLET:key}, {ENV:var}
@@ -2833,7 +2833,7 @@ Formats a message from structured data (helper for notifications)
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, formatted_message)
 
@@ -2889,7 +2889,7 @@ items: ["Item 1", "Item 2"]
 
 ## oa-pg
 
-### 📋 Funzioni disponibili (3)
+### 📋 Available functions (3)
 
 - [`select()`](#oapg-select) - Executes SELECT on PostgreSQL with data propagation
 - [`execute()`](#oapg-execute) - Executes INSERT/UPDATE/DELETE on PostgreSQL with data propagation
@@ -2901,7 +2901,7 @@ items: ["Item 1", "Item 2"]
 
 Executes SELECT on PostgreSQL with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `pgdatabase`: database name - supports {WALLET:key}, {ENV:var}
@@ -2919,7 +2919,7 @@ Executes SELECT on PostgreSQL with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_data) with query results
 
@@ -3101,7 +3101,7 @@ pgdbport: 5432
 
 Executes INSERT/UPDATE/DELETE on PostgreSQL with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `pgdatabase`: database name - supports {WALLET:key}, {ENV:var}
@@ -3117,7 +3117,7 @@ Executes INSERT/UPDATE/DELETE on PostgreSQL with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_data) with affected rows count
 
@@ -3325,7 +3325,7 @@ printout: true
 
 Helper for INSERT with data propagation from previous input
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `pgdatabase, pgdbhost, pgdbusername, pgdbpassword, pgdbport - support {WALLET`: key}, {ENV:var}
@@ -3336,7 +3336,7 @@ Helper for INSERT with data propagation from previous input
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_data)
 
@@ -3490,7 +3490,7 @@ Note: Uses parameterized queries for SQL injection protection
 
 ## oa-system
 
-### 📋 Funzioni disponibili (5)
+### 📋 Available functions (5)
 
 - [`runcmd()`](#oasystem-runcmd) - Executes a local shell command with data propagation
 - [`systemd()`](#oasystem-systemd) - Manages systemd services on remote server with data propagation
@@ -3504,7 +3504,7 @@ Note: Uses parameterized queries for SQL injection protection
 
 Executes a local shell command with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `command`: command to execute (can use input from previous task) - supports {WALLET:key}, {ENV:var}
@@ -3517,7 +3517,7 @@ Executes a local shell command with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with command output
 
@@ -3611,7 +3611,7 @@ timeout: 60
 
 Manages systemd services on remote server with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `remoteserver`: remote host - supports {WALLET:key}, {ENV:var}
@@ -3626,7 +3626,7 @@ Manages systemd services on remote server with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with systemd output
 
@@ -3760,7 +3760,7 @@ servicestate: "restart"
 
 Executes a remote command via SSH with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `remoteserver`: remote host - supports {WALLET:key}, {ENV:var}
@@ -3774,7 +3774,7 @@ Executes a remote command via SSH with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with remote command output
 
@@ -3922,7 +3922,7 @@ systemctl restart myservice
 
 Transfers files/directories via SCP with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `remoteserver`: remote host - supports {WALLET:key}, {ENV:var}
@@ -3938,7 +3938,7 @@ Transfers files/directories via SCP with data propagation
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with transfer info
 
@@ -4130,7 +4130,7 @@ direction: "remotetolocal"
 
 Executes a local script and propagates output
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `script_path`: script path (can use input from previous task) - supports {WALLET:key}, {ENV:var}
@@ -4142,7 +4142,7 @@ Executes a local script and propagates output
 - `task_id`: (optional) unique task id
 - `task_store`: (optional) TaskResultStore instance
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, output_dict) with script output
 
@@ -4302,7 +4302,7 @@ Note: Supported auto-detect extensions:
 
 ## oa-utility
 
-### 📋 Funzioni disponibili (7)
+### 📋 Available functions (7)
 
 - [`setsleep()`](#oautility-setsleep) - Pauses execution for a specified number of seconds with data propagation
 - [`printvar()`](#oautility-printvar) - Prints the value of a variable or input with data propagation
@@ -4318,7 +4318,7 @@ Note: Supported auto-detect extensions:
 
 Pauses execution for a specified number of seconds with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `seconds`: number of seconds to wait - supports {WALLET:key}, {ENV:var}
@@ -4327,7 +4327,7 @@ Pauses execution for a specified number of seconds with data propagation
 - `task_id`: (optional)
 - `task_store`: (optional)
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, input_data) - propagates received input
 
@@ -4363,7 +4363,7 @@ on_success: continue_workflow
 
 Prints the value of a variable or input with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `varname`: (optional) variable name to print - supports {WALLET:key}, {ENV:var}
@@ -4372,7 +4372,7 @@ Prints the value of a variable or input with data propagation
 - `task_id`: (optional)
 - `task_store`: (optional)
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, printed_value) - propagates the printed value
 
@@ -4404,7 +4404,7 @@ on_success: next_step
 
 Sets the value of a variable with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `varname`: variable name - supports {WALLET:key}, {ENV:var}
@@ -4414,7 +4414,7 @@ Sets the value of a variable with data propagation
 - `task_id`: (optional)
 - `task_store`: (optional)
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, set_value) - propagates the set value
 
@@ -4462,7 +4462,7 @@ varname: api_response
 
 Exports all gdict variables to a JSON file with data propagation
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `savetofile`: (optional) JSON output file path - supports {WALLET:key}, {ENV:var}
@@ -4472,7 +4472,7 @@ Exports all gdict variables to a JSON file with data propagation
 - `task_id`: (optional)
 - `task_store`: (optional)
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, variables_dict) - propagates all variables
 
@@ -4504,7 +4504,7 @@ savetofile: "{ENV:OUTPUT_DIR}/vars.json"
 
 Transforms data with various operations (upper, lower, strip, etc.)
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `operation`: transformation type ('upper', 'lower', 'strip', 'replace', 'split', 'join')
@@ -4515,7 +4515,7 @@ Transforms data with various operations (upper, lower, strip, etc.)
 - `task_id`: (optional)
 - `task_store`: (optional)
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, transformed_data)
 
@@ -4567,7 +4567,7 @@ separator: ","
 
 Evaluates a condition for workflow branching
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `left`: left operand - supports {WALLET:key}, {ENV:var}
@@ -4578,7 +4578,7 @@ Evaluates a condition for workflow branching
 - `task_id`: (optional)
 - `task_store`: (optional)
 
-**Ritorna:**
+**Returns:**
 
 tuple: (condition_result, output_dict) - task_success reflects condition result
 
@@ -4634,7 +4634,7 @@ right: 100
 
 Merges data from multiple sources
 
-**Parametri:**
+**Parameters:**
 
 - `param`: dict with:
 - `merge_type`: 'dict'|'list'|'concat'
@@ -4645,7 +4645,7 @@ Merges data from multiple sources
 - `task_id`: (optional)
 - `task_store`: (optional)
 
-**Ritorna:**
+**Returns:**
 
 tuple: (success, merged_data)
 
@@ -4706,4 +4706,4 @@ sources:
 
 ---
 
-*Documentazione generata automaticamente da `generate_readme.py`*
+*Documentation automatically generated by `generate_readme.py`*
