@@ -1,0 +1,67 @@
+---
+name: DockerNginxWorkflow
+description: Start an Nginx container and fetch logs
+variable:
+  DB_HOST: "192.168.0.175"
+  DB_PORT: 5432
+  DB_NAME: "postgres"
+  DB_USER: "${WALLET:db_user}"
+  DB_PASSWORD: "${WALLET:db_password}"
+  LOCAL_PATH: "/tmp/users_export.json"
+  REMOTE_SERVER: "192.168.0.175"
+  REMOTE_USER: "root"
+  REMOTE_PASSWORD: "${WALLET:ssh_root_password}"
+  REMOTE_PATH: "/tmp/"
+  TELEGRAM_TOKEN: "${WALLET:telegram_token}"
+  TELEGRAM_CHAT: "${WALLET:telegram_chatid}"
+
+tasks:
+- name: export_users
+  oa-pg.select:
+    pgdatabase: "${DB_NAME}"
+    pgdbhost: "${DB_HOST}"
+    pgdbusername: "${DB_USER}"
+    pgdbpassword: "${DB_PASSWORD}"
+    pgdbport: ${DB_PORT}
+    statement: "SELECT * FROM users ORDER BY id"
+    tojsonfile: "${LOCAL_PATH}"
+    printout: true
+  on_success: upload_file
+  on_failure: notify_error
+
+- name: upload_file
+  oa-system.scp:
+    remoteserver: "${REMOTE_SERVER}"
+    remoteuser: "${REMOTE_USER}"
+    remotepassword: "${REMOTE_PASSWORD}"
+    remoteport: 22
+    localpath: "${LOCAL_PATH}"
+    remotepath: "${REMOTE_PATH}users_export.json"
+    recursive: false
+    direction: "localtoremote"
+  on_success: notify_success
+  on_failure: notify_error
+
+- name: notify_success
+  oa-notify.sendtelegramnotify:
+    tokenid: "${TELEGRAM_TOKEN}"
+    chatid: ["${TELEGRAM_CHAT}"]
+    message: "✅ Export completato"
+  on_success: cleanup
+
+- name: notify_error
+  oa-notify.sendtelegramnotify:
+    tokenid: "${TELEGRAM_TOKEN}"
+    chatid: ["${TELEGRAM_CHAT}"]
+    message: "❌ Export fallito"
+  on_success: end
+
+- name: cleanup
+  oa-system.runcmd:
+    command: "rm -f ${LOCAL_PATH}"
+    printout: false
+  on_success: end
+
+- name: end
+  oa-utility.setsleep:
+    seconds: 1
