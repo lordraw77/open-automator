@@ -102,6 +102,24 @@ def init_session_state():
         st.session_state.edit_secrets = {}
     if 'workflow_path' not in st.session_state:
         st.session_state.workflow_path = os.getenv('WORKFLOW_PATH', './workflows')
+    # Configuration from environment variables
+    if 'server_port' not in st.session_state:
+        st.session_state.server_port = os.getenv('STREAMLIT_SERVER_PORT', '8501')
+    if 'server_address' not in st.session_state:
+        st.session_state.server_address = os.getenv('STREAMLIT_SERVER_ADDRESS', '0.0.0.0')
+    if 'wallet_file' not in st.session_state:
+        st.session_state.wallet_file = os.getenv('OA_WALLET_FILE', '')
+    if 'wallet_password' not in st.session_state:
+        st.session_state.wallet_password = os.getenv('OA_WALLET_PASSWORD', '')
+    if 'log_level' not in st.session_state:
+        st.session_state.log_level = os.getenv('OA_LOG_LEVEL', 'INFO')
+    if 'workflows_dir' not in st.session_state:
+        st.session_state.workflows_dir = os.getenv('OA_WORKFLOWS_DIR', '/app/workflows')
+    if 'data_dir' not in st.session_state:
+        st.session_state.data_dir = os.getenv('OA_DATA_DIR', '/app/data')
+    if 'logs_dir' not in st.session_state:
+        st.session_state.logs_dir = os.getenv('OA_LOGS_DIR', '/app/logs')
+        st.session_state.workflow_path = os.getenv('WORKFLOW_PATH', './workflows')
     if 'workflows_loaded' not in st.session_state:
         st.session_state.workflows_loaded = False
     if 'auto_executed' not in st.session_state:
@@ -509,7 +527,7 @@ def execute_workflow(workflow_id: str):
     # Prepara il buffer per catturare i log
     log_buffer = io.StringIO()
     log_handler = logging.StreamHandler(log_buffer)
-    log_handler.setLevel(logging.DEBUG)
+    log_handler.setLevel(getattr(logging, st.session_state.log_level, logging.INFO))
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     log_handler.setFormatter(formatter)
 

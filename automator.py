@@ -13,6 +13,7 @@ from taskstore import TaskResultStore
 from wallet import Wallet, PlainWallet, resolve_dict_placeholders
 
 logger = AutomatorLogger.get_logger('automator')
+
 gdict = {}
 cwd = os.getcwd()
 oacommon.setgdict(oacommon, gdict)
@@ -23,6 +24,27 @@ if os.path.exists(modulepath):
 myself = lambda: inspect.stack()[1][3]
 findinlist = lambda y, list: [x for x in list if y in x]
 
+# ============= ENVIRONMENT VARIABLES =============
+# Carica variabili d'ambiente con valori di default
+ENV_CONFIG = {
+    'OA_WALLET_FILE': os.environ.get('OA_WALLET_FILE', '/data/wallet.enc'),
+    'OA_WALLET_PASSWORD': os.environ.get('OA_WALLET_PASSWORD', 'changeme'),
+    'WORKFLOW_PATH': os.environ.get('WORKFLOW_PATH', '/workflows'),
+    'LOG_LEVEL': os.environ.get('LOG_LEVEL', 'INFO')
+}
+
+def get_env_config():
+    """Restituisce la configurazione delle variabili d'ambiente"""
+    return ENV_CONFIG.copy()
+
+def log_environment_config():
+    """Logga la configurazione delle variabili d'ambiente (mascherando password)"""
+    logger.info("Environment Configuration:")
+    for key, value in ENV_CONFIG.items():
+        if 'PASSWORD' in key:
+            logger.info(f"  {key}: {'*' * 8}")
+        else:
+            logger.info(f"  {key}: {value}")
 
 # ============= WORKFLOW ENGINE =============
 
@@ -33,7 +55,6 @@ class TaskStatus(Enum):
     FAILED = "failed"
     SKIPPED = "skipped"
 
-
 @dataclass
 class TaskResult:
     """Risultato di un task con output data"""
@@ -43,7 +64,6 @@ class TaskResult:
     error: str = ""
     duration: float = 0.0
     timestamp: datetime = field(default_factory=datetime.now)
-
 
 class WorkflowContext:
     """Contesto condiviso tra task con data propagation"""
@@ -70,7 +90,7 @@ class WorkflowContext:
         """Recupera l'output dell'ultimo task eseguito"""
         if not self._results:
             return None
-        last_task = max(self._results.keys(), 
+        last_task = max(self._results.keys(),
                        key=lambda k: self._results[k].timestamp)
         return self._results[last_task].output
 
@@ -91,11 +111,10 @@ class WorkflowContext:
         """Recupera tutti i risultati"""
         return dict(self._results)
 
-
 class WorkflowEngine:
     """Engine per esecuzione workflow con data propagation"""
 
-    def __init__(self, tasks: List[Dict], gdict: Dict, task_store: TaskResultStore, 
+    def __init__(self, tasks: List[Dict], gdict: Dict, task_store: TaskResultStore,
                  debug: bool = False, debug2: bool = False):
         self.tasks = tasks
         self.gdict = gdict
@@ -130,6 +149,7 @@ class WorkflowEngine:
 
         while current_task and current_task != 'end':
             executed_count += 1
+
             if executed_count > max_iterations:
                 logger.error("✗ Maximum workflow iterations reached (possible infinite loop)")
                 return False, self.context
@@ -167,10 +187,12 @@ class WorkflowEngine:
             1 for r in self.context._results.values() 
             if r.status == TaskStatus.FAILED
         )
+
         success_count = sum(
             1 for r in self.context._results.values() 
             if r.status == TaskStatus.SUCCESS
         )
+
         all_success = failed_count == 0
 
         logger.info("")
@@ -197,6 +219,7 @@ class WorkflowEngine:
             logger.info(f"✓ Workflow completed SUCCESSFULLY")
         else:
             logger.warning(f"⚠ Workflow completed with ERRORS")
+
         logger.info(f"Total: {executed_count} | Succeeded: {success_count} | Failed: {failed_count}")
         logger.info("=" * 70)
 
@@ -286,6 +309,7 @@ class WorkflowEngine:
                 error="" if success else "Task returned False",
                 duration=duration
             )
+
             self.context.set_task_result(task_name, task_result)
 
             # Salva anche in task_store per retrocompatibilità
@@ -309,6 +333,7 @@ class WorkflowEngine:
                 error=str(e),
                 duration=duration
             )
+
             self.context.set_task_result(task_name, task_result)
 
             # Salva anche in task_store
@@ -338,7 +363,6 @@ class WorkflowEngine:
                 return module_name, func_name, params
 
         raise ValueError(f"Invalid task definition: no module.function found in {task_def}")
-
 
 # ============= WORKFLOW MAP VISUALIZATION =============
 
@@ -383,6 +407,7 @@ def print_workflow_map(tasks):
         # Identifica module.function
         module_name = None
         func_name = None
+
         if 'module' in task and 'function' in task:
             module_name = task['module']
             func_name = task['function']
@@ -410,7 +435,6 @@ def print_workflow_map(tasks):
 
     logger.info("=" * 70)
     logger.info("")
-
 
 def analyze_workflow_paths(tasks):
     """
@@ -483,7 +507,6 @@ def analyze_workflow_paths(tasks):
     logger.info("=" * 70)
     logger.info("")
 
-
 # ============= MAIN =============
 
 def main():
@@ -492,42 +515,61 @@ def main():
         description='exec open-automator tasks',
         allow_abbrev=False
     )
-    myparser.add_argument('tasks', metavar='tasks', type=str,
-                         help='yaml for task description')
+
+    myparser.add_argument('tasks', metavar='tasks', type=str, nargs='?',
+                        help='yaml for task description')
     myparser.add_argument('-d', action='store_true',
-                         help='debug enable')
+                        help='debug enable')
     myparser.add_argument('-d2', action='store_true',
-                         help='debug2 enable')
+                        help='debug2 enable')
     myparser.add_argument('-t', action='store_true',
-                         help='trace enable')
+                        help='trace enable')
     myparser.add_argument('--log-dir', type=str, default='./logs',
-                         help='log directory path (default: ./logs)')
-    myparser.add_argument('--console-level', type=str, default='INFO',
-                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                         help='console log level (default: INFO)')
+                        help='log directory path (default: ./logs)')
+    myparser.add_argument('--console-level', type=str, default=None,
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                        help='console log level (default: from LOG_LEVEL env or INFO)')
     myparser.add_argument('--file-level', type=str, default='DEBUG',
-                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                         help='file log level (default: DEBUG)')
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                        help='file log level (default: DEBUG)')
     myparser.add_argument('--dry-run', action='store_true',
-                         help='show workflow map without executing')
+                        help='show workflow map without executing')
 
     args = myparser.parse_args()
+
+    # Usa LOG_LEVEL da environment se --console-level non è specificato
+    console_level = args.console_level if args.console_level else ENV_CONFIG['LOG_LEVEL']
 
     # Setup logging PRIMA di tutto
     try:
         AutomatorLogger.setup_logging(
             log_dir=args.log_dir,
-            console_level=args.console_level,
+            console_level=console_level,
             file_level=args.file_level
         )
     except Exception as e:
         print(f"ERROR: Failed to setup logging: {e}")
         return 5
 
+    # Logga configurazione environment
+    log_environment_config()
+
+    # Usa WORKFLOW_PATH se tasks non è specificato
     tasksfile = args.tasks
+    if not tasksfile:
+        # Cerca nel WORKFLOW_PATH
+        workflow_path = ENV_CONFIG['WORKFLOW_PATH']
+        default_workflow = os.path.join(workflow_path, 'automator.yaml')
+        if os.path.exists(default_workflow):
+            tasksfile = default_workflow
+            logger.info(f"Using default workflow from WORKFLOW_PATH: {tasksfile}")
+        else:
+            tasksfile = 'automator.yaml'
+
     DEBUG = args.d
     DEBUG2 = args.d2
     TRACE = args.t
+
     gdict['DEBUG'] = args.d
     gdict['DEBUG2'] = args.d2
     gdict['TRACE'] = args.t
@@ -539,9 +581,6 @@ def main():
     elif DEBUG:
         AutomatorLogger.set_console_level('INFO')
         logger.debug("DEBUG mode enabled")
-        
-    if not tasksfile:
-        tasksfile = 'automator.yaml'
 
     logger.info("=" * 70)
     logger.info(f"Open-Automator started - Processing: {tasksfile}")
@@ -554,8 +593,8 @@ def main():
 
     # ========== CARICAMENTO WALLET ==========
     wallet_instance = None
-    wallet_file = os.environ.get('OA_WALLET_FILE', 'wallet.enc')
-    wallet_password = os.environ.get('OA_WALLET_PASSWORD')
+    wallet_file = ENV_CONFIG['OA_WALLET_FILE']
+    wallet_password = ENV_CONFIG['OA_WALLET_PASSWORD']
 
     if os.path.exists(wallet_file):
         try:
@@ -575,6 +614,9 @@ def main():
 
     # Aggiungi wallet a gdict per renderlo disponibile a tutti i moduli
     gdict['_wallet'] = wallet_instance
+
+    # Aggiungi ENV_CONFIG a gdict
+    gdict['_env_config'] = ENV_CONFIG
 
     try:
         # Carica configurazione YAML
@@ -604,7 +646,6 @@ def main():
             gdict.update(workflow_vars)
             if DEBUG2:
                 logger.debug(f"Workflow variables: {list(workflow_vars.keys())}")
-
 
         tasks = conf[0]['tasks']
         sizetask = len(tasks)
@@ -646,10 +687,17 @@ def main():
         logger.critical(f"Fatal error: {e}", exc_info=True)
         return 4
 
-
 if __name__ == '__main__':
     exit_code = main()
     sys.exit(exit_code)
+
+# Example usage:
+# export OA_WALLET_FILE="/data/wallet.enc"
+# export OA_WALLET_PASSWORD="your_master_password"
+# export WORKFLOW_PATH="/workflows"
+# export LOG_LEVEL="INFO"
+# python3 ./automator.py
+
     
     
 # Example usage:
