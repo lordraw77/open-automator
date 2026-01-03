@@ -1,6 +1,6 @@
 """
-Open-Automator Streamlit Web UI
-v1.4.1 - Auto-Execute with Plain Wallet Support
+Open-Automator Streamlit Web UI v2.0.0 - WorkflowManager Integration
+MODIFICATO: Solo logica interna con WorkflowAdapter, interfaccia invariata
 """
 
 import streamlit as st
@@ -12,17 +12,22 @@ import re
 import glob
 from datetime import datetime
 from typing import Dict, Any, Optional
-
 from automator import WorkflowEngine, WorkflowContext, TaskResult, TaskStatus
 from taskstore import TaskResultStore
 from wallet import Wallet, PlainWallet, resolve_dict_placeholders
 from logger_config import AutomatorLogger
 import oacommon
-
 import io
 import logging
 from contextlib import redirect_stdout, redirect_stderr
- 
+
+# ========== NUOVO IMPORT ==========
+from workflow_manager import (
+    WorkflowManagerFacade,
+    WorkflowMetadata,
+    WorkflowExecution,
+    WorkflowExecutionStatus
+)
 
 st.set_page_config(
     page_title="Open-Automator",
@@ -33,99 +38,263 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-        .stApp {
-            background-color: #1e1e2e;
-        }
-        [data-testid="stSidebar"] {
-            background-color: #2b2b3d;
-        }
-        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-            color: #a0a0b0;
-            font-size: 0.85em;
-        }
-        .main-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            border-radius: 10px;
-            color: white;
-            text-align: center;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        .main-header h1 {
-            margin: 0;
-            font-size: 2.2em;
-            font-weight: 600;
-        }
-        .main-header p {
-            margin: 0.5rem 0 0 0;
-            opacity: 0.9;
-        }
-        .section-header {
-            background: #3a3a4d;
-            padding: 0.8rem 1rem;
-            border-radius: 8px;
-            color: #e0e0e0;
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
-        .selected-indicator, .wallet-info {
-            color: #dc3545;
-            font-size: 0.85em;
-            margin: 0.5rem 0;
-        }
-        .secret-value {
-            background: #2b2b3d;
-            padding: 0.5rem;
-            border-radius: 5px;
-            font-family: monospace;
-            color: #a0a0b0;
-            margin: 0.5rem 0;
-        }
+    .stApp {
+        background-color: #1e1e2e;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #2b2b3d;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        color: #a0a0b0;
+        font-size: 0.85em;
+    }
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .main-header h1 {
+        margin: 0;
+        font-size: 2.2em;
+        font-weight: 600;
+    }
+    .main-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    .section-header {
+        background: #3a3a4d;
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        color: #e0e0e0;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    .selected-indicator, .wallet-info {
+        color: #dc3545;
+        font-size: 0.85em;
+        margin: 0.5rem 0;
+    }
+    .secret-value {
+        background: #2b2b3d;
+        padding: 0.5rem;
+        border-radius: 5px;
+        font-family: monospace;
+        color: #a0a0b0;
+        margin: 0.5rem 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
+
+# ========== ADAPTER CLASS PER COMPATIBILITÀ ==========
+class WorkflowAdapter:
+    """Adapter che fa comportare WorkflowManagerFacade come dict per compatibilità UI"""
+
+    def __init__(self, facade: WorkflowManagerFacade):
+        self.facade = facade
+
+    def _clean_content(self, obj):
+        """Rimuove riferimenti a oggetti non serializzabili"""
+        if obj is None:
+            return None
+        if isinstance(obj, (str, int, float, bool)):
+            return obj
+        if isinstance(obj, dict):
+            cleaned = {}
+            for k, v in obj.items():
+                # Salta chiavi problematiche
+                if k in ['wallet', 'engine', 'context', 'taskstore', '_lock', 'semaphore']:
+                    continue
+                try:
+                    cleaned[k] = self._clean_content(v)
+                except:
+                    continue
+            return cleaned
+        if isinstance(obj, list):
+            return [self._clean_content(item) for item in obj]
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        # Salta oggetti complessi
+        try:
+            obj_type = str(type(obj))
+            if 'lock' in obj_type.lower() or 'thread' in obj_type.lower():
+                return None
+            if hasattr(obj, '__dict__'):
+                return None
+            return str(obj)
+        except:
+            return None
+
+    def items(self):
+        """Ritorna tuple (workflow_id, workflow_dict) compatibile con UI originale"""
+        workflows = []
+        for metadata in self.facade.list_workflows():
+            history = self.facade.get_workflow_history(metadata.workflow_id)
+            last_execution = None
+
+            if history:
+                last_exec = history[-1]
+                last_execution = {
+                    'timestamp': last_exec.started_at.isoformat() if last_exec.started_at else datetime.now().isoformat(),
+                    'success': last_exec.status == WorkflowExecutionStatus.COMPLETED,
+                    'results': last_exec.results,
+                    'logs': '\n'.join(last_exec.logs) if last_exec.logs else ''
+                }
+
+            workflow_dict = {
+                'id': metadata.workflow_id,
+                'name': metadata.name,
+                'filepath': metadata.filepath,
+                'content': self._clean_content(metadata.content),
+                'status': self._get_status(metadata.workflow_id),
+                'created_at': metadata.created_at.isoformat(),
+                'last_execution': last_execution
+            }
+
+            workflows.append((metadata.workflow_id, workflow_dict))
+
+        return workflows
+
+    def _get_status(self, workflow_id: str) -> str:
+        """Determina status workflow da ultima esecuzione"""
+        history = self.facade.get_workflow_history(workflow_id)
+        if not history:
+            return 'loaded'
+
+        last = history[-1]
+        if last.status == WorkflowExecutionStatus.RUNNING:
+            return 'running'
+        elif last.status == WorkflowExecutionStatus.COMPLETED:
+            return 'completed'
+        elif last.status in [WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.ERROR]:
+            return 'failed'
+        else:
+            return 'loaded'
+
+    def values(self):
+        """Ritorna solo i dict dei workflow"""
+        return [wf for _, wf in self.items()]
+
+    def __getitem__(self, workflow_id: str):
+        """Accesso dict-like: workflows[workflow_id]"""
+        metadata = self.facade.get_workflow(workflow_id)
+        if not metadata:
+            raise KeyError(workflow_id)
+
+        history = self.facade.get_workflow_history(workflow_id)
+        last_execution = None
+
+        if history:
+            last_exec = history[-1]
+            last_execution = {
+                'timestamp': last_exec.started_at.isoformat() if last_exec.started_at else datetime.now().isoformat(),
+                'success': last_exec.status == WorkflowExecutionStatus.COMPLETED,
+                'results': last_exec.results,
+                'logs': '\n'.join(last_exec.logs) if last_exec.logs else ''
+            }
+
+        return {
+            'id': metadata.workflow_id,
+            'name': metadata.name,
+            'filepath': metadata.filepath,
+            'content': self._clean_content(metadata.content),
+            'status': self._get_status(workflow_id),
+            'created_at': metadata.created_at.isoformat(),
+            'last_execution': last_execution
+        }
+
+    def __setitem__(self, workflow_id: str, value: dict):
+        """Aggiornamento dict-like"""
+        pass
+
+    def __contains__(self, workflow_id: str):
+        """Check esistenza"""
+        return self.facade.get_workflow(workflow_id) is not None
+
+    def __len__(self):
+        """Lunghezza"""
+        return len(self.facade.list_workflows())
+
+    def get(self, workflow_id: str, default=None):
+        """Get con default"""
+        try:
+            return self[workflow_id]
+        except KeyError:
+            return default
+
+
 def init_session_state():
+    """Inizializzazione con WorkflowManagerFacade + Adapter"""
+
+    if 'workflow_manager' not in st.session_state:
+        max_concurrent = int(os.getenv('OA_MAX_CONCURRENT_WORKFLOWS', '5'))
+        st.session_state.workflow_manager = WorkflowManagerFacade(max_concurrent_executions=max_concurrent)
+
     if 'workflows' not in st.session_state:
-        st.session_state.workflows = {}
+        st.session_state.workflows = WorkflowAdapter(st.session_state.workflow_manager)
+
     if 'active_wallet' not in st.session_state:
         st.session_state.active_wallet = None
+
     if 'current_workflow_id' not in st.session_state:
         st.session_state.current_workflow_id = None
+
     if 'current_page' not in st.session_state:
         st.session_state.current_page = 'workflow'
+
     if 'last_uploaded_file' not in st.session_state:
         st.session_state.last_uploaded_file = None
+
     if 'show_secrets' not in st.session_state:
         st.session_state.show_secrets = {}
+
     if 'edit_secrets' not in st.session_state:
         st.session_state.edit_secrets = {}
+
     if 'workflow_path' not in st.session_state:
         st.session_state.workflow_path = os.getenv('WORKFLOW_PATH', './workflows')
-    # Configuration from environment variables
+
     if 'server_port' not in st.session_state:
         st.session_state.server_port = os.getenv('STREAMLIT_SERVER_PORT', '8501')
+
     if 'server_address' not in st.session_state:
         st.session_state.server_address = os.getenv('STREAMLIT_SERVER_ADDRESS', '0.0.0.0')
+
     if 'wallet_file' not in st.session_state:
         st.session_state.wallet_file = os.getenv('OA_WALLET_FILE', '')
+
     if 'wallet_password' not in st.session_state:
         st.session_state.wallet_password = os.getenv('OA_WALLET_PASSWORD', '')
+
     if 'log_level' not in st.session_state:
         st.session_state.log_level = os.getenv('OA_LOG_LEVEL', 'INFO')
+
     if 'workflows_dir' not in st.session_state:
         st.session_state.workflows_dir = os.getenv('OA_WORKFLOWS_DIR', '/app/workflows')
+
     if 'data_dir' not in st.session_state:
         st.session_state.data_dir = os.getenv('OA_DATA_DIR', '/app/data')
+
     if 'logs_dir' not in st.session_state:
         st.session_state.logs_dir = os.getenv('OA_LOGS_DIR', '/app/logs')
-        st.session_state.workflow_path = os.getenv('WORKFLOW_PATH', './workflows')
+
     if 'workflows_loaded' not in st.session_state:
         st.session_state.workflows_loaded = False
+
     if 'auto_executed' not in st.session_state:
         st.session_state.auto_executed = False
 
+
 init_session_state()
+
+
+
+# ========== FUNZIONI UTILITY (INVARIATE) ==========
 
 def serialize_results(context: WorkflowContext) -> dict:
     results = {}
@@ -298,6 +467,10 @@ def generate_mermaid_code(workflow: dict) -> str:
     except Exception as e:
         return f"graph TD\n    A[Error: {str(e)[:50]}]"
 
+
+
+# ========== FUNZIONI WALLET (INVARIATE) ==========
+
 def load_wallet(wallet_file: str, wallet_type: str, master_password: str = None):
     try:
         if not os.path.exists(wallet_file):
@@ -436,7 +609,12 @@ def unload_wallet():
     time.sleep(0.3)
     st.rerun()
 
+
+
+# ========== FUNZIONI WORKFLOW (MODIFICATE) ==========
+
 def load_workflows_from_directory(workflow_path: str = "./workflows"):
+    """MODIFICATO: usa facade"""
     if not os.path.exists(workflow_path):
         st.warning(f"📁 Directory non trovata: {workflow_path}")
         return 0
@@ -447,34 +625,33 @@ def load_workflows_from_directory(workflow_path: str = "./workflows"):
     for ext in ['*.yaml', '*.yml']:
         workflow_files.extend(glob.glob(os.path.join(workflow_path, ext)))
 
+    facade = st.session_state.workflow_manager
+
     for filepath in workflow_files:
         try:
             filename = os.path.basename(filepath)
+            workflow_id = f"wf_{filename.replace('.yaml', '').replace('.yml', '')}"
 
-            existing_ids = [wf['filepath'] for wf in st.session_state.workflows.values() 
-                          if 'filepath' in wf]
-            if filepath in existing_ids:
+            if facade.get_workflow(workflow_id):
                 continue
 
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
-                yaml_content = yaml.safe_load(content)
+
+            yaml_content = yaml.safe_load(content)
 
             if not yaml_content or not isinstance(yaml_content, list) or 'tasks' not in yaml_content[0]:
                 st.warning(f"⚠️ File non valido: {filename}")
                 continue
 
-            workflow_id = f"wf_{filename.replace('.yaml', '').replace('.yml', '')}"
+            facade.register_workflow(
+                workflow_id=workflow_id,
+                name=filename,
+                content=yaml_content,
+                filepath=filepath,
+                description=f"Loaded from {filepath}"
+            )
 
-            st.session_state.workflows[workflow_id] = {
-                'id': workflow_id,
-                'name': filename,
-                'filepath': filepath,
-                'content': yaml_content,
-                'status': 'loaded',
-                'created_at': datetime.now().isoformat(),
-                'last_execution': None
-            }
             loaded_count += 1
 
         except Exception as e:
@@ -482,7 +659,9 @@ def load_workflows_from_directory(workflow_path: str = "./workflows"):
 
     return loaded_count
 
+
 def handle_workflow_upload(uploaded_file):
+    """MODIFICATO: usa facade"""
     try:
         file_identifier = f"{uploaded_file.name}_{uploaded_file.size}"
 
@@ -499,14 +678,13 @@ def handle_workflow_upload(uploaded_file):
         workflow_id = f"wf_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         tasks = yaml_content[0]['tasks']
 
-        st.session_state.workflows[workflow_id] = {
-            'id': workflow_id,
-            'name': uploaded_file.name,
-            'content': yaml_content,
-            'status': 'loaded',
-            'created_at': datetime.now().isoformat(),
-            'last_execution': None
-        }
+        facade = st.session_state.workflow_manager
+        facade.register_workflow(
+            workflow_id=workflow_id,
+            name=uploaded_file.name,
+            content=yaml_content,
+            description="Uploaded via UI"
+        )
 
         st.session_state.current_workflow_id = workflow_id
         st.session_state.last_uploaded_file = file_identifier
@@ -520,18 +698,24 @@ def handle_workflow_upload(uploaded_file):
     except Exception as e:
         st.error(f"❌ Upload failed: {e}")
 
-def execute_workflow(workflow_id: str):
-    workflow = st.session_state.workflows[workflow_id]
-    yaml_content = workflow['content']
 
-    # Prepara il buffer per catturare i log
+def execute_workflow(workflow_id: str):
+    """MODIFICATO: usa facade"""
+    facade = st.session_state.workflow_manager
+    metadata = facade.get_workflow(workflow_id)
+
+    if not metadata:
+        st.error(f"❌ Workflow not found: {workflow_id}")
+        return
+
+    yaml_content = metadata.content
+
     log_buffer = io.StringIO()
     log_handler = logging.StreamHandler(log_buffer)
     log_handler.setLevel(getattr(logging, st.session_state.log_level, logging.INFO))
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     log_handler.setFormatter(formatter)
 
-    # Ottieni il logger automator
     automator_logger = logging.getLogger('automator')
     automator_logger.addHandler(log_handler)
 
@@ -539,49 +723,20 @@ def execute_workflow(workflow_id: str):
         if st.session_state.active_wallet:
             yaml_content = resolve_dict_placeholders(yaml_content, st.session_state.active_wallet)
 
-        tasks = yaml_content[0]['tasks']
         workflow_vars = {k: v for k, v in yaml_content[0].items() if k != 'tasks'}
         exec_gdict = dict(workflow_vars)
 
         if st.session_state.active_wallet:
             exec_gdict['wallet'] = st.session_state.active_wallet
 
-        oacommon.gdict = exec_gdict
-
-        taskstore = TaskResultStore()
-        engine = WorkflowEngine(tasks, exec_gdict, taskstore, debug=False, debug2=False)
-
-        st.session_state.workflows[workflow_id]['status'] = 'running'
-
-        # Cattura stdout/stderr durante l'esecuzione
-        stdout_buffer = io.StringIO()
-        stderr_buffer = io.StringIO()
-
-        with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-            success, context = engine.execute()
-
-        # Raccogli tutti i log
-        logs = log_buffer.getvalue()
-        stdout_logs = stdout_buffer.getvalue()
-        stderr_logs = stderr_buffer.getvalue()
-
-        all_logs = []
-        if logs:
-            all_logs.append("=== LOGGER OUTPUT ===\n" + logs)
-        if stdout_logs:
-            all_logs.append("=== STDOUT ===\n" + stdout_logs)
-        if stderr_logs:
-            all_logs.append("=== STDERR ===\n" + stderr_logs)
-
-        combined_logs = "\n\n".join(all_logs) if all_logs else "No logs captured"
-
-        st.session_state.workflows[workflow_id]['status'] = 'completed' if success else 'failed'
-        st.session_state.workflows[workflow_id]['last_execution'] = {
-            'timestamp': datetime.now().isoformat(),
-            'success': success,
-            'results': serialize_results(context),
-            'logs': combined_logs  # NUOVO: salva i log
-        }
+        execution_id, success, context = facade.execute_workflow(
+            workflow_id=workflow_id,
+            gdict=exec_gdict,
+            wallet=st.session_state.active_wallet,
+            debug=False,
+            debug2=False,
+            async_mode=False
+        )
 
         if success:
             st.success("✅ Workflow completed!")
@@ -589,25 +744,20 @@ def execute_workflow(workflow_id: str):
             st.error("❌ Workflow failed")
 
     except Exception as e:
-        # Cattura anche i log in caso di errore
-        logs = log_buffer.getvalue()
-        st.session_state.workflows[workflow_id]['status'] = 'error'
-        st.session_state.workflows[workflow_id]['last_execution'] = {
-            'timestamp': datetime.now().isoformat(),
-            'success': False,
-            'results': {},
-            'logs': logs if logs else str(e),
-            'error': str(e)
-        }
         st.error(f"❌ Execution failed: {e}")
+
     finally:
-        # Rimuovi il handler per evitare duplicazioni
         automator_logger.removeHandler(log_handler)
         log_handler.close()
+
+
+
+# ========== QUERY PARAMS E AUTO-EXECUTE ==========
 
 def get_query_params():
     """Estrae i parametri dalla query string"""
     try:
+        facade = st.session_state.workflow_manager
         if hasattr(st, 'query_params'):
             return dict(st.query_params)
         else:
@@ -641,6 +791,7 @@ def auto_execute_from_params():
     }
 
     try:
+        facade = st.session_state.workflow_manager
         # 1. Carica wallet se specificato
         if wallet_file:
             with st.spinner(f'🔐 Caricamento wallet: {wallet_file}...'):
@@ -680,9 +831,9 @@ def auto_execute_from_params():
         # 2. Cerca il workflow
         with st.spinner(f'🔍 Ricerca workflow: {workflow_name}...'):
             workflow_id = None
-            for wf_id, wf in st.session_state.workflows.items():
-                if wf.get('name') == workflow_name or wf.get('filepath', '').endswith(workflow_name):
-                    workflow_id = wf_id
+            for metadata in facade.list_workflows():
+                if metadata.name == workflow_name or (metadata.filepath and metadata.filepath.endswith(workflow_name)):
+                    workflow_id = metadata.workflow_id
                     break
 
             if not workflow_id:
@@ -699,15 +850,13 @@ def auto_execute_from_params():
 
                         if yaml_content and isinstance(yaml_content, list) and 'tasks' in yaml_content[0]:
                             workflow_id = f"wf_autoload_{os.path.basename(workflow_name).replace('.yaml', '').replace('.yml', '')}"
-                            st.session_state.workflows[workflow_id] = {
-                                'id': workflow_id,
-                                'name': os.path.basename(workflow_name),
-                                'filepath': filepath,
-                                'content': yaml_content,
-                                'status': 'loaded',
-                                'created_at': datetime.now().isoformat(),
-                                'last_execution': None
-                            }
+                            facade.register_workflow(
+                                workflow_id=workflow_id,
+                                name=os.path.basename(workflow_name),
+                                content=yaml_content,
+                                filepath=filepath,
+                                description="Auto-loaded"
+                            )
                             break
 
             if not workflow_id:
@@ -740,6 +889,10 @@ def auto_execute_from_params():
         st.session_state.auto_executed = True
         st.session_state.auto_execution_result = result
         return result
+
+
+
+# ========== RENDERING FUNCTIONS ==========
 
 def render_json_result(result):
     """Mostra i risultati in formato JSON"""
@@ -803,6 +956,8 @@ def render_sidebar():
 
         st.divider()
         st.caption("v1.4.1 - Plain Wallet")
+
+
 
 def render_workflow_page():
     # Controlla se c'è un'esecuzione automatica da query params
@@ -1068,6 +1223,8 @@ def render_workflow_page():
 
         st.divider()
 
+
+
 def render_wallet_page():
     st.markdown('''
     <div class="main-header">
@@ -1235,6 +1392,8 @@ def render_readme_page():
         if st.button("← Torna ai Workflow", type="primary"):
             st.session_state.current_page = 'workflow'
             st.rerun()
+
+
 
 def main():
     render_sidebar()
