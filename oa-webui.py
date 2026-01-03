@@ -34,6 +34,20 @@ from workflow_manager import (
     WorkflowMetadata,
     WorkflowExecution
 )
+def read_version():
+    """Legge la versione dal file VERSION"""
+    version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+    
+    try:
+        with open(version_file, "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "unknown"
+    except Exception as e:
+        logger.error(f"Failed to read version file: {e}")
+        return "error"
+
+APP_VERSION = read_version()
 
 logger = AutomatorLogger.get_logger("oa-webui")
 
@@ -75,7 +89,7 @@ for directory in [OA_WORKFLOWS_DIR, OA_DATA_DIR, OA_LOGS_DIR]:
 app = FastAPI(
     title="Open-Automator Web UI",
     description="API per gestione workflow automation con Workflow Manager Centralizzato",
-    version="3.0.0"
+    version=APP_VERSION
 )
 
 if ENABLE_CORS:
@@ -541,8 +555,19 @@ async def upload_workflow(file: UploadFile = File(...)):
         content = await file.read()
         yaml_content = yaml.safe_load(content.decode("utf-8"))
 
-        if not yaml_content or not isinstance(yaml_content, list) or "tasks" not in yaml_content[0]:
-            raise HTTPException(400, "Invalid YAML structure")
+        has_tasks = False
+        
+        # Nuova sintassi: {name: ..., variable: {...}, tasks: [...]}
+        if isinstance(yaml_content, dict) and "tasks" in yaml_content:
+            has_tasks = True
+        
+        # Vecchia sintassi: [{VAR1: ..., tasks: [...]}]
+        elif isinstance(yaml_content, list) and len(yaml_content) > 0 and "tasks" in yaml_content[0]:
+            has_tasks = True
+        
+        if not has_tasks:
+            raise HTTPException(400, "Invalid YAML structure - missing 'tasks' key")
+
 
         # Genera workflow_id univoco
         workflow_id = f"wf_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -648,10 +673,23 @@ async def execute_workflow(workflow_id: str):
             logger.debug("Placeholders resolved")
 
         # STEP 2: Prepara gdict con variabili header
-        workflow_vars = {k: v for k, v in yaml_content[0].items() if k != "tasks"}
+        workflow_vars = {}
+        
+        # Nuova sintassi: {name: ..., variable: {...}, tasks: [...]}
+        if isinstance(yaml_content, dict):
+            if "variable" in yaml_content:
+                workflow_vars = yaml_content["variable"]
+            elif "variables" in yaml_content:
+                workflow_vars = yaml_content["variables"]
+        
+        # Vecchia sintassi: [{VAR1: ..., tasks: [...]}]
+        elif isinstance(yaml_content, list) and len(yaml_content) > 0:
+            workflow_vars = {k: v for k, v in yaml_content[0].items() if k != "tasks"}
+        
         exec_gdict = dict(gdict)
         exec_gdict.update(workflow_vars)
-
+        logger.info(f"Workflow variables prepared: {list(workflow_vars.keys())}")
+        
         # STEP 3: Aggiungi wallet per get_param nei moduli
         if active_wallet and active_wallet.loaded:
             exec_gdict["wallet"] = active_wallet
@@ -861,7 +899,18 @@ async def get_workflow_graph(workflow_id: str):
 
     try:
         yaml_content = metadata.content
-        tasks = yaml_content[0]["tasks"]
+        tasks = []
+        
+        # Nuova sintassi: {name: ..., variable: {...}, tasks: [...]}
+        if isinstance(yaml_content, dict) and "tasks" in yaml_content:
+            tasks = yaml_content["tasks"]
+        
+        # Vecchia sintassi: [{VAR1: ..., tasks: [...]}]
+        elif isinstance(yaml_content, list) and len(yaml_content) > 0 and "tasks" in yaml_content[0]:
+            tasks = yaml_content[0]["tasks"]
+        
+        else:
+            raise HTTPException(400, "Invalid workflow structure - missing tasks")
 
         # Trova entry point
         referenced = set()

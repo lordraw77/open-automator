@@ -631,20 +631,57 @@ def main():
 
         logger.debug("Configuration loaded successfully")
 
-        if not conf or not isinstance(conf, list) or "tasks" not in conf[0]:
-            raise ValueError("Invalid YAML structure - expected 'tasks' key")
+        workflowvars = {}
+        tasks = []
 
-        workflow_vars = {k: v for k, v in conf[0].items() if k != "tasks"}
-        if workflow_vars:
-            logger.info(f"Loading {len(workflow_vars)} workflow variables into gdict")
-            gdict.update(workflow_vars)
+        # Nuova sintassi: {name: ..., description: ..., variable: {...}, tasks: [...]}
+        if isinstance(conf, dict) and 'tasks' in conf:
+            logger.info("Detected NEW syntax (structured workflow)")
+            
+            # Carica metadati opzionali
+            if 'name' in conf:
+                gdict['workflow_name'] = conf['name']
+                logger.info(f"Workflow name: {conf['name']}")
+            
+            if 'description' in conf:
+                gdict['workflow_description'] = conf['description']
+                logger.info(f"Workflow description: {conf['description']}")
+            
+            # Carica variabili dalla chiave 'variable' o 'variables'
+            if 'variable' in conf:
+                workflowvars = conf['variable']
+            elif 'variables' in conf:
+                workflowvars = conf['variables']
+            
+            tasks = conf['tasks']
+
+        # Vecchia sintassi: [{DB_HOST: ..., tasks: [...]}]
+        elif isinstance(conf, list) and len(conf) > 0 and 'tasks' in conf[0]:
+            logger.info("Detected OLD syntax (list-based workflow)")
+            
+            # Estrae variabili (tutto tranne 'tasks')
+            workflowvars = {k: v for k, v in conf[0].items() if k != 'tasks'}
+            tasks = conf[0]['tasks']
+
+        else:
+            raise ValueError(
+                "Invalid YAML structure. Expected:\n"
+                "  NEW syntax: {name: ..., variable: {...}, tasks: [...]}\n"
+                "  OLD syntax: [{VAR1: ..., VAR2: ..., tasks: [...]}]"
+            )
+
+        # Carica le variabili nel gdict
+        if workflowvars:
+            logger.info(f"Loading {len(workflowvars)} workflow variables into gdict")
+            gdict.update(workflowvars)
             if DEBUG2:
-                logger.debug(f"Workflow variables: {list(workflow_vars.keys())}")
+                logger.debug(f"Workflow variables: {list(workflowvars.keys())}")
 
-        tasks = conf[0]["tasks"]
+        if not tasks:
+            raise ValueError("No tasks found in workflow configuration")
+
         logger.info(f"Found {len(tasks)} tasks to execute")
         logger.info("")
-
         print_workflow_map(tasks)
         analyze_workflow_paths(tasks)
 

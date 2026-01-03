@@ -376,12 +376,24 @@ def sanitize_mermaid_label(label: str) -> str:
 def generate_mermaid_code(workflow: dict) -> str:
     try:
         yaml_content = workflow['content']
-        if not yaml_content or not isinstance(yaml_content, list):
-            return "graph TD\n    A[Invalid workflow]"
+        # if not yaml_content or not isinstance(yaml_content, list):
+        #     return "graph TD\n    A[Invalid workflow]"
 
-        tasks = yaml_content[0].get('tasks', [])
+        tasks = []
+        
+        # Nuova sintassi: {name: ..., variable: {...}, tasks: [...]}
+        if isinstance(yaml_content, dict) and 'tasks' in yaml_content:
+            tasks = yaml_content.get('tasks', [])
+        
+        # Vecchia sintassi: [{VAR1: ..., tasks: [...]}]
+        elif isinstance(yaml_content, list) and len(yaml_content) > 0 and 'tasks' in yaml_content[0]:
+            tasks = yaml_content[0].get('tasks', [])
+        
+        else:
+            return "graph TD; A[Invalid workflow structure]"
+        
         if not tasks:
-            return "graph TD\n    A[No tasks]"
+            return "graph TD; A[No tasks]"
 
         referenced = set()
         for task in tasks:
@@ -616,87 +628,121 @@ def unload_wallet():
 def load_workflows_from_directory(workflow_path: str = "./workflows"):
     """MODIFICATO: usa facade"""
     if not os.path.exists(workflow_path):
-        st.warning(f"📁 Directory non trovata: {workflow_path}")
+        st.warning(f"Directory non trovata: {workflow_path}")
         return 0
-
-    loaded_count = 0
-    workflow_files = []
-
-    for ext in ['*.yaml', '*.yml']:
-        workflow_files.extend(glob.glob(os.path.join(workflow_path, ext)))
-
+    
+    loadedcount = 0
+    workflowfiles = []
+    for ext in ['.yaml', '.yml']:
+        workflowfiles.extend(glob.glob(os.path.join(workflow_path, f"*{ext}")))
+    
     facade = st.session_state.workflow_manager
-
-    for filepath in workflow_files:
+    
+    for filepath in workflowfiles:
         try:
             filename = os.path.basename(filepath)
-            workflow_id = f"wf_{filename.replace('.yaml', '').replace('.yml', '')}"
-
-            if facade.get_workflow(workflow_id):
+            workflowid = f"wf_{filename.replace('.yaml', '').replace('.yml', '')}"
+            
+            if facade.get_workflow(workflowid):
                 continue
-
+            
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
-
-            yaml_content = yaml.safe_load(content)
-
-            if not yaml_content or not isinstance(yaml_content, list) or 'tasks' not in yaml_content[0]:
-                st.warning(f"⚠️ File non valido: {filename}")
+            
+            yamlcontent = yaml.safe_load(content)
+            
+            # SOSTITUISCI QUESTA PARTE:
+            # if not yamlcontent or not isinstance(yamlcontent, list) or 'tasks' not in yamlcontent[0]:
+            #     st.warning(f"File non valido: {filename}")
+            #     continue
+            
+            # CON:
+            # Supporta entrambe le sintassi
+            has_tasks = False
+            
+            # Nuova sintassi
+            if isinstance(yamlcontent, dict) and 'tasks' in yamlcontent:
+                has_tasks = True
+            
+            # Vecchia sintassi
+            elif isinstance(yamlcontent, list) and len(yamlcontent) > 0 and 'tasks' in yamlcontent[0]:
+                has_tasks = True
+            
+            if not has_tasks:
+                st.warning(f"⚠️ File non valido (manca 'tasks'): {filename}")
                 continue
-
+            
             facade.register_workflow(
-                workflow_id=workflow_id,
+                workflow_id=workflowid,
                 name=filename,
-                content=yaml_content,
+                content=yamlcontent,
                 filepath=filepath,
                 description=f"Loaded from {filepath}"
             )
-
-            loaded_count += 1
-
+            loadedcount += 1
+            
         except Exception as e:
             st.warning(f"⚠️ Errore caricando {filename}: {e}")
-
-    return loaded_count
+    
+    return loadedcount
 
 
 def handle_workflow_upload(uploaded_file):
-    """MODIFICATO: usa facade"""
     try:
-        file_identifier = f"{uploaded_file.name}_{uploaded_file.size}"
-
-        if st.session_state.last_uploaded_file == file_identifier:
+        fileidentifier = f"{uploaded_file.name}_{uploaded_file.size}"
+        if st.session_state.last_uploaded_file == fileidentifier:
             return
-
-        content = uploaded_file.read().decode('utf-8')
-        yaml_content = yaml.safe_load(content)
-
-        if not yaml_content or not isinstance(yaml_content, list) or 'tasks' not in yaml_content[0]:
-            st.error("❌ Invalid YAML structure")
+        
+        content = uploaded_file.read().decode("utf-8")
+        yamlcontent = yaml.safe_load(content)
+        
+        # SOSTITUISCI QUESTA PARTE:
+        # if not yamlcontent or not isinstance(yamlcontent, list) or 'tasks' not in yamlcontent[0]:
+        #     st.error("Invalid YAML structure")
+        #     return
+        
+        # CON:
+        # Supporta entrambe le sintassi
+        tasks = []
+        
+        # Nuova sintassi: {name: ..., variable: {...}, tasks: [...]}
+        if isinstance(yamlcontent, dict) and 'tasks' in yamlcontent:
+            tasks = yamlcontent.get('tasks', [])
+        
+        # Vecchia sintassi: [{VAR1: ..., tasks: [...]}]
+        elif isinstance(yamlcontent, list) and len(yamlcontent) > 0 and 'tasks' in yamlcontent[0]:
+            tasks = yamlcontent[0]['tasks']
+        
+        else:
+            st.error("Invalid YAML structure. Expected 'tasks' key in workflow.")
             return
-
-        workflow_id = f"wf_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        tasks = yaml_content[0]['tasks']
-
+        
+        if not tasks:
+            st.error("No tasks found in workflow")
+            return
+        
+        workflowid = f"wf_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        # tasks = yamlcontent[0]['tasks']  # RIMUOVI QUESTA RIGA
+        
         facade = st.session_state.workflow_manager
         facade.register_workflow(
-            workflow_id=workflow_id,
+            workflow_id=workflowid,
             name=uploaded_file.name,
-            content=yaml_content,
+            content=yamlcontent,
             description="Uploaded via UI"
         )
-
-        st.session_state.current_workflow_id = workflow_id
-        st.session_state.last_uploaded_file = file_identifier
-
+        
+        st.session_state.currentworkflowid = workflowid
+        st.session_state.last_uploaded_file = fileidentifier
         st.success(f"✅ Workflow loaded: {len(tasks)} tasks")
         time.sleep(0.5)
         st.rerun()
-
+        
     except yaml.YAMLError as e:
-        st.error(f"❌ Invalid YAML: {e}")
+        st.error(f"Invalid YAML: {e}")
     except Exception as e:
-        st.error(f"❌ Upload failed: {e}")
+        st.error(f"Upload failed: {e}")
+
 
 
 def execute_workflow(workflow_id: str):
@@ -712,7 +758,7 @@ def execute_workflow(workflow_id: str):
 
     log_buffer = io.StringIO()
     log_handler = logging.StreamHandler(log_buffer)
-    log_handler.setLevel(getattr(logging, st.session_state.log_level, logging.INFO))
+    log_handler.setLevel(getattr(logging, st.session_state.log_level, logging.DEBUG))
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     log_handler.setFormatter(formatter)
 
@@ -723,11 +769,20 @@ def execute_workflow(workflow_id: str):
         if st.session_state.active_wallet:
             yaml_content = resolve_dict_placeholders(yaml_content, st.session_state.active_wallet)
 
-        workflow_vars = {k: v for k, v in yaml_content[0].items() if k != 'tasks'}
-        exec_gdict = dict(workflow_vars)
+        workflowvars = {}
+        
+        # Nuova sintassi
+        if isinstance(yaml_content, dict):
+            if 'variable' in yaml_content:
+                workflowvars = yaml_content['variable']
+            elif 'variables' in yaml_content:
+                workflowvars = yaml_content['variables']
+        
+        # Vecchia sintassi
+        elif isinstance(yaml_content, list) and len(yaml_content) > 0:
+            workflowvars = {k: v for k, v in yaml_content[0].items() if k != 'tasks'}
 
-        if st.session_state.active_wallet:
-            exec_gdict['wallet'] = st.session_state.active_wallet
+        exec_gdict = dict(workflowvars)
 
         execution_id, success, context = facade.execute_workflow(
             workflow_id=workflow_id,
@@ -1043,7 +1098,13 @@ def render_workflow_page():
 
             for wf_id, wf in sorted_workflows:
                 is_selected = wf_id == st.session_state.current_workflow_id
-                task_count = len(wf['content'][0]['tasks'])
+                content = wf['content']
+                if isinstance(content, dict) and 'tasks' in content:
+                    task_count = len(content['tasks'])
+                elif isinstance(content, list) and len(content) > 0 and 'tasks' in content[0]:
+                    task_count = len(content[0]['tasks'])
+                else:
+                    task_count = 0
                 status = wf['status']
                 status_emoji = {
                     'loaded': '📋',
@@ -1074,8 +1135,14 @@ def render_workflow_page():
             st.markdown(f'<div class="section-header">📋 {display_name}</div>', unsafe_allow_html=True)
 
             cola, colb, colc = st.columns(3)
-
-            cola.metric("Tasks", len(workflow['content'][0]['tasks']))
+            content = workflow['content']
+            if isinstance(content, dict) and 'tasks' in content:
+                taskcount = len(content['tasks'])
+            elif isinstance(content, list) and len(content) > 0 and 'tasks' in content[0]:
+                taskcount = len(content[0]['tasks'])
+            else:
+                taskcount = 0
+            cola.metric("Tasks", taskcount)
 
             status = workflow['status']
             status_emoji = {
@@ -1137,7 +1204,13 @@ def render_workflow_page():
             except ImportError:
                 st.info("💡 Install `pip install streamlit-mermaid` for visualization")
 
-                tasks = workflow['content'][0]['tasks']
+                content = workflow['content']
+                if isinstance(content, dict) and 'tasks' in content:
+                    tasks = content['tasks']
+                elif isinstance(content, list) and len(content) > 0 and 'tasks' in content[0]:
+                    tasks = content[0]['tasks']
+                else:
+                    tasks = []
                 for task in tasks:
                     name = task.get('name', 'unnamed')
                     module = task.get('module', 'N/A')

@@ -222,8 +222,21 @@ class WorkflowEngineManager:
                 raise ValueError(f"Workflow not found in registry: {workflow_id}")
 
             # Estrai tasks
-            tasks = metadata.content[0].get("tasks", [])
+            #tasks = metadata.content[0].get("tasks", [])
+            content = metadata.content
 
+            # Nuova sintassi: {name: ..., variable: {...}, tasks: [...]}
+            if isinstance(content, dict) and 'tasks' in content:
+                tasks = content.get('tasks', [])
+                engine_logger.debug(f"Using NEW syntax for workflow {workflow_id}")
+
+            # Vecchia sintassi: [{VAR1: ..., tasks: [...]}]
+            elif isinstance(content, list) and len(content) > 0 and 'tasks' in content[0]:
+                tasks = content[0].get('tasks', [])
+                engine_logger.debug(f"Using OLD syntax for workflow {workflow_id}")
+
+            else:
+                raise ValueError(f"Invalid workflow structure for {workflow_id}")
             # Prepara gdict per esecuzione
             exec_gdict = dict(gdict)
             exec_gdict["DEBUG"] = debug
@@ -520,10 +533,12 @@ class WorkflowManagerFacade:
         """Registra un nuovo workflow"""
 
         # Estrai task count
-        task_count = 0
-        if isinstance(content, list) and len(content) > 0:
-            tasks = content[0].get("tasks", [])
-            task_count = len(tasks)
+        if isinstance(content, dict) and 'tasks' in content:
+            task_count = len(content.get('tasks', []))
+        elif isinstance(content, list) and len(content) > 0:
+            task_count = len(content[0].get('tasks', []))
+        else:
+            task_count = 0
 
         metadata = WorkflowMetadata(
             workflow_id=workflow_id,

@@ -27,6 +27,21 @@ from workflow_manager import (
     WorkflowExecutionStatus,
     WorkflowMetadata
 )
+def read_version():
+    """Legge la versione dal file VERSION"""
+    version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+    
+    try:
+        with open(version_file, "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "unknown"
+    except Exception as e:
+        logger.error(f"Failed to read version file: {e}")
+        return "error"
+
+APP_VERSION = read_version()
+
 
 # ========================================
 # CONFIGURAZIONE
@@ -39,7 +54,7 @@ oacommon.setgdict(oacommon, gdict)
 # Environment variables
 API_PORT = int(os.getenv("API_PORT", "8503"))
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
-WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", "./workflows")
+WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", "./woerkflows")
 OA_WALLET_FILE = os.getenv("OA_WALLET_FILE", None)
 OA_WALLET_PASSWORD = os.getenv("OA_WALLET_PASSWORD", None)
 MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "5"))
@@ -149,7 +164,7 @@ def index():
     """Root endpoint"""
     return jsonify({
         "service": "Open-Automator API Server",
-        "version": "3.0.0",
+        "version": APP_VERSION,
         "status": "running",
         "workflow_manager": "enabled",
         "endpoints": {
@@ -202,8 +217,19 @@ def execute():
         with open(workflow_file, "r", encoding="utf-8") as f:
             yaml_content = yaml.safe_load(f)
 
-        if not yaml_content or not isinstance(yaml_content, list) or "tasks" not in yaml_content[0]:
-            return jsonify({"error": "Invalid YAML structure"}), 400
+        # Validazione supporta entrambe le sintassi
+        has_tasks = False
+
+        # Nuova sintassi: {name: ..., variable: {...}, tasks: [...]}
+        if isinstance(yaml_content, dict) and "tasks" in yaml_content:
+            has_tasks = True
+
+        # Vecchia sintassi: [{VAR1: ..., tasks: [...]}]
+        elif isinstance(yaml_content, list) and len(yaml_content) > 0 and "tasks" in yaml_content[0]:
+            has_tasks = True
+
+        if not has_tasks:
+            return jsonify({"error": "Invalid YAML structure - missing 'tasks' key"}), 400
 
         # Risolvi placeholder
         if active_wallet:
@@ -223,10 +249,23 @@ def execute():
             )
             logger.info(f"Workflow registered on-the-fly: {workflow_id}")
 
-        # Prepara gdict
-        workflow_vars = {k: v for k, v in yaml_content[0].items() if k != "tasks"}
+        # Prepara gdict - supporta entrambe le sintassi
+        workflow_vars = {}
+
+        # Nuova sintassi
+        if isinstance(yaml_content, dict):
+            if "variable" in yaml_content:
+                workflow_vars = yaml_content["variable"]
+            elif "variables" in yaml_content:
+                workflow_vars = yaml_content["variables"]
+
+        # Vecchia sintassi
+        elif isinstance(yaml_content, list) and len(yaml_content) > 0:
+            workflow_vars = {k: v for k, v in yaml_content[0].items() if k != "tasks"}
+
         exec_gdict = dict(gdict)
         exec_gdict.update(workflow_vars)
+
 
         if active_wallet:
             exec_gdict["wallet"] = active_wallet

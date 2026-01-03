@@ -15,10 +15,23 @@ NC='\033[0m' # No Color
 IMAGE_NAME="${IMAGE_NAME:-open-automator-shell}"
 DOCKER_USERNAME="${DOCKER_USERNAME:-lordraw}"
 REGISTRY="${REGISTRY:-docker.io}"
-VERSION_MAJOR=3
-VERSION_MINOR=0
-VERSION_PATCH=0
-VERSION="${VERSION:-${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}}"
+VERSION_FILE="VERSION"
+
+if [ -f "$VERSION_FILE" ]; then
+    VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
+    echo "✅ Version read from $VERSION_FILE: $VERSION"
+else
+    # Fallback se il file non esiste
+    VERSION="${VERSION:-3.0.0}"
+    echo "⚠️  $VERSION_FILE not found, using default: $VERSION"
+fi
+
+# Permetti override via variabile d'ambiente
+if [ ! -z "$VERSION_OVERRIDE" ]; then
+    VERSION="$VERSION_OVERRIDE"
+    echo "🔄 Version overridden: $VERSION"
+fi
+
 DOCKERFILE="Dockerfile.shell"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 PUSH="${PUSH:-false}"  # Set to 'true' to push to registry
