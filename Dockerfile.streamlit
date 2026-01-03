@@ -31,6 +31,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 
 # Copia TUTTI i moduli Python (oa-*.py e altri)
 COPY --chown=automator:automator *.py ./
+COPY --chown=automator:automator VERSION ./
 COPY --chown=automator:automator ./modules/*.py ./modules/
 
 # Copia file di documentazione

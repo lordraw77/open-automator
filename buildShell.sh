@@ -31,6 +31,9 @@ if [ ! -z "$VERSION_OVERRIDE" ]; then
     VERSION="$VERSION_OVERRIDE"
     echo "🔄 Version overridden: $VERSION"
 fi
+VERSION_MAJOR=$(echo "$VERSION" | awk -F '.' '{print $1}')
+VERSION_MINOR=$(echo "$VERSION" | awk -F '.' '{print $2}')
+VERSION_PATCH=$(echo "$VERSION" | awk -F '.' '{print $3}')
 
 DOCKERFILE="Dockerfile.shell"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"

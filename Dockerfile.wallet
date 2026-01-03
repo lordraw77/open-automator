@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir -r requirements-wallet.txt
 
 # Copia SOLO i moduli necessari per wallet
 COPY --chown=automator:automator wallet.py ./
+COPY --chown=automator:automator VERSION ./
 COPY --chown=automator:automator wallet-tool.py ./
 COPY --chown=automator:automator logger_config.py ./
 

@@ -32,6 +32,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia TUTTI i moduli dell'applicazione
 COPY --chown=automator:automator *.py ./
+COPY --chown=automator:automator VERSION ./
 COPY --chown=automator:automator ./modules/*.py ./modules/
 COPY --chown=automator:automator dashboard.html ./
 
