@@ -75,7 +75,7 @@ for directory in [OA_WORKFLOWS_DIR, OA_DATA_DIR, OA_LOGS_DIR]:
 app = FastAPI(
     title="Open-Automator Web UI",
     description="API per gestione workflow automation con Workflow Manager Centralizzato",
-    version="2.0.0"
+    version="3.0.0"
 )
 
 if ENABLE_CORS:
@@ -238,7 +238,7 @@ async def startup_event():
     """Evento di avvio dell'applicazione"""
     print()
     print("=" * 70)
-    print("Open-Automator Web UI - Avvio (Workflow Manager v2.0)")
+    print("Open-Automator apirest - Avvio (Workflow Manager v3.0)")
     print("=" * 70)
     logger.info(f"🌐 Server: {FASTAPI_HOST}:{FASTAPI_PORT}")
     logger.info(f"📁 Workflows Dir: {OA_WORKFLOWS_DIR}")
@@ -1012,7 +1012,7 @@ if __name__ == "__main__":
     import uvicorn
 
     print("=" * 70)
-    print("Open-Automator Web UI Server (Workflow Manager v2.0)")
+    print("Open-Automator apirest (Workflow Manager v3.0)")
     print("=" * 70)
     #print(f"📊 Dashboard: http://localhost:{FASTAPI_PORT}/")
     print(f"📖 API Docs: http://localhost:{FASTAPI_PORT}/docs")

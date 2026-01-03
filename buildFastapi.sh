@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 DOCKERFILE="${DOCKERFILE:-Dockerfile.fastapi}"
 IMAGE_NAME="${IMAGE_NAME:-open-automator-fastapi}"
 DOCKER_USERNAME="${DOCKER_USERNAME:-}"
-VERSION="${VERSION:-2.1.0}"
+VERSION="${VERSION:-3.0.0}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 BUILDER_NAME="multiarch-builder"
 

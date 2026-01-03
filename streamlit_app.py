@@ -1,5 +1,5 @@
 """
-Open-Automator Streamlit Web UI v2.0.0 - WorkflowManager Integration
+Open-Automator Streamlit Web UI v3.0.0 - WorkflowManager Integration
 MODIFICATO: Solo logica interna con WorkflowAdapter, interfaccia invariata
 """
 

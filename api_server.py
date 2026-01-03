@@ -149,7 +149,7 @@ def index():
     """Root endpoint"""
     return jsonify({
         "service": "Open-Automator API Server",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "status": "running",
         "workflow_manager": "enabled",
         "endpoints": {
@@ -393,7 +393,7 @@ def get_stats():
 # ========================================
 if __name__ == "__main__":
     print("=" * 70)
-    print("Open-Automator API Server (Workflow Manager v2.0)")
+    print("Open-Automator API Server (Workflow Manager v3.0)")
     print("=" * 70)
     print(f"🌐 API: http://{API_HOST}:{API_PORT}/")
     print(f"💚 Health: http://localhost:{API_PORT}/health")
