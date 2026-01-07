@@ -54,7 +54,7 @@ oacommon.setgdict(oacommon, gdict)
 # Environment variables
 API_PORT = int(os.getenv("API_PORT", "8503"))
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
-WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", "./woerkflows")
+WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", "./workflows")
 OA_WALLET_FILE = os.getenv("OA_WALLET_FILE", None)
 OA_WALLET_PASSWORD = os.getenv("OA_WALLET_PASSWORD", None)
 MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "5"))
